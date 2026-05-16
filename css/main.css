@@ -10,6 +10,9 @@
   --radius: 8px;
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
   --font-title: 'Outfit', -apple-system, sans-serif;
+  /* H5 模拟视口高度（相对全屏缩短 10%） */
+  --sc-h5-height: 90vh;
+  --sc-h5-height-dvh: 90dvh;
 }
 
 *,
@@ -114,7 +117,7 @@ body {
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   overflow: hidden;
-  min-height: calc(100vh - 32px);
+  min-height: calc(var(--sc-h5-height) - 32px);
 }
 
 .sc-wx-service {
@@ -225,7 +228,7 @@ body {
   }
 
   .sc-demo-shell.sc-demo--tpl .sc-app {
-    min-height: 100vh;
+    min-height: var(--sc-h5-height);
   }
 }
 
@@ -355,8 +358,10 @@ body {
 .sc-chat {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
+  height: var(--sc-h5-height);
+  height: var(--sc-h5-height-dvh);
+  max-height: var(--sc-h5-height);
+  max-height: var(--sc-h5-height-dvh);
 }
 
 .sc-header {
