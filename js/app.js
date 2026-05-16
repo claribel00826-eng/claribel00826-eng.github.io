@@ -89,23 +89,50 @@
     toast._t = setTimeout(() => el.classList.remove('is-show'), 2000);
   }
 
-  function route() {
-    const hash = location.hash || '#login';
-    const loggedIn = !!localStorage.getItem(TOKEN_KEY);
-    if (hash === '#chat' && loggedIn) {
-      $('#view-login').classList.add('sc-hidden');
-      $('#view-chat').classList.remove('sc-hidden');
-      refreshHeader();
-      syncExternalTemplatePanel();
-      return;
-    }
-    if (loggedIn && (hash === '#login' || hash === '')) {
-      location.hash = '#chat';
-      return;
-    }
+  function showChatView() {
+    $('#view-login').classList.add('sc-hidden');
+    $('#view-chat').classList.remove('sc-hidden');
+    refreshHeader();
+    syncExternalTemplatePanel();
+  }
+
+  function showLoginView() {
     $('#view-login').classList.remove('sc-hidden');
     $('#view-chat').classList.add('sc-hidden');
     syncExternalTemplatePanel();
+  }
+
+  function route() {
+    const loggedIn = !!localStorage.getItem(TOKEN_KEY);
+    const hash = location.hash;
+
+    if (loggedIn) {
+      if (!hash || hash === '#login') {
+        if (hash !== '#chat') location.hash = '#chat';
+      }
+      if (location.hash === '#chat') {
+        showChatView();
+        return;
+      }
+    }
+
+    if (hash === '#chat' && loggedIn) {
+      showChatView();
+      return;
+    }
+
+    showLoginView();
+  }
+
+  function bootChatSession() {
+    if (!localStorage.getItem(TOKEN_KEY)) return;
+    if (!location.hash || location.hash === '#login') {
+      location.hash = '#chat';
+    }
+    route();
+    initWelcome();
+    refreshHeader();
+    if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
   }
 
   function refreshHeader() {
@@ -1030,10 +1057,12 @@
         toast('请输入账号和密码');
         return;
       }
+      const wasLoggedIn = !!localStorage.getItem(TOKEN_KEY);
       localStorage.setItem(TOKEN_KEY, '1');
       location.hash = '#chat';
       route();
-      resetChat();
+      if (!wasLoggedIn) resetChat();
+      else bootChatSession();
     };
   }
 
@@ -1219,13 +1248,25 @@
       if (location.hash === '#chat' && localStorage.getItem(TOKEN_KEY)) {
         initWelcome();
         refreshHeader();
+        if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
       }
     });
+    window.addEventListener('pageshow', (e) => {
+      if (!localStorage.getItem(TOKEN_KEY)) return;
+      route();
+      if (e.persisted) {
+        const box = $('#messages');
+        if (box) delete box.dataset.sessionReady;
+        initWelcome();
+        refreshHeader();
+      }
+      if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
+    });
+    window.addEventListener('pagehide', () => {
+      persistChatHistory();
+    });
     route();
-    if (location.hash === '#chat' && localStorage.getItem(TOKEN_KEY)) {
-      initWelcome();
-      refreshHeader();
-    }
+    bootChatSession();
     syncExternalTemplatePanel();
     initWxTemplatePanel();
     initDemoReset();

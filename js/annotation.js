@@ -317,6 +317,9 @@ window.Annotation = (function () {
       localStorage.setItem(STORAGE_KEY, '1');
     }
     applyMode();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && isOn()) scanHosts();
+    });
     document.addEventListener('keydown', (e) => {
       if (e.altKey && (e.key === 'd' || e.key === 'D')) {
         e.preventDefault();
@@ -330,5 +333,5 @@ window.Annotation = (function () {
     window.Annotation.rescan = scanHosts;
   }
 
-  return { init, isOn, toggle, setOn, renderPanelBody, scanHosts, getDesignToken };
+  return { init, isOn, toggle, setOn, applyMode, renderPanelBody, scanHosts, getDesignToken };
 })();
