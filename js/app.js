@@ -433,7 +433,7 @@
         row.className = 'sc-msg';
         if (item.customerId) row.dataset.customerId = item.customerId;
         row.innerHTML =
-          '<div class="sc-bubble sc-bubble--ai" data-spec-id="chat-bubble-ai">' +
+          '<div class="sc-bubble sc-bubble--ai">' +
           (item.html || '') +
           '</div>';
         box.appendChild(row);
@@ -473,7 +473,7 @@
     const row = document.createElement('div');
     row.className = 'sc-msg';
     row.innerHTML =
-      '<div class="sc-bubble sc-bubble--ai" data-spec-id="chat-bubble-ai">' + html + '</div>';
+      '<div class="sc-bubble sc-bubble--ai">' + html + '</div>';
     stampCustomerScope(row);
     $('#messages').appendChild(row);
     scrollMessages();
@@ -892,19 +892,19 @@
     rowWelcome.className = 'sc-msg';
     rowWelcome.dataset.homeScreen = '1';
     rowWelcome.innerHTML =
-      '<div class="sc-bubble sc-bubble--ai" data-spec-id="chat-bubble-ai">' + welcomeHtml + '</div>';
+      '<div class="sc-bubble sc-bubble--ai">' + welcomeHtml + '</div>';
     const rowSummary = document.createElement('div');
     rowSummary.className = 'sc-msg';
     rowSummary.dataset.homeScreen = '1';
     rowSummary.innerHTML =
-      '<div class="sc-bubble sc-bubble--ai" data-spec-id="chat-bubble-ai">' +
+      '<div class="sc-bubble sc-bubble--ai">' +
       renderFollowUpSummary() +
       '</div>';
     const rowRecent = document.createElement('div');
     rowRecent.className = 'sc-msg';
     rowRecent.dataset.homeScreen = '1';
     rowRecent.innerHTML =
-      '<div class="sc-bubble sc-bubble--ai" data-spec-id="chat-bubble-ai">' +
+      '<div class="sc-bubble sc-bubble--ai">' +
       buildRecentSectionHtml() +
       '</div>';
     return [rowWelcome, rowSummary, rowRecent];
