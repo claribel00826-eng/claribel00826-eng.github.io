@@ -1,5 +1,40 @@
 /** 与 annotation-docs/01-首页与待跟进.md 一一对应 */
 window.AnnotationSpecData = {
+  'login-brand': {
+    name: '登录页品牌区',
+    module: '1.1',
+    content: ['Logo「销」、标题「销售助手」、副标题「制造业智能销售伙伴」'],
+    query: [],
+    interaction: ['只读展示']
+  },
+  'login-input': {
+    name: '登录输入框',
+    module: '1.1',
+    content: ['账号/密码输入；圆角输入框样式见 design-spec'],
+    query: [],
+    interaction: ['提交前前端非空校验（演示）']
+  },
+  'login-btn': {
+    name: '登录按钮',
+    module: '1.1',
+    content: ['主按钮「登录」'],
+    query: [],
+    interaction: ['演示账号 demo/123456 → 进入对话页 #chat']
+  },
+  'chat-bubble-user': {
+    name: '用户消息气泡',
+    module: '2.3',
+    content: ['右对齐用户话术气泡'],
+    query: [],
+    interaction: ['展示用户发送的文字（含模拟发送）']
+  },
+  'chat-bubble-ai': {
+    name: '助手消息气泡',
+    module: '2.3',
+    content: ['左对齐智能助手回复；可内含欢迎区、卡片等'],
+    query: [],
+    interaction: ['承载卡片与文本回复']
+  },
   'chat-header': {
     name: '顶栏',
     module: '2.1',
@@ -233,6 +268,69 @@ window.AnnotationSpecData = {
     content: ['企业列表选择'],
     query: ['企业列表，按权限过滤'],
     interaction: ['选中 → 系统提示切换企业；必要时清空当前客户']
+  },
+  'sheet-delivery': {
+    name: '交期评审抽屉',
+    module: '03',
+    content: ['交期评审表单（演示）'],
+    query: ['须已有报价（业务前置）'],
+    interaction: ['见文档 03 · 技能「交期」']
+  },
+  'sheet-order': {
+    name: '下单确认抽屉',
+    module: '03',
+    content: ['订单确认（演示）'],
+    query: ['须已有报价'],
+    interaction: ['见文档 03 · 技能「下单」']
+  },
+  'sheet-change': {
+    name: '订单变更抽屉',
+    module: '03',
+    content: ['变更申请（演示）'],
+    query: ['该客户订单数据'],
+    interaction: ['见文档 03']
+  },
+  'sheet-service': {
+    name: '客户服务抽屉',
+    module: '03',
+    content: ['客服工单（演示）'],
+    query: ['该客户工单'],
+    interaction: ['见文档 03']
+  },
+  'sheet-quote': {
+    name: '报价抽屉',
+    module: '03',
+    content: ['报价单编辑（演示）'],
+    query: ['须已有方案且客户一致'],
+    interaction: ['见文档 03 · 技能「报价」']
+  },
+  'modal-pdf': {
+    name: 'PDF 预览层',
+    module: '03',
+    content: ['全屏 PDF 预览演示'],
+    query: [],
+    interaction: ['返回按钮关闭']
+  },
+  'card-scheme': {
+    name: '方案选品卡',
+    module: '03',
+    content: ['方案速配结果卡片'],
+    query: ['商品与数量'],
+    interaction: ['见文档 03 · 技能「方案速配」']
+  },
+  'card-quote': {
+    name: '报价单卡',
+    module: '03',
+    content: ['报价单摘要'],
+    query: [],
+    interaction: ['见文档 03']
+  },
+  'card-delivery': {
+    name: '交期评审卡',
+    module: '03',
+    content: ['交期评审状态'],
+    query: [],
+    interaction: ['见文档 03']
   },
   'data-rules-followup': {
     name: '新客户 / 老客户待跟进查询',

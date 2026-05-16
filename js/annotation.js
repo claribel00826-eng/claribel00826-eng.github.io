@@ -41,13 +41,94 @@ window.Annotation = (function () {
     return (window.AnnotationSpecData && window.AnnotationSpecData[id]) || null;
   }
 
+  function getDesignToken(el) {
+    if (!el || !el.getBoundingClientRect) return null;
+    const cs = getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    return {
+      size: {
+        width: Math.round(rect.width) + 'px',
+        height: Math.round(rect.height) + 'px'
+      },
+      margin: {
+        top: cs.marginTop,
+        right: cs.marginRight,
+        bottom: cs.marginBottom,
+        left: cs.marginLeft
+      },
+      padding: {
+        top: cs.paddingTop,
+        right: cs.paddingRight,
+        bottom: cs.paddingBottom,
+        left: cs.paddingLeft
+      },
+      font: {
+        family: cs.fontFamily,
+        size: cs.fontSize,
+        weight: cs.fontWeight,
+        lineHeight: cs.lineHeight,
+        color: cs.color
+      },
+      background: cs.backgroundColor,
+      borderRadius: cs.borderRadius,
+      borderWidth: cs.borderWidth,
+      borderColor: cs.borderColor,
+      boxShadow: cs.boxShadow && cs.boxShadow !== 'none' ? cs.boxShadow : ''
+    };
+  }
+
+  function renderDesignTokens(el) {
+    const token = getDesignToken(el);
+    if (!token) return '';
+    let html = '<p class="sc-spec-panel__label">设计 token（计算值）</p>';
+    html += '<dl class="sc-spec-panel__dl">';
+    html +=
+      '<dt>尺寸</dt><dd>' +
+      esc(token.size.width) +
+      ' × ' +
+      esc(token.size.height) +
+      '</dd>';
+    html +=
+      '<dt>外边距</dt><dd>' +
+      esc(token.margin.top + ' ' + token.margin.right + ' ' + token.margin.bottom + ' ' + token.margin.left) +
+      '</dd>';
+    html +=
+      '<dt>内边距</dt><dd>' +
+      esc(token.padding.top + ' ' + token.padding.right + ' ' + token.padding.bottom + ' ' + token.padding.left) +
+      '</dd>';
+    html +=
+      '<dt>字体</dt><dd>' +
+      esc(token.font.size + ' / ' + token.font.lineHeight) +
+      '</dd>';
+    html += '<dt>字重</dt><dd>' + esc(token.font.weight) + '</dd>';
+    html += '<dt>文字色</dt><dd>' + esc(token.font.color) + '</dd>';
+    html += '<dt>背景</dt><dd>' + esc(token.background) + '</dd>';
+    html += '<dt>圆角</dt><dd>' + esc(token.borderRadius) + '</dd>';
+    html +=
+      '<dt>边框</dt><dd>' +
+      esc(token.borderWidth + ' ' + token.borderColor) +
+      '</dd>';
+    html += '<dt>阴影</dt><dd>' + esc(token.boxShadow || '无') + '</dd>';
+    html += '</dl>';
+    return html;
+  }
+
+  function hostForSpec(id) {
+    if (highlighted && highlighted.getAttribute('data-spec-id') === id) return highlighted;
+    return document.querySelector('[data-spec-id="' + id + '"]');
+  }
+
   function renderPanelBody(id) {
     const spec = getSpec(id);
     const body = document.getElementById('spec-panel-body');
     if (!body) return;
     body.dataset.touched = '1';
     if (!spec) {
-      body.innerHTML = '<p>未配置标注：<code>' + esc(id) + '</code></p>';
+      body.innerHTML =
+        '<p>未配置业务标注：<code>' +
+        esc(id) +
+        '</code></p>' +
+        renderDesignTokens(hostForSpec(id));
       return;
     }
     let html = '<p class="sc-spec-panel__title">' + esc(spec.name) + '</p>';
@@ -84,6 +165,7 @@ window.Annotation = (function () {
       }
     }
     if (spec.extraHtml) html += spec.extraHtml;
+    html += renderDesignTokens(hostForSpec(id));
     body.innerHTML = html;
   }
 
@@ -96,7 +178,7 @@ window.Annotation = (function () {
   function attachButton(host) {
     if (!host || host.dataset.specBtnBound) return;
     const id = host.getAttribute('data-spec-id');
-    if (!id || !getSpec(id)) return;
+    if (!id) return;
 
     host.classList.add('sc-spec-pin-host');
     host.dataset.specBtnBound = '1';
@@ -162,7 +244,7 @@ window.Annotation = (function () {
   }
 
   function shouldShowSpecOpen() {
-    return localStorage.getItem(STORAGE_KEY) === '0';
+    return !isOn();
   }
 
   function applyMode() {
@@ -172,6 +254,12 @@ window.Annotation = (function () {
     const openBtn = ensureOpenButton();
     if (closeBtn) closeBtn.classList.toggle('sc-hidden', !on);
     if (openBtn) openBtn.classList.toggle('sc-hidden', on || !shouldShowSpecOpen());
+    const toolbarBtn = document.getElementById('btn-spec-toggle');
+    if (toolbarBtn) {
+      toolbarBtn.textContent = on ? '关闭标注' : '设计标注';
+      toolbarBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      toolbarBtn.classList.toggle('sc-demo-spec-btn--on', on);
+    }
     if (!on) {
       document.querySelectorAll('.sc-spec-pin').forEach((b) => b.remove());
       document.querySelectorAll('.sc-spec-pin-host').forEach((h) => {
@@ -197,6 +285,14 @@ window.Annotation = (function () {
 
   function initSpecToggle() {
     ensureOpenButton();
+    const toolbarBtn = document.getElementById('btn-spec-toggle');
+    if (toolbarBtn && !toolbarBtn.dataset.bound) {
+      toolbarBtn.dataset.bound = '1';
+      toolbarBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggle();
+      });
+    }
     const closeBtn = document.getElementById('spec-close');
     if (closeBtn && !closeBtn.dataset.bound) {
       closeBtn.dataset.bound = '1';
@@ -212,7 +308,12 @@ window.Annotation = (function () {
 
   function init() {
     initSpecToggle();
-    if (new URLSearchParams(location.search).get('spec') === '1') {
+    const params = new URLSearchParams(location.search);
+    if (params.get('spec') === '1') {
+      localStorage.setItem(STORAGE_KEY, '1');
+    } else if (params.get('spec') === '0') {
+      localStorage.setItem(STORAGE_KEY, '0');
+    } else if (/\.github\.io$/i.test(location.hostname) && localStorage.getItem(STORAGE_KEY) === null) {
       localStorage.setItem(STORAGE_KEY, '1');
     }
     applyMode();
@@ -229,5 +330,5 @@ window.Annotation = (function () {
     window.Annotation.rescan = scanHosts;
   }
 
-  return { init, isOn, toggle, setOn, renderPanelBody, scanHosts };
+  return { init, isOn, toggle, setOn, renderPanelBody, scanHosts, getDesignToken };
 })();

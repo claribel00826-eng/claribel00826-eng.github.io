@@ -67,6 +67,23 @@ body {
   background: var(--color-primary-soft);
 }
 
+.sc-demo-spec-btn--on {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.sc-demo-toolbar__link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4f46e5;
+  text-decoration: none;
+}
+
+.sc-demo-toolbar__link:hover {
+  text-decoration: underline;
+}
+
 .sc-demo-toolbar__hint {
   font-size: 12px;
   color: #71717a;
