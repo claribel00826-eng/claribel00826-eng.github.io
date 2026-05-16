@@ -1,5 +1,5 @@
-# 构建 Vue 前端并部署到 GitHub Pages（用户站点 claribel00826-eng.github.io）
-name: Deploy frontend to GitHub Pages
+# 部署根目录静态站点（index.html + css/ + js/）到 GitHub Pages
+name: Deploy static site to GitHub Pages
 
 on:
   push:
@@ -16,37 +16,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install & build
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build:pages
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: frontend/dist
-
   deploy:
-    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare Pages artifact
+        run: |
+          set -e
+          mkdir -p _pages
+          cp index.html _pages/
+          cp -r css js _pages/
+          cp .nojekyll _pages/ 2>/dev/null || touch _pages/.nojekyll
+          cp index.html _pages/404.html
+          test -f _pages/index.html
+          test -f _pages/js/app.js
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _pages
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

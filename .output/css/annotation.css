@@ -1,0 +1,295 @@
+:root {
+  --sc-spec-panel-width: 560px;
+}
+
+.sc-spec-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--sc-spec-panel-width);
+  height: 100%;
+  background: #fff;
+  border-left: 1px solid #e4e4e7;
+  z-index: 2000;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+body.sc-spec-on .sc-spec-panel {
+  transform: translateX(0);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+}
+
+/* 桌面：为右侧面板预留宽度，避免挡住居中的 H5 */
+@media (min-width: 641px) {
+  body.sc-spec-on {
+    padding-right: var(--sc-spec-panel-width);
+    box-sizing: border-box;
+  }
+
+  body.sc-spec-on .sc-demo-shell.sc-demo--tpl .sc-demo-body {
+    padding-right: 12px;
+  }
+}
+
+.sc-spec-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e4e4e7;
+  font-weight: 600;
+  font-size: 14px;
+  color: #18181b;
+  flex-shrink: 0;
+}
+
+.sc-spec-panel__head-title {
+  min-width: 0;
+}
+
+.sc-spec-close {
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #d4d4d8;
+  border-radius: 6px;
+  background: #fff;
+  color: #52525b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.sc-spec-close:hover {
+  background: #f4f4f5;
+  color: #18181b;
+  border-color: #a1a1aa;
+}
+
+.sc-spec-panel__body {
+  padding: 12px 16px;
+  overflow-y: auto;
+  flex: 1;
+  color: #52525b;
+  line-height: 1.5;
+}
+
+.sc-spec-panel__body dt {
+  font-weight: 600;
+  color: #18181b;
+  margin-top: 8px;
+  text-transform: lowercase;
+}
+
+.sc-spec-panel__body dd {
+  margin: 2px 0 0;
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+
+.sc-spec-panel__id {
+  margin: 4px 0 8px;
+  font-size: 11px;
+  color: #71717a;
+}
+
+.sc-spec-panel__id code {
+  background: #f4f4f5;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.sc-spec-panel__hover {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e4e4e7;
+  font-size: 11px;
+}
+
+body.sc-spec-on [data-spec-id].sc-spec-highlight {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+body.sc-spec-on [data-spec-id].sc-spec-target {
+  cursor: crosshair;
+}
+
+.sc-spec-open {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1997;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
+}
+
+.sc-spec-open:hover {
+  background: #e0e7ff;
+  border-color: #a5b4fc;
+}
+
+.sc-spec-pin-host {
+  position: relative;
+}
+
+.sc-spec-pin {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 5;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 24px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35);
+}
+
+.sc-spec-pin:hover {
+  background: #4338ca;
+}
+
+.sc-spec-pin-host--dock .sc-spec-pin--llm {
+  top: auto;
+  bottom: calc(100% + 4px);
+  right: 8px;
+}
+
+/* 消息区整体：钉在客户条下方、消息列表右上，避开微信模板区与「清空记录」 */
+.sc-chat-dialog.sc-spec-pin-host > .sc-spec-pin {
+  top: 52px;
+  right: 10px;
+  left: auto;
+  z-index: 30;
+}
+
+.sc-spec-panel__title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #18181b;
+}
+
+.sc-spec-panel__meta {
+  margin: 0 0 12px;
+  font-size: 11px;
+  color: #71717a;
+}
+
+.sc-spec-panel__label {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #18181b;
+}
+
+.sc-spec-panel__ul,
+.sc-spec-panel__ol {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+
+.sc-spec-panel__ul li,
+.sc-spec-panel__ol li {
+  margin-bottom: 4px;
+}
+
+.sc-spec-panel__sub {
+  margin: 8px 0 4px;
+  font-weight: 600;
+  color: #3f3f46;
+}
+
+.sc-spec-panel__dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+}
+
+.sc-spec-table-wrap {
+  margin: 0 0 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #e4e4e7;
+  border-radius: 6px;
+}
+
+.sc-spec-table {
+  width: 100%;
+  min-width: 320px;
+  border-collapse: collapse;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.sc-spec-table th,
+.sc-spec-table td {
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #f4f4f5;
+}
+
+.sc-spec-table th {
+  background: #f4f4f5;
+  font-weight: 600;
+  color: #18181b;
+  white-space: nowrap;
+}
+
+.sc-spec-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.sc-spec-table--route th:first-child,
+.sc-spec-table--route td:first-child,
+.sc-spec-table--route th:nth-child(2),
+.sc-spec-table--route td:nth-child(2),
+.sc-spec-table--route th:nth-child(3),
+.sc-spec-table--route td:nth-child(3) {
+  text-align: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  body.sc-spec-on .sc-app {
+    padding-bottom: 42vh;
+  }
+
+  body.sc-spec-on .sc-spec-panel {
+    width: 100%;
+    height: 42vh;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    transform: translateY(0);
+    border-left: none;
+    border-top: 1px solid #e4e4e7;
+  }
+
+}
