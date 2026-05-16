@@ -1,0 +1,174 @@
+---
+alwaysApply: false
+description: PyCore 核心层：ConfigManager、BaseSettings、应用入口与配置；编写 main、core 或 .env/配置相关代码时使用。
+---
+
+# PyCore 核心层规范
+
+## ConfigManager 速查
+
+```python
+from pycore.core import ConfigManager, BaseSettings
+
+class AppSettings(BaseSettings):
+    debug: bool = False
+    secret_key: str = "change-me"
+    database_url: str = "sqlite+aiosqlite:///./app.db"
+    host: str = "0.0.0.0"
+    port: int = 8000
+    cors_origins: list[str] = ["http://localhost:5173"]
+
+settings = AppSettings()  # 自动从 .env 加载
+```
+
+> `.env` 文件格式参考：`pycore/docs/specs/env.example`
+> `.env` 加入 `.gitignore`，项目根目录提供 `.env.example`。
+
+## Logger 速查
+
+```python
+from pycore.core import Logger, LoggerConfig, LogLevel, get_logger
+
+# 启动时配置一次
+Logger.configure(LoggerConfig(level=LogLevel.INFO, app_name="myapp", json_format=False))
+
+# 任意模块中使用
+logger = get_logger()
+logger.info("Server starting", host="0.0.0.0", port=8000)
+```
+
+- BasePlugin **没有**内置 logger → 模块级 `get_logger()`
+- BaseService **有**内置 `self.logger`
+
+## 异常使用速查
+
+| 场景 | 使用方式 |
+|------|---------|
+| Plugin 业务错误 | `return self.fail("msg")` |
+| 系统级错误 | `raise ConfigurationError("msg")` |
+| 路由层返回 | `error_response("msg", "CODE", 404)` |
+
+## main.py 标准模板
+
+```python
+from pycore.core import Logger, LoggerConfig, LogLevel, ConfigManager, get_logger
+from pycore.api import APIServer, APIConfig
+from src.api.routes.auth import router as auth_router
+from src.api.routes.items import router as items_router
+from src.db.session import engine, init_db, close_db
+
+Logger.configure(LoggerConfig(level=LogLevel.INFO, app_name="myapp", json_format=False))
+logger = get_logger()
+
+server = APIServer(APIConfig(
+    title="My Application", version="1.0.0",
+    host="0.0.0.0", port=8000, debug=True,
+    cors_origins=["http://localhost:5173"],
+))
+
+server.on_startup(init_db)
+server.on_shutdown(close_db)
+server.include_router(auth_router)
+server.include_router(items_router)
+
+app = server.app  # cd backend && PYTHONPATH=.. <python指令> -m uvicorn src.main:app --reload
+```
+
+## 易错点
+
+| 错误写法 | 正确写法 |
+|---------|---------|
+| `Logger.get_logger()` | `get_logger()` |
+| `json_logs=True` | `json_format=True` |
+| 硬编码配置值在代码中 | 通过 `.env` + `BaseSettings` 注入 |
+| `.env` 提交到 Git | `.env` 加入 `.gitignore` |
+| 数据库密码含 `@` 直接写 | URL 编码：`@` → `%40`，`:` → `%3A`，`#` → `%23` |
+
+## pycore 引入方式
+
+`pycore` 是项目根目录下的**本地框架包**，与 `backend/` 并列存放，**不通过 pip 安装**，而是通过 `PYTHONPATH` 让 Python 运行时能找到它。
+
+### 项目目录关系
+
+```
+project/                        ← 项目根目录
+├── pycore/                     ← 框架包（与 backend 并列）
+├── backend/
+│   ├── src/
+│   │   └── main.py             ← from pycore.core import ... 在这里使用
+│   └── .env
+└── frontend/
+```
+
+### 启动命令（从 backend/ 目录执行）
+
+```bash
+cd backend
+PYTHONPATH=.. <确认的python指令> -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+`PYTHONPATH=..` 把项目根目录加入 Python 搜索路径，这样 `import pycore` 就能找到 `project/pycore/`。
+
+### 为什么不用 pip install
+
+- `pycore` 是随项目携带的本地包，不发布到 PyPI
+- 用 `PYTHONPATH` 引入最简单、不污染虚拟环境、不需要 `setup.py`
+- 所有 `from pycore.xxx import ...` 的代码无需改动
+
+### 注意
+
+- 启动命令中的 `PYTHONPATH=..` 是 **shell 层面的环境变量**，与规范中"禁止在代码里通过 `os.environ` 读取配置"**不冲突**
+- 若用户从**项目根目录**启动而非 `backend/` 目录，则改为 `PYTHONPATH=. <python指令> -m uvicorn backend.src.main:app`，但推荐统一从 `backend/` 目录启动
+
+## 项目结构
+
+### 普通业务系统
+```
+project/
+├── pycore/                     ← 框架包（PYTHONPATH 引入，不 pip install）
+│   ├── core/
+│   ├── api/
+│   ├── services/
+│   ├── plugins/
+│   └── docs/                   ← 供人阅读，禁止模型读取
+├── .output/                    # 产品设计阶段输出
+├── backend/
+│   ├── .env
+│   ├── src/
+│   │   ├── api/deps.py, routes/
+│   │   ├── db/models.py, session.py
+│   │   ├── models/
+│   │   ├── repositories/
+│   │   ├── services/
+│   │   └── main.py
+│   └── tests/
+├── frontend/
+│   └── src/components/, pages/, stores/, services/, router/
+└── docs/Process.md
+```
+
+### AI Agent 应用
+在普通结构基础上增加 `src/plugins/`（LLM 可调用工具）。
+
+## 错误码规范
+
+| 错误码 | HTTP | 含义 |
+|--------|------|------|
+| `VALIDATION_ERROR` | 400 | 参数验证失败 |
+| `UNAUTHORIZED` | 401 | 未认证 |
+| `FORBIDDEN` | 403 | 无权限 |
+| `NOT_FOUND` | 404 | 资源不存在 |
+| `CONFLICT` | 409 | 资源冲突 |
+| `INTERNAL_ERROR` | 500 | 服务器内部错误 |
+
+## 版本管理
+
+格式：`v主版本.次版本.修订号`（SemVer）。功能完成 → 更新 CHANGELOG → 更新版本号 → Git tag。
+
+## 禁止读取
+
+**禁止读取 `pycore/docs/` 目录下的任何 `.md` 文件。** 这些文档是供人阅读的参考资料，token 量大。模型只需检查文件是否存在，不要打开阅读。
+
+## 深入阅读
+
+- 完整 Core 规范（ConfigManager 高级用法、Logger 全参数、异常层次）：`pycore/docs/specs/core.md`

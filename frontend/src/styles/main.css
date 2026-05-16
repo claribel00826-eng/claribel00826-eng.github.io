@@ -1,0 +1,261 @@
+:root {
+  color: #172033;
+  background: #eef3f8;
+  font-family:
+    "Plus Jakarta Sans", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --primary: #1f5eff;
+  --primary-dark: #1747c8;
+  --ink: #172033;
+  --muted: #6b7890;
+  --line: #dce5f0;
+  --bg: #eef3f8;
+  --card: #ffffff;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --radius-lg: 22px;
+  --shadow: 0 18px 45px rgba(38, 55, 88, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  min-height: 44px;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.app-shell {
+  width: min(430px, 100vw);
+  min-height: 100vh;
+  margin: 0 auto;
+  background: linear-gradient(180deg, #f7fbff 0%, #eef3f8 100%);
+  position: relative;
+  overflow-x: hidden;
+  padding-bottom: calc(206px + env(safe-area-inset-bottom));
+}
+
+/** 单屏无整页滚动：固定视口高度，内容区自行压缩（不依赖文档滚动） */
+.app-shell.app-shell--fit {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.app-shell.app-shell--fit > section.page {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-top: 8px;
+  padding-bottom: 0;
+}
+
+.app-shell.app-shell--fit > nav.scheme-tabs {
+  flex-shrink: 0;
+}
+
+.page {
+  padding: 16px 16px 0;
+}
+
+.card {
+  border: 1px solid rgba(220, 229, 240, 0.9);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 0 10px;
+}
+
+.section-title h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.primary-btn,
+.ghost-btn,
+.danger-btn {
+  border: 0;
+  border-radius: 14px;
+  padding: 0 16px;
+  font-weight: 800;
+}
+
+.primary-btn {
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+.ghost-btn {
+  color: var(--primary);
+  background: #edf3ff;
+}
+
+.danger-btn {
+  color: #fff;
+  background: var(--danger);
+}
+
+.full-btn {
+  width: 100%;
+}
+
+.list {
+  display: grid;
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #285070;
+  background: #eef6fb;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.form-field {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.form-field label {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.form-field input,
+.form-field textarea,
+.form-field select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  padding: 13px 14px;
+  color: var(--ink);
+  outline: none;
+}
+
+.form-field textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+
+.fixed-composer-space {
+  height: 92px;
+}
+
+/* —— H5 居中弹窗：全屏遮罩 + 视区中央卡片（含刘海/底部安全区） —— */
+.h5-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: max(16px, env(safe-area-inset-top, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  box-sizing: border-box;
+}
+
+.h5-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 18, 28, 0.48);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.h5-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: min(400px, calc(100vw - 40px));
+  max-height: min(85vh, 640px, calc(100vh - 32px));
+  margin: 0;
+  padding: 20px 20px 18px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 16px;
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.18),
+    0 0 0 1px rgba(220, 229, 240, 0.95);
+}
+
+.h5-modal-panel h2,
+.h5-modal-panel h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.h5-modal-panel p {
+  margin: 0 0 18px;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 14px;
+}
+
+.h5-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}

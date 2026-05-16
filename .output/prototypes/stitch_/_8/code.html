@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#dec29a",
+                        "tertiary-fixed": "#fcdeb5",
+                        "on-primary": "#ffffff",
+                        "surface-container-highest": "#e4e2e4",
+                        "secondary": "#515f74",
+                        "on-surface-variant": "#45464d",
+                        "on-background": "#1b1b1d",
+                        "tertiary": "#000000",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#1b1b1d",
+                        "primary": "#000000",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#271901",
+                        "on-tertiary-container": "#98805d",
+                        "inverse-primary": "#bec6e0",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "on-secondary-container": "#57657b",
+                        "on-tertiary-fixed-variant": "#574425",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "surface": "#fcf8fa",
+                        "on-tertiary-fixed": "#271901",
+                        "surface-variant": "#e4e2e4",
+                        "surface-tint": "#565e74",
+                        "surface-container-low": "#f6f3f5",
+                        "inverse-surface": "#303032",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "surface-container": "#f0edef",
+                        "outline": "#76777d",
+                        "primary-fixed": "#dae2fd",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#fcf8fa",
+                        "surface-container-high": "#eae7e9",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-primary-fixed": "#131b2e",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "background": "#fcf8fa",
+                        "on-primary-container": "#7c839b",
+                        "outline-variant": "#c6c6cd",
+                        "secondary-fixed": "#d5e3fd",
+                        "primary-container": "#131b2e",
+                        "surface-dim": "#dcd9db",
+                        "secondary-container": "#d5e3fd",
+                        "inverse-on-surface": "#f3f0f2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-gap": "12px",
+                        "inline-gap": "8px",
+                        "section-margin": "24px",
+                        "base": "4px",
+                        "container-padding": "16px"
+                    },
+                    "fontFamily": {
+                        "number-data": ["Inter"],
+                        "h3": ["PingFang SC"],
+                        "body-main": ["PingFang SC"],
+                        "h2": ["PingFang SC"],
+                        "h1": ["PingFang SC"],
+                        "body-secondary": ["PingFang SC"],
+                        "label-caps": ["PingFang SC"]
+                    },
+                    "fontSize": {
+                        "number-data": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "h3": ["17px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "body-main": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "h2": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "h1": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-secondary": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'PingFang SC', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen pb-[240px]">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full h-[48px] flex items-center justify-between px-container-padding z-50 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-base active:opacity-80 transition-opacity active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</div>
+<h1 class="font-h3 text-h3 text-primary">智能销售助手</h1>
+<div class="flex items-center gap-base active:opacity-80 transition-opacity active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary">more_vert</span>
+</div>
+</header>
+<main class="pt-[64px] px-container-padding space-y-section-margin">
+<!-- Delivery Summary Card -->
+<section class="bg-primary-container p-container-padding rounded-xl relative overflow-hidden">
+<div class="relative z-10">
+<p class="font-label-caps text-on-primary-container opacity-70 mb-base">评审单号: REV-20240508-01</p>
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-h1 text-h1 text-on-primary-container">交期确认中</h2>
+<p class="font-body-secondary text-on-primary-container opacity-80 mt-1">当前物料齐套率: 85%</p>
+</div>
+<span class="material-symbols-outlined text-[48px] text-on-primary-container opacity-20">inventory_2</span>
+</div>
+</div>
+<div class="absolute right-[-10%] bottom-[-20%] w-32 h-32 bg-on-primary-container opacity-5 rounded-full blur-2xl"></div>
+</section>
+<!-- Date Selection Row -->
+<section class="space-y-stack-gap">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-container-padding flex items-center justify-between active:bg-surface-container transition-colors">
+<div class="flex items-center gap-inline-gap">
+<span class="material-symbols-outlined text-on-surface-variant">calendar_today</span>
+<span class="font-body-main text-on-surface">期望交期</span>
+</div>
+<div class="flex items-center gap-base">
+<span class="font-number-data text-number-data text-primary">2024-06-15</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Issue List -->
+<section class="space-y-stack-gap">
+<div class="flex items-center justify-between">
+<h2 class="font-h3 text-h3 text-on-surface flex items-center gap-inline-gap">
+<span class="w-[3px] h-[16px] bg-primary rounded-full"></span>
+                    问题清单
+                </h2>
+<span class="font-label-caps text-error">1个待办项</span>
+</div>
+<!-- Warning Card -->
+<div class="bg-white border-l-4 border-error border-y border-r border-outline-variant rounded-lg p-container-padding flex gap-container-padding shadow-sm">
+<div class="mt-1">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div class="flex-1 space-y-base">
+<div class="flex justify-between items-start">
+<h3 class="font-h3 text-h3 text-on-surface">缺料预警</h3>
+<span class="font-label-caps bg-error-container text-on-error-container px-2 py-0.5 rounded-full">高优先级</span>
+</div>
+<p class="font-body-main text-on-surface-variant">物料 A-轴承座 缺货至 2026-06-10</p>
+<div class="pt-2 flex gap-inline-gap">
+<div class="bg-surface-container-low px-3 py-1 rounded border border-outline-variant flex items-center gap-base">
+<span class="font-label-caps text-on-surface-variant">预计缺口: 500 PCS</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Contextual Info (Process Logic) -->
+<div class="bg-surface-container p-container-padding rounded-lg">
+<div class="flex items-center gap-inline-gap mb-base">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">info</span>
+<span class="font-body-secondary text-on-surface-variant">系统提示</span>
+</div>
+<p class="font-body-secondary text-on-surface-variant">
+                    当前期望交期较标准周期提前 12 天。如需满足该日期，建议通过「申请插单」流程进入高优先级排产序列。
+                </p>
+</div>
+</section>
+</main>
+<!-- Footer Action Buttons (Vertical Stack) -->
+<footer class="fixed bottom-0 left-0 w-full bg-surface px-container-padding pt-container-padding pb-8 space-y-stack-gap z-40 border-t border-outline-variant">
+<button class="w-full h-[48px] bg-primary text-on-primary font-h3 text-h3 rounded-[10px] flex items-center justify-center active:opacity-90 active:scale-[0.98] transition-all">
+            生成订单
+        </button>
+<button class="w-full h-[48px] bg-transparent border border-primary text-primary font-h3 text-h3 rounded-[10px] flex items-center justify-center active:bg-surface-container transition-all">
+            调整方案
+        </button>
+<button class="w-full h-[48px] bg-secondary-container text-on-secondary-container font-h3 text-h3 rounded-[10px] flex items-center justify-center active:opacity-90 transition-all">
+            申请插单
+        </button>
+</footer>
+</body></html>

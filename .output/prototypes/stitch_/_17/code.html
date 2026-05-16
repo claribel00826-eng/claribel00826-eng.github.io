@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#d5e3fd",
+                        "surface-container-low": "#f6f3f5",
+                        "inverse-surface": "#303032",
+                        "tertiary": "#000000",
+                        "on-primary": "#ffffff",
+                        "secondary": "#515f74",
+                        "on-tertiary-container": "#98805d",
+                        "surface-container": "#f0edef",
+                        "tertiary-container": "#271901",
+                        "tertiary-fixed": "#fcdeb5",
+                        "on-tertiary-fixed": "#271901",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#131b2e",
+                        "on-secondary-container": "#57657b",
+                        "surface-container-high": "#eae7e9",
+                        "on-primary-fixed": "#131b2e",
+                        "primary-fixed": "#dae2fd",
+                        "outline-variant": "#c6c6cd",
+                        "on-surface-variant": "#45464d",
+                        "surface-variant": "#e4e2e4",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "surface-bright": "#fcf8fa",
+                        "inverse-primary": "#bec6e0",
+                        "primary": "#000000",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#fcf8fa",
+                        "inverse-on-surface": "#f3f0f2",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-primary-container": "#7c839b",
+                        "error": "#ba1a1a",
+                        "outline": "#76777d",
+                        "surface-dim": "#dcd9db",
+                        "secondary-fixed": "#d5e3fd",
+                        "on-surface": "#1b1b1d",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#dec29a",
+                        "surface-tint": "#565e74",
+                        "on-tertiary-fixed-variant": "#574425",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "on-background": "#1b1b1d",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "background": "#fcf8fa",
+                        "surface-container-highest": "#e4e2e4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "4px",
+                        "stack-gap": "12px",
+                        "inline-gap": "8px",
+                        "container-padding": "16px",
+                        "section-margin": "24px"
+                    },
+                    "fontFamily": {
+                        "h2": ["PingFang SC"],
+                        "label-caps": ["PingFang SC"],
+                        "body-secondary": ["PingFang SC"],
+                        "body-main": ["PingFang SC"],
+                        "h1": ["PingFang SC"],
+                        "number-data": ["Inter"],
+                        "h3": ["PingFang SC"]
+                    },
+                    "fontSize": {
+                        "h2": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-secondary": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-main": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "h1": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "number-data": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "h3": ["17px", {"lineHeight": "24px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #fcf8fa;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-main text-on-surface">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 w-full h-[48px] flex items-center justify-between px-container-padding z-50 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-inline-gap active:scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+<h1 class="font-h3 text-h3 text-primary">插单申请</h1>
+</div>
+<div class="flex items-center active:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-on-surface-variant">more_vert</span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-[64px] px-container-padding pb-section-margin">
+<!-- Order Context Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-container-padding mb-stack-gap">
+<div class="flex items-center gap-base mb-2">
+<div class="w-[3px] h-4 bg-primary"></div>
+<span class="font-label-caps text-on-surface-variant">当前待产订单</span>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<h2 class="font-h2 text-h2 text-on-surface mb-1">SO-20231024-08</h2>
+<p class="font-body-secondary text-on-surface-variant">精密液压泵系列 XH-90</p>
+</div>
+<div class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full font-label-caps">
+                    排产中
+                </div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant grid grid-cols-2 gap-4">
+<div>
+<p class="font-label-caps text-on-surface-variant">订单总量</p>
+<p class="font-number-data text-number-data">100 台</p>
+</div>
+<div>
+<p class="font-label-caps text-on-surface-variant">预计交付</p>
+<p class="font-body-main">2023-11-15</p>
+</div>
+</div>
+</div>
+<!-- Application Form Section -->
+<section class="space-y-stack-gap">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-container-padding">
+<div class="flex items-center justify-between mb-2">
+<label class="font-h3 text-h3 text-on-surface">插单理由</label>
+<button class="flex items-center gap-1 text-[#0369A1] active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+<span class="font-label-caps">语音输入</span>
+</button>
+</div>
+<div class="relative">
+<textarea class="w-full min-h-[160px] bg-surface-bright border border-outline rounded-lg p-3 text-body-main placeholder:text-outline focus:border-[#0369A1] focus:ring-1 focus:ring-[#0369A1] transition-all" placeholder="请输入详细的插单申请理由，例如：客户急需、停工待料、回款承诺等...">客户产线停工待料，申请插队 5 台，承诺本周内回款。</textarea>
+<div class="absolute bottom-3 right-3 text-outline font-label-caps">
+                        32/200
+                    </div>
+</div>
+<!-- Guidance Tips -->
+<div class="mt-4 flex gap-2 items-start p-3 bg-surface-container rounded-lg">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">info</span>
+<p class="font-body-secondary text-on-surface-variant">
+                        提示：清晰的理由（如客户停工、回款承诺）将有助于加快生产排程审批流程。
+                    </p>
+</div>
+</div>
+<!-- Parameters Selection -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-container-padding">
+<label class="font-h3 text-h3 text-on-surface block mb-3">插单规格</label>
+<div class="space-y-3">
+<div class="flex items-center justify-between py-2 border-b border-outline-variant">
+<span class="font-body-main text-on-surface-variant">申请插单数量</span>
+<div class="flex items-center gap-4">
+<button class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center active:bg-surface-container">
+<span class="material-symbols-outlined text-[20px]">remove</span>
+</button>
+<span class="font-number-data text-number-data">5</span>
+<button class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center active:bg-surface-container">
+<span class="material-symbols-outlined text-[20px]">add</span>
+</button>
+</div>
+</div>
+<div class="flex items-center justify-between py-2 border-b border-outline-variant">
+<span class="font-body-main text-on-surface-variant">期望交付日期</span>
+<div class="flex items-center gap-1 text-primary">
+<span class="font-body-main">2023-11-02</span>
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Visual Context Image (Professional B2B Vibe) -->
+<div class="mt-section-margin rounded-xl overflow-hidden h-32 relative">
+<img alt="Manufacturing facility" class="w-full h-full object-cover grayscale opacity-40" data-alt="A high-end industrial manufacturing facility with advanced robotic arms and automated production lines. The environment is clean, bright, and modern, representing precision engineering and efficient supply chain management. The color palette is dominated by corporate blues, silvers, and crisp whites, reflecting a professional B2B software aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCT5ROJhw0nRTCkDA2elORCfl3C65SHHoXsB8ycAenjzBGfrmqNjU36oRXo14kp_B9iEQDtcFRpNK-YO4VtIhxk4ZhGaVH7nfQOsXT3V72PCFiQklYDgrLUgAJAOoJj_wOqezpYXcO25wWQr2i0x5e2Zl59HE2kTRqGMbJSr2w1cRuLABJHInlqfC3LoNvSnxHhymF62Hfm2ooGATzO55NPfQwCHZzSIJT_hZouxxcFssdvi5YodkKlI6b_bgVKEfEjaZ4wOe8IEg"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface to-transparent"></div>
+<div class="absolute bottom-4 left-4">
+<p class="font-label-caps text-on-surface-variant uppercase">Production Status</p>
+<p class="font-h3 text-on-surface">当前车间负荷: 88%</p>
+</div>
+</div>
+</main>
+<!-- Bottom Action Area -->
+<footer class="fixed bottom-0 left-0 w-full p-container-padding bg-surface/80 backdrop-blur-md z-50">
+<div class="max-w-md mx-auto pb-safe">
+<button class="w-full h-12 bg-primary text-on-primary font-h3 rounded-lg shadow-lg active:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">send</span>
+                提交申请
+            </button>
+</div>
+</footer>
+<!-- Safe area spacing for mobile -->
+<div class="h-24"></div>
+</body></html>

@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>H5 客服智能体 · 流程图（业务设计）</title>
+    <style>
+      :root {
+        --bg: #f6f7f9;
+        --panel: #ffffff;
+        --text: #1a1d26;
+        --muted: #5c6370;
+        --border: #e2e5ec;
+        --accent: #2563eb;
+        --accent-soft: #eff6ff;
+        --nav-w: 260px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", system-ui, -apple-system, "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        background: var(--bg);
+        line-height: 1.55;
+      }
+      .layout {
+        display: flex;
+        min-height: 100vh;
+      }
+      nav {
+        width: var(--nav-w);
+        flex-shrink: 0;
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        padding: 1.25rem 0;
+        position: sticky;
+        top: 0;
+        align-self: flex-start;
+        max-height: 100vh;
+        overflow: auto;
+      }
+      nav h1 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0 1rem 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border);
+        line-height: 1.35;
+      }
+      nav ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      nav a {
+        display: block;
+        padding: 0.45rem 1rem;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.875rem;
+        border-left: 3px solid transparent;
+      }
+      nav a:hover {
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      nav a.active {
+        color: var(--accent);
+        font-weight: 600;
+        border-left-color: var(--accent);
+        background: var(--accent-soft);
+      }
+      main {
+        flex: 1;
+        padding: 1.5rem 1.75rem 3rem;
+        max-width: 1200px;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1.25rem 1.5rem 1.5rem;
+        margin-bottom: 1.5rem;
+        scroll-margin-top: 1rem;
+      }
+      section h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.15rem;
+      }
+      section .desc {
+        margin: 0 0 1rem;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .mermaid {
+        overflow-x: auto;
+        text-align: center;
+      }
+      .mermaid svg {
+        max-width: 100%;
+        height: auto;
+      }
+      .flow-dual {
+        display: grid;
+        grid-template-columns: 1fr 1.15fr;
+        gap: 1rem;
+        align-items: start;
+        margin-bottom: 1rem;
+      }
+      @media (max-width: 820px) {
+        .flow-dual {
+          grid-template-columns: 1fr;
+        }
+      }
+      .flow-panel {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.85rem 1rem;
+        background: #fafbfc;
+      }
+      .flow-panel h3 {
+        margin: 0 0 0.5rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: 0.02em;
+      }
+      .flow-panel .hint {
+        margin: 0 0 0.65rem;
+        font-size: 0.8125rem;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .entry-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+      .chip {
+        display: inline-block;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.75rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+      }
+      .chip.msg {
+        border-color: #93c5fd;
+        background: var(--accent-soft);
+        color: #1e40af;
+      }
+      .flow-spine-caption {
+        margin: 0 0 0.5rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text);
+      }
+      footer {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-top: 0.5rem;
+      }
+      @media (max-width: 900px) {
+        .layout {
+          flex-direction: column;
+        }
+        nav {
+          width: 100%;
+          max-height: none;
+          position: relative;
+          border-right: none;
+          border-bottom: 1px solid var(--border);
+        }
+        nav ul {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.25rem;
+          padding: 0 0.5rem 0.75rem;
+        }
+        nav a {
+          border-radius: 6px;
+          border-left: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <nav>
+        <h1>流程图导航<br /><span style="font-weight:400;color:var(--muted)">业务蓝图</span></h1>
+        <ul>
+          <li><a href="#overall">整体主链路</a></li>
+          <li><a href="#mod-push">消息推送与待跟进</a></li>
+          <li><a href="#mod-home">F03 首页与待跟进</a></li>
+          <li><a href="#mod-dev">F04 客户开拓</a></li>
+          <li><a href="#mod-quick-scheme">F05 方案速配</a></li>
+          <li><a href="#mod-quote">F08 产品报价</a></li>
+          <li><a href="#mod-delivery">F09 交期评审</a></li>
+          <li><a href="#mod-order">F10 生成订单</a></li>
+          <li><a href="#mod-copy">F11 订单复制</a></li>
+          <li><a href="#mod-change">F12 订单变更</a></li>
+          <li><a href="#mod-progress">F13 订单进度</a></li>
+          <li><a href="#mod-service">F14 客户服务</a></li>
+          <li><a href="#mod-intent">F15 全局语音与意图</a></li>
+          <li><a href="#mod-perm">F16 权限壳</a></li>
+        </ul>
+      </nav>
+      <main>
+        <section id="overall">
+          <h2>整体：主链路</h2>
+          <p class="desc">
+            <strong>左栏</strong>：入口触点（不按流程连线）。<strong>右栏</strong>：仅画 <strong>大模块之间的串联</strong>（不展开待跟进内详情、方案/报价内历史 PDF 等子步骤；子能力见各 F 章节）。串联为：<strong>首页 / 服务号模板消息 → 待跟进列表 → 方案速配（选品、购物车、保存方案）→ 产品报价 → 交期评审</strong> → 按结论 <strong>生成订单、调整方案、插单申请</strong>；<strong>生成订单</strong> 后可再使用 <strong>订单复制、订单变更、订单查询、客户服务</strong>（与宫格并联，虚线表示非必经）。报价为必经语义环节；交期可跳过须经确认（见报价 PDF）。与 PRD §4、§6 一致。
+          </p>
+          <div class="flow-dual">
+            <div class="flow-panel">
+              <h3>入口：首页 / 消息模板 / 待跟进</h3>
+              <p class="hint">
+                首页<strong>宫格不出现「客户开拓」</strong>；开拓与<strong>同一客户池</strong>亦可通过「待跟进客户」进入列表后再进详情。
+              </p>
+              <p class="hint" style="margin-bottom: 0.45rem">
+                <strong>服务号</strong>：<strong>每日固定 1 条</strong>摘要「今日待跟进 <strong>n</strong> 个，点击查看」→ <strong>/development</strong>（可不携带 <code>customer_id</code>）。另支持 URL 带 <code>customer_id</code> 且已登录：<strong>选中该客户</strong> 后进入 <strong>/development</strong>。
+              </p>
+              <div class="entry-chips" style="margin-bottom: 0.75rem">
+                <span class="chip msg">每日摘要 → /development</span>
+                <span aria-hidden="true" style="color: var(--muted); font-size: 0.75rem">·</span>
+                <span class="chip msg">customer_id 深链</span>
+                <span aria-hidden="true" style="color: var(--muted); font-size: 0.75rem">→</span>
+                <span class="chip">客户开拓</span>
+              </div>
+              <p class="hint" style="margin-bottom: 0.45rem">首页宫格（当前实现；权限可裁剪）：</p>
+              <div class="entry-chips">
+                <span class="chip">方案速配</span>
+                <span class="chip">产品报价</span>
+                <span class="chip">交期评审</span>
+                <span class="chip">生成订单</span>
+                <span class="chip">订单复制</span>
+                <span class="chip">订单变更</span>
+                <span class="chip">订单进度</span>
+                <span class="chip">客户服务</span>
+              </div>
+              <p class="hint" style="margin-bottom: 0.45rem; margin-top: 0.85rem">
+                首页另有<strong>底部固定语音/文字输入</strong>：<strong>单次意图识别</strong>，槽位<strong>客户（可选）+ 功能</strong>，<strong>无多轮澄清</strong>；详见 <strong>F03</strong>与 <strong>F15</strong>。
+              </p>
+              <div class="entry-chips">
+                <span class="chip">语音上传转写</span>
+                <span class="chip">文字直达</span>
+                <span class="chip">意图浮层</span>
+              </div>
+            </div>
+            <div>
+              <p class="flow-spine-caption">大模块串联（不含各模块内部步骤）</p>
+              <div class="mermaid">
+flowchart TB
+  subgraph entry["入口 · 汇合待跟进池"]
+    HM[首页] --> KF[待跟进列表]
+    TPL[消息模板] --> KF
+  end
+  KF --> QS[方案速配 选品 购物车 保存方案]
+  QS --> Offer[产品报价]
+  Offer --> Deliv[交期评审]
+  Deliv --> J{评审结论}
+  J -->|生成订单| Ord[生成订单]
+  J -->|调整方案| Adj[调整方案]
+  J -->|插单申请| Rush[插单申请]
+  Adj --> QS
+  Ord -.-> Cp[订单复制]
+  Ord -.-> Ch[订单变更]
+  Ord -.-> Pr[订单查询]
+  Ord -.-> Svc[客户服务]
+  Rush --> Z[结束]
+  Ord --> Z
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="mod-push">
+          <h2>消息推送与待跟进提醒</h2>
+          <p class="desc">
+            <strong>固定每日 1 次</strong>向销售推送服务号模板消息：文案为 <strong>今日待跟进客户 n 个，点击查看</strong>（<code>n</code> 与首页待跟进条、§3.1「全部」池一致）。点击后 <strong>直接进入客户开拓页 <code>/development</code></strong>（与首页待跟进 <strong>同源池</strong>）。链接<strong>可不携带</strong> <code>customer_id</code>；若携带则按 PRD 先 <code>setCustomer</code> 再进同页。
+          </p>
+          <div class="mermaid">
+flowchart TD
+  B1[① 每日定时任务 统计每位销售待跟进 n] --> B2[② 模板消息 今日待跟进 n 个 点击查看]
+  B2 --> B3[③ 销售点击消息]
+  B3 --> H5[打开 H5 已登录校验]
+  H5 --> P5[客户开拓 /development<br/>同源待跟进列表]
+          </div>
+        </section>
+
+        <section id="mod-home">
+          <h2>F03 首页与待跟进</h2>
+          <p class="desc">
+            聚合<strong>功能宫格</strong>（无「客户开拓」项）、<strong>待跟进条</strong>与<strong>最近客户</strong>。底部固定<strong>语音/文字输入</strong>（与 F15）：提交后经<strong>单次意图识别</strong>输出结构化<strong>槽位</strong>——<strong>客户（非必填）</strong>+<strong>功能</strong>，以<strong>意图浮层</strong>展示并可关闭；可在规则允许时<strong>自动执行</strong>切客/跳转。<strong>不做多轮澄清追问</strong>。<strong>最近客户</strong>：卡片副文展示<strong>联系人 + 最近访问业务页</strong>（由恢复点路径映射），<strong>不</strong>展示新老客户等分类标签；记录最近一次业务 URL，点击恢复；无记录默认方案速配选品。（当前打点可为 localStorage，上线可对齐服务端。）
+          </p>
+          <div class="mermaid">
+flowchart TD
+  H[首页]
+  H --> G[功能宫格]
+  H --> FU[待跟进条]
+  H --> RC[最近客户]
+  H --> Dock[底部输入区<br/>语音或文字]
+
+  subgraph input["首页 · 语音/文字 → 意图"]
+    Dock --> Vpath[语音 上传转写]
+    Dock --> Wpath[文字 直接发送]
+    Vpath --> NLP[意图识别 NLU]
+    Wpath --> NLP
+    NLP --> Slots[结构化槽位<br/>客户 可选 · 功能]
+    Slots --> CQ{有清晰功能目标?}
+    CQ -->|否| OnlyView[仅展示浮层<br/>不自动跳转<br/>不澄清追问]
+    CQ -->|是| Cslot{解析到客户? 非必填}
+    Cslot -->|是| SetC[切换当前工作客户]
+    Cslot -->|否| KeepC[保持当前客户不变]
+    SetC --> Goto[跳转宫格对应能力或其它目标页]
+    KeepC --> Goto
+    Goto --> Modal[意图浮层 可关闭]
+    OnlyView --> Modal
+  end
+
+  FU --> L[待跟进列表 同开拓口径]
+  L --> Pick[选客户]
+  Pick --> Det[客户详情]
+  Det --> NX[写跟进 或 方案速配]
+  RC --> R1[选中客户 恢复上下文]
+  R1 --> R2[打开上次所在业务页]
+  G --> M[各业务模块入口]
+          </div>
+        </section>
+
+        <section id="mod-dev">
+          <h2>F04 客户开拓</h2>
+          <p class="desc">
+            支持系统推送待跟进提醒与销售主动进入（与首页待跟进列表<strong>同一口径</strong>）。列表中选客户后进入<strong>客户详情</strong>（客户编码、名称、性质、所属类别、结算客户、等级及跟进信息列表）；在详情中可进入写跟进或方案速配。
+          </p>
+          <div class="mermaid">
+flowchart TD
+  subgraph manual["独立进入"]
+    M1[① 点击客户开拓/待跟进] --> M2[② 展示待跟进列表 老客户超时+公海新]
+    M2 --> M3[③ 选择客户]
+    M3 --> M3a[④ 客户详情 主数据字段+跟进列表]
+    M3a --> M4[⑤ 写跟进 支持语音 多条]
+    M4 --> M5[⑥ 提交跟进 回写]
+    M5 --> M6{⑦ 是否进入方案速配?}
+    M6 -->|是 继承该客户| P7[方案速配 P07]
+    M6 -->|否| H[返回详情或列表]
+    M3a -->|快捷| P7
+  end
+          </div>
+        </section>
+
+        <section id="mod-quick-scheme">
+          <h2>F05 方案速配</h2>
+          <p class="desc">
+            单页内 <strong>选品 Tab / 购物车 / 保存方案</strong>；顶栏右侧进<strong>方案历史</strong>。保存后 <strong>方案 PDF</strong> 预览导出。历史版本可<strong>变更</strong>回填购物车。<strong>新客户与老客户在选品步的业务口径不同</strong>（见下图），购物车及之后一致。<strong>方案速配、方案 PDF、方案历史</strong>三路由<strong>不展示底部全局语音/文字输入条</strong>（见 F15）。
+          </p>
+          <div class="mermaid">
+flowchart TD
+  subgraph pre["进入方式"]
+    DCH[从客户开拓 继承客户与类型] --> E1[工作客户已确定]
+    SOLO[独立宫格 点方案速配后选客户] --> E1
+  end
+  E1 --> E2{客户类型?}
+
+  subgraph newCust["公海新客户 · 选品"]
+    E2 -->|新客户| N1[需求摘要可编辑]
+    N1 --> N2[保存要点后刷新推荐]
+    N2 --> N3[推荐以摘要关键词规则等为主]
+  end
+
+  subgraph oldCust["老客户 · 选品"]
+    E2 -->|老客户| O1[需求摘要只读]
+    O1 --> O2[推荐优先历史订单与历史方案 SKU]
+    O2 --> O3{无历史可关联?}
+    O3 -->|是| O4[退回关键词或默认集合]
+    O3 -->|否| MERGE[与推荐结果汇合]
+    O4 --> MERGE
+  end
+
+  N3 --> MERGE[加购改配 勾选纳入本单]
+  MERGE --> CART[购物车]
+  CART --> SCH[方案步 勾选保存]
+  SCH --> PDF[方案 PDF]
+  PDF --> Q[报价 F08]
+  SUB[方案历史] -.->|变更回填| CART
+  SCH -->|继续加购| MERGE
+          </div>
+        </section>
+
+        <section id="mod-quote">
+          <h2>F08 产品报价</h2>
+          <p class="desc">
+            <strong>产品报价</strong>顶栏含<strong>历史报价</strong>。<strong>列出当前客户全部方案</strong>选一 → <strong>询价</strong>（最低/最新售价参照 + 用户填<strong>本次单价</strong>）→ <strong>生成报价单</strong> → <strong>报价 PDF</strong>（预览/导出，技术同方案 PDF）。<strong>历史报价列表</strong>可<strong>预览/导出</strong>（进入报价 PDF）或<strong>重新报价</strong>（回到询价并带入关联方案）。PDF 底栏：<strong>交期评审</strong>、<strong>直接下单</strong>（风险确认）；历史列表仅从报价页顶栏进入。
+          </p>
+          <div class="mermaid">
+flowchart TD
+  subgraph solo["独立进入"]
+    A1[① 点击产品报价] --> A2[② 确认当前客户]
+    A2 --> A3[③ 列出该客户全部方案 选一个]
+    A2 --> QH[顶栏 历史报价<br/>该客户全部报价单]
+  end
+  subgraph fromProp["从方案速配/PDF 串联"]
+    Z[携带所选方案进入] --> A4[④ 询价]
+  end
+  A3 --> A4
+  QH -->|预览或导出| PDF[⑥ 报价 PDF]
+  QH -->|重新报价 带入关联方案| A4
+  A4 --> A5[⑤ 生成报价单 持久化]
+  A5 --> PDF
+  PDF --> B1[交期评审 F09]
+  PDF --> B2[直接下单 确认风险]
+          </div>
+        </section>
+
+        <section id="mod-delivery">
+          <h2>F09 交期评审</h2>
+          <p class="desc">
+            <strong>选择客户</strong>（当前工作客户）→ <strong>选择报价单</strong>（该客户下全部报价）→ <strong>输入期望交期</strong> → <strong>生成预测</strong>：引擎给出<strong>是否预计按期交付</strong>、<strong>是否齐套</strong>、<strong>延期卡点</strong>；<strong>话术摘要</strong>可由大模型归纳展示。<strong>评审通过</strong>后方可进入<strong>生成订单</strong>；否则可走调整方案或插单。
+          </p>
+          <div class="mermaid">
+flowchart TD
+  subgraph solo["独立进入"]
+    D1[① 点击交期评审] --> D2[② 选择客户]
+    D2 --> D3[③ 选择报价单]
+    D3 --> D4[④ 输入期望交期]
+  end
+  subgraph afterQuote["从报价串联"]
+    Z1[继承客户与报价上下文] --> D3
+  end
+  D4 --> D5[⑤ 生成预测 引擎结构化结论]
+  D5 --> D6[⑥ 话术归纳 大模型]
+  D6 --> D7{⑦ 评审是否通过}
+  D7 -->|是| O1[生成订单]
+  D7 -->|否| AD[调整方案]
+  D7 -->|否| I7[申请插单]
+          </div>
+        </section>
+
+        <section id="mod-order">
+          <h2>F10 生成订单</h2>
+          <p class="desc">
+            一报价可生成多笔订单。若在报价侧已确认跳过交期，须留有弹窗确认记录。提交订单前仍校验交期评审状态；未完成时须风险提示并再次确认。
+          </p>
+          <div class="mermaid">
+flowchart TD
+  subgraph fromDeliv["从交期评审 选生成订单"]
+    X0[继承客户与方案/报价上下文] --> B
+  end
+  subgraph solo["独立进入（生成订单）"]
+    A1[① 点击生成订单] --> A2[② 选择客户]
+    A2 --> A3[③ 选择报价单 关联方案]
+    A3 --> B[④ 确认行项目与金额]
+  end
+  B --> C{⑤ 已完成交期评审?}
+  C -->|否| W[风险提示 用户确认仍继续?]
+  C -->|是| Q{⑥ 提交创建订单?}
+  W -->|返回| R[去交期评审]
+  W -->|确认| Q
+  Q -->|否| B
+  Q -->|是| Done[订单创建成功]
+          </div>
+        </section>
+
+        <section id="mod-copy">
+          <h2>F11 订单复制</h2>
+          <p class="desc">将历史订单行项目复制为草稿并写入当前客户购物车，用于快速改单与复购。复制完成后进入<strong>方案速配</strong>的购物车或方案子步继续编辑。</p>
+          <div class="mermaid">
+flowchart TD
+  A1[① 点击订单复制] --> A2[② 选择客户]
+  A2 --> A3[③ 展示该客户历史订单 可搜索]
+  A3 --> A4[④ 选择要复制的订单]
+  A4 --> A5[⑤ 确认复制 生成草稿并写入购物车]
+  A5 --> A6{⑥ 是否进入方案速配继续编辑?}
+  A6 -->|否| A3
+  A6 -->|是| J[跳转方案速配 购物车或方案子步]
+          </div>
+        </section>
+
+        <section id="mod-change">
+          <h2>F12 订单变更</h2>
+          <p class="desc">对在制订单发起异常标记，进入处理流程并通知责任部门。</p>
+          <div class="mermaid">
+flowchart TD
+  A1[① 点击订单变更] --> A2[② 选择客户]
+  A2 --> A3[③ 展示该客户订单列表 含生产进度]
+  A3 --> A4[④ 选择一个订单]
+  A4 --> A5[⑤ 选择异常原因 备注可语音]
+  A5 --> A6[⑥ 确认转异常 标记并推送部门]
+  A6 --> A7{⑦ 继续查看其他订单或回首页?}
+  A7 -->|其他订单| A3
+  A7 -->|首页| H[返回首页]
+          </div>
+        </section>
+
+        <section id="mod-progress">
+          <h2>F13 订单进度查询</h2>
+          <p class="desc">按客户维度查看订单及生产/交付进度；支持按订单内产品行查看明细进度。</p>
+          <div class="mermaid">
+flowchart TD
+  A1[① 点击订单进度查询] --> A2[② 选择客户]
+  A2 --> A3[③ 展示该客户订单列表]
+  A3 --> A4[④ 点击订单 查看各产品及生产进度]
+  A4 --> A3
+          </div>
+        </section>
+
+        <section id="mod-service">
+          <h2>F14 客户服务匹配</h2>
+          <p class="desc">基于问题描述匹配售后方案，支持创建并提交服务工单。</p>
+          <div class="mermaid">
+flowchart TD
+  A1[① 点击客户服务] --> A2[② 选择客户]
+  A2 --> A3[③ 输入或语音描述问题]
+  A3 --> A4[④ 系统返回匹配解决方案]
+  A4 --> A5[⑤ 发起服务工单 可提交]
+          </div>
+        </section>
+
+        <section id="mod-intent">
+          <h2>F15 全局语音与意图</h2>
+          <p class="desc">
+            多数需登录页底部展示<strong>语音/文字输入</strong>（默认语音可切文字），提交后<strong>单次意图识别</strong>并以浮层展示摘要与槽位（若有）；<strong>不提供多轮澄清对话</strong>。能力边界：仅导航与部分页填表辅助，不自动改写业务结果。<strong>不展示底栏</strong>的路由：<code>quick-scheme</code>、<code>proposal-pdf</code>、<code>proposal-history</code>（与 <code>GlobalVoiceDock.vue</code> 一致）；意图浮层 Teleport 仍可按需触发。
+          </p>
+          <div class="mermaid">
+flowchart TD
+  subgraph hide["无底栏输入条"]
+    R1[方案速配]
+    R2[方案 PDF]
+    R3[方案历史]
+  end
+  Any[其它多数业务页] --> Bar[底部输入条<br/>语音默认可切文字]
+  Bar --> Rec[录音上传转写]
+  Bar --> Txt[文字提交]
+  Rec --> Submit[提交]
+  Txt --> Submit
+  Submit --> Intent[意图识别 + 一句摘要<br/>单次 无澄清]
+  Intent --> Layer[结果浮层可关闭]
+  Layer --> A1[导航建议跳转]
+  Layer --> A2[部分页填表辅助]
+  Layer --> X[不自动改写业务结果]
+          </div>
+        </section>
+
+        <section id="mod-perm">
+          <h2>F16 权限壳</h2>
+          <p class="desc">首页宫格与模块入口由权限配置驱动；前端展示层隐藏不等同于接口授权，后端须二次鉴权。</p>
+          <div class="mermaid">
+flowchart LR
+  CFG[权限配置] --> HOME[首页宫格渲染]
+  CFG --> MENU[模块入口可见性]
+  HOME --> U[销售可见集合]
+  MENU --> U
+  U --> REQ[接口请求]
+  REQ --> SRV[后端二次校验]
+          </div>
+        </section>
+
+        <footer>
+          本页为流程示意；与仓库 <code>.output/PRD.md</code>（设计定稿 / 实现对齐版）不一致时，以 PRD 为准。
+        </footer>
+      </main>
+    </div>
+
+    <script>
+      (function () {
+        function loadScript(src, onload, onerror) {
+          var s = document.createElement("script");
+          s.src = src;
+          s.async = false;
+          s.onload = onload;
+          s.onerror =
+            onerror ||
+            function () {
+              console.error("脚本加载失败:", src);
+            };
+          document.head.appendChild(s);
+        }
+
+        function bootUIOnly() {
+          var links = document.querySelectorAll("nav a");
+
+          function setActive() {
+            var id = (location.hash || "#overall").slice(1);
+            links.forEach(function (a) {
+              a.classList.toggle("active", a.getAttribute("href") === "#" + id);
+            });
+          }
+
+          window.addEventListener("hashchange", setActive);
+          if (!location.hash) location.hash = "#overall";
+          setActive();
+
+          document.querySelectorAll(".mermaid").forEach(function (el) {
+            var tip = document.createElement("p");
+            tip.style.cssText =
+              "color:#b91c1c;font-size:0.875rem;text-align:left;margin:0 0 0.5rem";
+            tip.textContent =
+              "未能加载流程图脚本（jsDelivr 与 unpkg 均不可用）。请检查网络 / 防火墙，或将 mermaid.min.js 下载到本站同目录后改为本地引入。";
+            el.insertBefore(tip, el.firstChild);
+          });
+        }
+
+        function bootMermaid() {
+          var links = document.querySelectorAll("nav a");
+
+          function setActive() {
+            var id = (location.hash || "#overall").slice(1);
+            links.forEach(function (a) {
+              a.classList.toggle("active", a.getAttribute("href") === "#" + id);
+            });
+          }
+
+          async function renderDiagrams() {
+            if (typeof mermaid === "undefined") {
+              document.querySelectorAll(".mermaid").forEach(function (el) {
+                var tip = document.createElement("p");
+                tip.style.cssText =
+                  "color:#b91c1c;font-size:0.875rem;text-align:left;margin:0 0 0.5rem";
+                tip.textContent =
+                  "流程图库未就绪。请刷新页面或检查浏览器控制台报错。";
+                el.insertBefore(tip, el.firstChild);
+              });
+              return;
+            }
+            mermaid.initialize({
+              startOnLoad: false,
+              theme: "neutral",
+              securityLevel: "loose",
+              flowchart: { htmlLabels: true, curve: "basis" },
+            });
+            try {
+              await mermaid.run({ querySelector: ".mermaid" });
+            } catch (e) {
+              console.error("Mermaid 渲染失败:", e);
+            }
+          }
+
+          async function kick() {
+            if (!location.hash) location.hash = "#overall";
+            setActive();
+            await renderDiagrams();
+          }
+
+          window.addEventListener("hashchange", setActive);
+          void kick();
+        }
+
+        loadScript(
+          "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js",
+          bootMermaid,
+          function () {
+            loadScript(
+              "https://unpkg.com/mermaid@10.9.1/dist/mermaid.min.js",
+              bootMermaid,
+              bootUIOnly
+            );
+          }
+        );
+      })();
+    </script>
+  </body>
+</html>

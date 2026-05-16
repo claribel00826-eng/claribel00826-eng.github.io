@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #fcf8fa;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Custom scrollbar for professional look */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#dec29a",
+                        "tertiary-fixed": "#fcdeb5",
+                        "on-primary": "#ffffff",
+                        "surface-container-highest": "#e4e2e4",
+                        "secondary": "#515f74",
+                        "on-surface-variant": "#45464d",
+                        "on-background": "#1b1b1d",
+                        "tertiary": "#000000",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#1b1b1d",
+                        "primary": "#000000",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#271901",
+                        "on-tertiary-container": "#98805d",
+                        "inverse-primary": "#bec6e0",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "on-secondary-container": "#57657b",
+                        "on-tertiary-fixed-variant": "#574425",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "surface": "#fcf8fa",
+                        "on-tertiary-fixed": "#271901",
+                        "surface-variant": "#e4e2e4",
+                        "surface-tint": "#565e74",
+                        "surface-container-low": "#f6f3f5",
+                        "inverse-surface": "#303032",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "surface-container": "#f0edef",
+                        "outline": "#76777d",
+                        "primary-fixed": "#dae2fd",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#fcf8fa",
+                        "surface-container-high": "#eae7e9",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-primary-fixed": "#131b2e",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "background": "#fcf8fa",
+                        "on-primary-container": "#7c839b",
+                        "outline-variant": "#c6c6cd",
+                        "secondary-fixed": "#d5e3fd",
+                        "primary-container": "#131b2e",
+                        "surface-dim": "#dcd9db",
+                        "secondary-container": "#d5e3fd",
+                        "inverse-on-surface": "#f3f0f2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-gap": "12px",
+                        "inline-gap": "8px",
+                        "section-margin": "24px",
+                        "base": "4px",
+                        "container-padding": "16px"
+                    },
+                    "fontFamily": {
+                        "number-data": ["Inter"],
+                        "h3": ["PingFang SC"],
+                        "body-main": ["PingFang SC"],
+                        "h2": ["PingFang SC"],
+                        "h1": ["PingFang SC"],
+                        "body-secondary": ["PingFang SC"],
+                        "label-caps": ["PingFang SC"]
+                    },
+                    "fontSize": {
+                        "number-data": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "h3": ["17px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "body-main": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "h2": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "h1": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-secondary": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="antialiased text-on-surface font-body-main">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full h-[48px] flex items-center justify-between px-container-padding z-40 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-inline-gap">
+<span class="material-symbols-outlined text-primary active:scale-95 transition-transform duration-150" data-icon="arrow_back">arrow_back</span>
+<h1 class="font-h3 text-h3 text-primary">智能销售助手</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container px-2 py-1 rounded-full border border-outline-variant">
+<span class="text-label-caps font-label-caps text-on-surface-variant">客户：华东精密</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant active:scale-95 transition-transform duration-150" data-icon="more_vert">more_vert</span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-[64px] pb-[100px] px-container-padding space-y-stack-gap">
+<!-- Product Recommendation Stream -->
+<section class="space-y-stack-gap">
+<!-- Card 1 -->
+<article class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col">
+<div class="relative w-full aspect-[16/10] bg-surface-container">
+<img alt="CNC Machine" class="w-full h-full object-cover" data-alt="A high-precision industrial CNC machining center X200 in a clean, brightly lit modern manufacturing facility. The machine features a sophisticated dark metallic finish with glowing status lights. The setting is a minimalist industrial workshop with polished concrete floors and soft overhead lighting, reflecting a professional and advanced technological environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUVjsZ8h109OUkBzFUw_-dPkjiYTo_hvHDqSIgX56gVKjDC6b7Rfhm0nW411zGIFImASKKFzfV5CMrwSpFbweG1Ih5_NXR1orpq817XrzUDxHFQzq5pl6JixBFVhGVpvXKqBtMiglhCne-ySCHEzUts-Q-28gUq102bo8GfmnZagk7bHleYt8nHYcFljDK391ojMiSCOXLwvT6JjHpKeQZd_mw28ma0ZYcpAuMzxP-Fnfxj28EjbZm4wYSp4PzMFKRvuz9nV1mLw"/>
+<div class="absolute top-3 left-3 bg-tertiary/10 backdrop-blur-md px-2 py-1 rounded text-primary font-label-caps text-label-caps border border-primary/20">
+                        智能推荐
+                    </div>
+</div>
+<div class="p-container-padding space-y-2">
+<div class="flex justify-between items-start">
+<div>
+<h2 class="font-h2 text-h2 text-on-surface mb-1">数控加工中心 X200</h2>
+<p class="text-error font-number-data text-number-data">¥480,000 起</p>
+</div>
+<span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded text-label-caps font-label-caps">历史采购 2 台</span>
+</div>
+<div class="pt-4 flex gap-3">
+<button class="flex-1 bg-primary text-on-primary py-3 rounded-lg font-h3 text-h3 active:opacity-80 transition-opacity">加入购物车</button>
+<button class="flex-1 border border-outline text-on-surface-variant py-3 rounded-lg font-h3 text-h3 active:bg-surface-variant transition-colors flex items-center justify-center gap-1">
+                            下一个
+                            <span class="material-symbols-outlined text-[20px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Card 2 (Partial view) -->
+<article class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden opacity-60">
+<div class="relative w-full aspect-[16/10] bg-surface-container">
+<img alt="Precision Tool" class="w-full h-full object-cover" data-alt="A professional industrial automated robotic arm operating on a production line. The visual style is crisp and modern, emphasizing precision and reliability. Cool-toned metallic surfaces are illuminated by clinical, high-key lighting. The background is a slightly out-of-focus industrial plant, maintaining a clean and orderly corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDI45628Slc32hxjHofBiMhuDCVwFQ6y0d8JIrTdT8NsVMKZh2YTH97gUITBg2GjAQNCBIGbp-eS-ma8fmwTFp48PY5BECXkUis6Khsl2U-pgQusmFAUyNhxyL8Qm8wjI7A7I725j5bxgav7pE5u4Eja8QCWdRUpKnCD347YmbYIkKmkQt1ttvm-EKFjpktbJKnqkFBPL3_VPQCW45hyJrNfV-6-CGHFGemtEOHBPkyxfzdw01LpSJrdZnp6k-b3Wlu_0oe23um7Q"/>
+</div>
+<div class="p-container-padding">
+<h2 class="font-h2 text-h2 text-on-surface mb-1">精密激光切割机 L500</h2>
+<p class="text-error font-number-data text-number-data">¥1,200,000 起</p>
+</div>
+</article>
+</section>
+</main>
+<!-- Deep Link Modal Overlay -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-container-padding bg-on-background/40 backdrop-blur-sm">
+<div class="bg-surface-container-lowest w-full max-w-[340px] rounded-xl shadow-xl overflow-hidden border border-outline-variant">
+<div class="p-6 text-center space-y-4 pb-8"><div class="space-y-3 pt-2">
+<h3 class="font-h2 text-h2 text-on-surface">业务提示</h3>
+<p class="text-body-main text-on-surface-variant">已进入「华东精密」服务流程，是否立即开始产品推荐？</p>
+</div></div>
+<div class="flex border-t border-outline-variant">
+<button class="flex-1 py-4 text-body-main text-on-surface-variant font-semibold active:bg-surface-variant transition-colors">稍后</button>
+<div class="w-[1px] bg-outline-variant"></div>
+<button class="flex-1 py-4 text-body-main text-[#0369A1] font-bold active:bg-surface-variant transition-colors">开始</button>
+</div>
+</div>
+</div>
+<!-- Bottom Voice Input Bar -->
+<footer class="fixed bottom-0 left-0 w-full bg-surface-container-low px-container-padding pb-8 pt-4 border-t border-outline-variant z-40">
+<div class="flex items-center gap-3 bg-surface-container-highest rounded-full px-4 py-3 border border-outline">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="mic">mic</span>
+<span class="flex-1 text-on-surface-variant font-body-secondary">点击并说话进行搜索或录入...</span>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="keyboard">keyboard</span>
+</div>
+</footer>
+</body></html>

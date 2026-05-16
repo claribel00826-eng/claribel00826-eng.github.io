@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>客户开拓 - 智能销售助手</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-container": "#d5e3fd",
+                    "surface-container-low": "#f6f3f5",
+                    "inverse-surface": "#303032",
+                    "tertiary": "#000000",
+                    "on-primary": "#ffffff",
+                    "secondary": "#515f74",
+                    "on-tertiary-container": "#98805d",
+                    "surface-container": "#f0edef",
+                    "tertiary-container": "#271901",
+                    "tertiary-fixed": "#fcdeb5",
+                    "on-tertiary-fixed": "#271901",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-container": "#131b2e",
+                    "on-secondary-container": "#57657b",
+                    "surface-container-high": "#eae7e9",
+                    "on-primary-fixed": "#131b2e",
+                    "primary-fixed": "#dae2fd",
+                    "outline-variant": "#c6c6cd",
+                    "on-surface-variant": "#45464d",
+                    "surface-variant": "#e4e2e4",
+                    "on-secondary-fixed-variant": "#3a485c",
+                    "surface-bright": "#fcf8fa",
+                    "inverse-primary": "#bec6e0",
+                    "primary": "#000000",
+                    "on-secondary-fixed": "#0d1c2f",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed-dim": "#b9c7e0",
+                    "on-tertiary": "#ffffff",
+                    "surface": "#fcf8fa",
+                    "inverse-on-surface": "#f3f0f2",
+                    "primary-fixed-dim": "#bec6e0",
+                    "on-primary-container": "#7c839b",
+                    "error": "#ba1a1a",
+                    "outline": "#76777d",
+                    "surface-dim": "#dcd9db",
+                    "secondary-fixed": "#d5e3fd",
+                    "on-surface": "#1b1b1d",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed-dim": "#dec29a",
+                    "surface-tint": "#565e74",
+                    "on-tertiary-fixed-variant": "#574425",
+                    "on-error-container": "#93000a",
+                    "on-error": "#ffffff",
+                    "on-background": "#1b1b1d",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "background": "#fcf8fa",
+                    "surface-container-highest": "#e4e2e4"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "4px",
+                    "stack-gap": "12px",
+                    "inline-gap": "8px",
+                    "container-padding": "16px",
+                    "section-margin": "24px"
+            },
+            "fontFamily": {
+                    "h2": ["PingFang SC"],
+                    "label-caps": ["PingFang SC"],
+                    "body-secondary": ["PingFang SC"],
+                    "body-main": ["PingFang SC"],
+                    "h1": ["PingFang SC"],
+                    "number-data": ["Inter"],
+                    "h3": ["PingFang SC"]
+            },
+            "fontSize": {
+                    "h2": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-secondary": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-main": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "h1": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "number-data": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "h3": ["17px", {"lineHeight": "24px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'PingFang SC', sans-serif;
+            background-color: #fcf8fa;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex flex-col min-h-screen text-on-surface">
+<!-- TopAppBar from JSON guidance -->
+<header class="fixed top-0 left-0 w-full h-[48px] flex items-center justify-between px-container-padding z-50 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-transform duration-150" data-icon="arrow_back">arrow_back</span>
+<h1 class="font-h3 text-h3 text-primary">客户开拓</h1>
+</div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer active:scale-95 transition-transform duration-150" data-icon="more_vert">more_vert</span>
+</div>
+</header>
+<!-- Content Area -->
+<main class="flex-1 pt-[64px] pb-32 px-container-padding overflow-y-auto">
+<!-- Filter Tabs -->
+<div class="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+<button class="flex-none px-4 py-2 bg-primary text-on-primary rounded-full font-label-caps text-label-caps active:opacity-80 transition-opacity">全部</button>
+<button class="flex-none px-4 py-2 bg-white border border-outline-variant text-on-surface-variant rounded-full font-label-caps text-label-caps active:bg-surface-container transition-colors">老客户超时</button>
+<button class="flex-none px-4 py-2 bg-white border border-outline-variant text-on-surface-variant rounded-full font-label-caps text-label-caps active:bg-surface-container transition-colors">公海新客户</button>
+</div>
+<!-- Section Title & Count -->
+<div class="mb-4 flex items-center justify-between">
+<p class="font-body-secondary text-body-secondary text-on-surface-variant">共 24 位待跟进客户</p>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]" data-icon="filter_list">filter_list</span>
+</div>
+<!-- Customer List (Bento-like Grid Layout) -->
+<div class="grid grid-cols-1 gap-stack-gap">
+<!-- Card 1: Selected State Example -->
+<div class="bg-white rounded-xl border-2 border-primary p-4 shadow-sm relative overflow-hidden ring-1 ring-primary/5">
+<div class="flex justify-between items-start mb-3">
+<div class="flex flex-col gap-1">
+<h2 class="font-h2 text-h2 text-primary flex items-center gap-2">
+                            华东精密工业股份有限公司
+                        </h2>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="px-2 py-0.5 bg-error-container text-on-error-container rounded font-label-caps text-[10px] uppercase tracking-wider">老客户超时</span>
+<span class="px-2 py-0.5 bg-surface-container-high text-on-surface-variant rounded font-label-caps text-[10px]">华东大区</span>
+</div>
+</div>
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[18px]" data-icon="check_circle" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<div class="space-y-3 pt-3 border-t border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="event_busy">event_busy</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">触发原因</span>
+<p class="font-body-main text-body-main text-error">连续 180 天未产生有效回访</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="history">history</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">业务动态</span>
+<p class="font-body-main text-body-main">上次下单于 182 天前 (¥45,000)</p>
+</div>
+</div>
+</div>
+<!-- Decorative Bar -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white rounded-xl border border-outline-variant p-4 hover:border-primary/50 transition-colors">
+<div class="flex justify-between items-start mb-3">
+<div class="flex flex-col gap-1">
+<h2 class="font-h2 text-h2 text-primary">某新能源系统集成项目</h2>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="px-2 py-0.5 bg-secondary-container text-on-secondary-container rounded font-label-caps text-[10px] tracking-wider">公海新客户</span>
+<span class="px-2 py-0.5 bg-surface-container-high text-on-surface-variant rounded font-label-caps text-[10px]">项目招标</span>
+</div>
+</div>
+<div class="w-6 h-6 rounded-full border border-outline-variant"></div>
+</div>
+<div class="space-y-3 pt-3 border-t border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="assignment_ind">assignment_ind</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">触发原因</span>
+<p class="font-body-main text-body-main">系统自动分配，24小时内未跟进</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="schedule">schedule</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">分配时间</span>
+<p class="font-body-main text-body-main">今天 09:15</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-white rounded-xl border border-outline-variant p-4">
+<div class="flex justify-between items-start mb-3">
+<div class="flex flex-col gap-1">
+<h2 class="font-h2 text-h2 text-primary">深圳智造模具有限公司</h2>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="px-2 py-0.5 bg-error-container text-on-error-container rounded font-label-caps text-[10px] tracking-wider">老客户超时</span>
+<span class="px-2 py-0.5 bg-surface-container-high text-on-surface-variant rounded font-label-caps text-[10px]">优质 A 类</span>
+</div>
+</div>
+<div class="w-6 h-6 rounded-full border border-outline-variant"></div>
+</div>
+<div class="space-y-3 pt-3 border-t border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="priority_high">priority_high</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">触发原因</span>
+<p class="font-body-main text-body-main text-error">合同即将到期且未续签</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="inventory_2">inventory_2</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">业务动态</span>
+<p class="font-body-main text-body-main">最近咨询：1.5mm 冲压磨具规格</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 4 (Ghost/Tertiary look) -->
+<div class="bg-white rounded-xl border border-outline-variant p-4 opacity-80">
+<div class="flex justify-between items-start mb-3">
+<div class="flex flex-col gap-1">
+<h2 class="font-h2 text-h2 text-primary">重庆耐克森电子科技</h2>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="px-2 py-0.5 bg-secondary-container text-on-secondary-container rounded font-label-caps text-[10px] tracking-wider">公海新客户</span>
+</div>
+</div>
+<div class="w-6 h-6 rounded-full border border-outline-variant"></div>
+</div>
+<div class="space-y-3 pt-3 border-t border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="groups">groups</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">分配渠道</span>
+<p class="font-body-main text-body-main">官网表单预约咨询</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Bottom Action (Floating Command Bar) -->
+<div class="fixed bottom-0 left-0 w-full p-container-padding bg-gradient-to-t from-background via-background/95 to-transparent z-40">
+<div class="max-w-md mx-auto flex gap-3 items-center justify-between bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-outline-variant">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">已选客户</span>
+<span class="font-number-data text-number-data text-primary">1 <span class="text-body-secondary font-body-secondary">位</span></span>
+</div>
+<div class="flex gap-2">
+<button class="px-6 py-3 bg-primary text-on-primary rounded-xl font-h3 text-h3 flex items-center gap-2 active:scale-95 transition-all shadow-sm">
+<span class="material-symbols-outlined" data-icon="edit_square">edit_square</span>
+                    写跟进
+                </button>
+</div>
+</div>
+<!-- Safety spacing for mobile gesture areas -->
+<div class="h-4"></div>
+</div>
+<!-- Decorative Illustration for Empty Space (Faded background) -->
+<div class="fixed bottom-0 right-0 pointer-events-none opacity-5 -z-10 select-none">
+<span class="material-symbols-outlined text-[300px]" data-icon="handshake">handshake</span>
+</div>
+</body></html>

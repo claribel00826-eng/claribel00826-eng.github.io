@@ -1,0 +1,30 @@
+{
+  "name": "customer-service-h5",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vue-tsc -b && vite build",
+    "build:static": "vue-tsc -b && vite build --mode static && node ./scripts/build-static-gallery.mjs",
+    "typecheck": "vue-tsc -b",
+    "preview": "vite preview --host 0.0.0.0",
+    "tunnel": "cloudflared tunnel --url http://127.0.0.1:5173"
+  },
+  "dependencies": {
+    "@types/node": "latest",
+    "@vitejs/plugin-vue": "latest",
+    "@vue/tsconfig": "latest",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "pinia": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vue": "latest",
+    "vue-router": "latest",
+    "vue-tsc": "latest"
+  },
+  "devDependencies": {
+    "vite-plugin-singlefile": "^2.3.3"
+  }
+}

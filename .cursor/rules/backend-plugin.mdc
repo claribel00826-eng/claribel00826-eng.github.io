@@ -1,0 +1,72 @@
+---
+alwaysApply: false
+description: PyCore Plugin 层（AI Agent 应用）：BasePlugin、PluginRegistry 与插件调用链；实现或修改 plugins/ 时使用。
+---
+
+# PyCore Plugin 层规范
+
+> **仅用于 AI Agent 应用。** 普通业务系统不需要 Plugin 层。
+
+## 架构选择
+
+| 应用类型 | 调用链 |
+|---------|--------|
+| 普通业务系统 | Router → Service → Repository |
+| AI Agent 应用 | Router → PluginRegistry → Plugin → Service |
+
+## BasePlugin 速查
+
+```python
+from pycore.plugins import BasePlugin, PluginResult
+from pycore.core import get_logger
+
+logger = get_logger()  # 模块级！BasePlugin 没有内置 logger
+
+class SearchPlugin(BasePlugin):
+    name: str = "search_knowledge"
+    description: str = "Search the knowledge base"
+    parameters: dict = { ... }  # OpenAI function calling JSON Schema
+
+    async def execute(self, query: str, limit: int = 5, **kwargs) -> PluginResult:
+        # **kwargs 是必须的！
+        try:
+            results = await self._do_search(query, limit)
+            return self.success({"query": query, "results": results})
+        except Exception as e:
+            return self.fail(f"Search error: {e}")
+```
+
+## PluginResult 速查
+
+```python
+result = PluginResult.ok(data)      # 成功
+result = PluginResult.fail("msg")   # 失败
+
+if not result:          # 用 __bool__ 判断
+    msg = result.error  # 失败用 .error
+else:
+    data = result.data  # 成功用 .data
+```
+
+## PluginRegistry 速查
+
+```python
+registry = PluginRegistry()
+registry.register(SearchPlugin())
+result = await registry.execute("search_knowledge", query="Python")
+specs = registry.to_specs()  # OpenAI function calling 格式
+```
+
+## 易错点
+
+| 错误写法 | 正确写法 |
+|---------|---------|
+| `if not result.success:` | `if not result:` |
+| `result.output`（取错误时）| `result.error` |
+| `self.failure("msg")` | `self.fail("msg")` |
+| `async def execute(self, x):` | `async def execute(self, x, **kwargs):` |
+| `len(registry._plugins)` | `len(registry)` |
+
+## 深入阅读
+
+- 完整 Plugin 规范（参数 Schema、生命周期、组合模式）：`pycore/docs/specs/plugins.md`

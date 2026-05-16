@@ -1,0 +1,105 @@
+---
+alwaysApply: false
+description: 模型层：Pydantic 请求/响应（src/models）与 ORM 实体（db/models.py）的分工、命名与边界；按功能开发时先落模型契约或表结构须遵循本文件。
+---
+
+# 模型层规范（Pydantic + ORM）
+
+## 1. 规范说明：两种「模型」不要混
+
+| 类型 | 位置（约定） | 用途 |
+|------|----------------|------|
+| **API / 领域模型（Pydantic）** | `src/models/`（或项目内与 `backend-core.mdc` 目录树一致的路径） | 请求体验证、响应序列化、与前端/接口契约对齐 |
+| **持久化模型（ORM）** | `src/db/models.py`（或拆分为 `db/models/*.py`） | 表结构、与数据库一一对应 |
+
+**原则**
+
+- 路由层**只**使用 **Pydantic** 描述请求体/响应形状；**不要**把 SQLAlchemy 实体直接当 JSON 返回（除非项目明确采用极简 Demo 且已约定）。
+- **ORM 模型**不负责表达「接口契约」；**Pydantic 模型**不负责表达「建表 SQL」。
+- **转换**（ORM ↔ 对外 DTO）放在 **Service**（或明确的 assembler 函数）中，避免 Repository / Route 里堆字典拼装。
+
+---
+
+## 2. Pydantic（`src/models/`）命名与拆分
+
+**规范说明**
+
+- 按**资源**分文件，例如 `user.py`、`task.py`。
+- 常见后缀（与 FastAPI 习惯一致）：
+  - `*Create` / `*Update`：入参（写操作）
+  - `*Read` / `*Response` / `*Public`：出参（读操作、对外可见字段）
+- 密码、内部字段等**不得**放进对外 `*Response`；需要单独定义「对外视图」模型。
+- **密码落库**：仅存储 **`bcrypt` 库**生成的哈希（`hashpw` / `checkpw`），**禁止使用 `passlib`**；封装位置见 `backend-service.mdc`。
+- 校验约束写在 **Pydantic `Field()`** 内；路径/Query 参数**不用** `Field()`，见 `backend-api.mdc` 与 `pycore/docs/specs/api.md`。
+
+**示例**
+
+```python
+# src/models/user.py
+from pydantic import BaseModel, ConfigDict, Field, EmailStr
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    name: str | None = Field(None, max_length=100)
+
+class UserPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)  # 从 ORM 属性映射时使用；生产代码仍以 Service 显式转换为准
+
+    id: int
+    email: EmailStr
+    name: str | None
+```
+
+---
+
+## 3. ORM（`db/models.py`）
+
+**规范说明**
+
+- 表结构、关系（`relationship`）、索引等与数据库相关的定义归本层。
+- 会话、Repository 模式、查询封装见 **`backend-db.mdc`**，本文件不重复。
+
+**示例（片段）**
+
+```python
+# src/db/models.py
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+class Base(DeclarativeBase):
+    pass
+
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(unique=True, index=True)
+    hashed_password: Mapped[str]
+    name: Mapped[str | None]
+```
+
+---
+
+## 4. 与「按功能开发」顺序的关系（对齐 `backend-dev.mdc`）
+
+**规范说明**
+
+- 开发某一功能时，**先**把本功能涉及的 **Pydantic 入参/出参** 与 **ORM 表/字段** 定清楚（可与 PRD 数据契约对照），再写 Repository / Service / Route。
+- 若接口形状未稳定，可先写 **最小 Pydantic** + **最小 ORM**，在 Service 中保留扩展点，避免路由里临时用 `dict`。
+
+---
+
+## 5. 易错点
+
+| 错误 | 正确 |
+|------|------|
+| 路由参数用 `Field(ge=1)` | 使用 `Query(ge=1)` / `Path()` 等，见 `backend-api.mdc` |
+| 把 `User` ORM 直接 `return` 给前端 | 返回 `UserPublic` 等 Pydantic，在 Service 里组装 |
+| 在 `models/` 里混写 SQLAlchemy 类 | ORM 只放在 `db/models` 侧 |
+| 一套 `BaseModel` 既当请求又当响应且含密码 | 拆分为 `UserCreate` / `UserPublic` 等 |
+
+---
+
+## 6. 深入阅读
+
+- 路由与 `Field()` 边界：`pycore/docs/specs/api.md`、`backend-api.mdc`
+- 仓储与会话：`backend-db.mdc`

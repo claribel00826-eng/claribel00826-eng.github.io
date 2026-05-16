@@ -1,0 +1,64 @@
+---
+alwaysApply: false
+description: PyCore API 层：路由、响应模型、分页与错误处理；编写或修改接口层（如 api/routes、deps）时使用。
+---
+
+# PyCore API 层规范
+
+请求/响应用的 **Pydantic 模型定义、与 ORM 分界**见 **`backend-models.mdc`**；本节侧重路由、装饰器与统一响应。
+
+## 响应模型速查
+
+```python
+from pycore.api import success_response, error_response, paginated_response
+return success_response(data=user_data, message="User created")           # 成功
+resp, _ = error_response(error="Not found", error_code="NOT_FOUND", status_code=404) # 错误
+return resp
+return paginated_response(data=items, page=1, page_size=20, total_items=100)  # 分页
+```
+
+## 路由速查
+
+```python
+from pycore.api import APIRouter
+from pycore.api.routes import Pagination, handle_errors
+from fastapi import Depends
+
+router = APIRouter(prefix="/api/users", tags=["users"])
+
+@router.get("/{user_id}")
+@handle_errors  # ValueError→400, PermissionError→403, FileNotFoundError→404
+async def get_user(user_id: int):
+    ...
+```
+
+**注册路由**：
+```python
+server.include_router(router)          # APIServer 自动处理
+app.include_router(router.router)      # 直接用 FastAPI app 时需要 .router
+```
+
+## 参数来源速查
+
+| 来源 | 装饰器 | 注意 |
+|------|--------|------|
+| URL 路径 | 自动 / `Path()` | |
+| 查询字符串 | `Query()` | |
+| 请求头 | `Header()` | |
+| Cookie | `Cookie()` | |
+| 请求体 | Pydantic Model | |
+| 依赖注入 | `Depends()` | |
+
+> `Field()` 仅用于 Pydantic 模型内部，路由参数必须用以上 FastAPI 装饰器。
+
+## 易错点
+
+| 错误写法 | 正确写法 |
+|---------|---------|
+| `return error_response(...)` | `resp, _ = error_response(...); return resp`（必须解包 tuple）|
+| 路由参数用 `Field(ge=1)` | 路由参数用 `Query(ge=1)` |
+| `app.include_router(router)` | `app.include_router(router.router)`（用 PyCore APIRouter 时）|
+
+## 深入阅读
+
+- 完整 API 规范（认证实现、中间件、CORS 配置）：`pycore/docs/specs/api.md`
