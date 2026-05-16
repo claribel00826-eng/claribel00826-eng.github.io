@@ -507,8 +507,19 @@
     persistChatHistory();
   }
 
+  function isDemoPagesHost() {
+    return /\.github\.io$/i.test(location.hostname);
+  }
+
   function isTemplateFollowupEntry() {
-    return new URLSearchParams(location.search).get('tpl') === 'followup';
+    const params = new URLSearchParams(location.search);
+    if (params.get('tpl') === 'off') return false;
+    if (params.get('tpl') === 'followup') return true;
+    /* GitHub Pages 演示：登录后进入 #chat 默认展示左侧服务号模板区 */
+    if (isDemoPagesHost()) {
+      return !!localStorage.getItem(TOKEN_KEY) && location.hash === '#chat';
+    }
+    return false;
   }
 
   function renderTemplateFollowupCard() {
