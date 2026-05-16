@@ -10,9 +10,9 @@
   --radius: 8px;
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
   --font-title: 'Outfit', -apple-system, sans-serif;
-  /* H5 手机框：避免撑满整页视口 */
+  /* H5 手机框：避免撑满整页视口（clamp 兼容性好于 min() 作 height） */
   --sc-h5-width: 390px;
-  --sc-h5-height: min(844px, calc(100dvh - 72px));
+  --sc-h5-height: clamp(520px, calc(100dvh - 72px), 844px);
 }
 
 *,
@@ -109,12 +109,21 @@ body {
   width: 100%;
   max-width: var(--sc-h5-width);
   height: var(--sc-h5-height);
-  max-height: var(--sc-h5-height);
+  min-height: 520px;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+.sc-demo-body > .sc-app > .sc-chat {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* 演示：微信服务号 + H5 并排（?tpl=followup） */
@@ -134,8 +143,13 @@ body {
   max-width: var(--sc-h5-width);
   margin: 0;
   height: var(--sc-h5-height);
-  max-height: var(--sc-h5-height);
-  min-height: 0;
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .sc-wx-service {
@@ -243,19 +257,11 @@ body {
 
   .sc-wx-service {
     width: 100%;
-    max-width: 430px;
-    min-height: auto;
+    max-width: var(--sc-h5-width);
   }
 
-  .sc-demo-shell.sc-demo--tpl .sc-app,
-  .sc-demo-body > .sc-app {
-    height: min(844px, calc(100dvh - 88px));
-    max-height: min(844px, calc(100dvh - 88px));
-  }
-
-  .sc-wx-service {
-    height: min(844px, calc(100dvh - 88px));
-    max-height: min(844px, calc(100dvh - 88px));
+  :root {
+    --sc-h5-height: clamp(480px, calc(100dvh - 88px), 844px);
   }
 }
 

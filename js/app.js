@@ -498,10 +498,7 @@
   function isTemplateFollowupEntry() {
     const params = new URLSearchParams(location.search);
     if (params.get('tpl') === 'off') return false;
-    if (params.get('tpl') === 'followup') return true;
-    /* GitHub Pages 演示：登录后进入 #chat 默认展示左侧服务号模板区 */
-    if (isDemoPagesHost()) return true;
-    return false;
+    return true;
   }
 
   function renderTemplateFollowupCard() {
