@@ -491,10 +491,6 @@
     persistChatHistory();
   }
 
-  function isDemoPagesHost() {
-    return /\.github\.io$/i.test(location.hostname);
-  }
-
   function isTemplateFollowupEntry() {
     const params = new URLSearchParams(location.search);
     if (params.get('tpl') === 'off') return false;
