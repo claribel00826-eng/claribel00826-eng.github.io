@@ -491,12 +491,6 @@
     persistChatHistory();
   }
 
-  function isTemplateFollowupEntry() {
-    const params = new URLSearchParams(location.search);
-    if (params.get('tpl') === 'off') return false;
-    return true;
-  }
-
   function renderTemplateFollowupCard() {
     const n = followUps().length;
     const t = DemoData.templateFollowup || {};
@@ -526,12 +520,6 @@
     const panel = $('#wx-service-panel');
     const mount = $('#wx-template-mount');
     if (!shell || !panel || !mount) return;
-    if (!isTemplateFollowupEntry()) {
-      shell.classList.remove('sc-demo--tpl');
-      panel.classList.add('sc-hidden');
-      mount.innerHTML = '';
-      return;
-    }
     shell.classList.add('sc-demo--tpl');
     panel.classList.remove('sc-hidden');
     mount.innerHTML = renderTemplateFollowupCard();

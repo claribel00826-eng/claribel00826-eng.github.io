@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="css/annotation.css" />
 </head>
 <body>
-  <div class="sc-demo-shell" id="demo-shell">
+  <div class="sc-demo-shell sc-demo--tpl" id="demo-shell">
     <div class="sc-demo-toolbar" aria-label="演示控制（非 H5 内）">
       <button
         type="button"
@@ -30,10 +30,10 @@
         设计标注
       </button>
       <a class="sc-demo-toolbar__link" href="annotation-docs/index.html" target="_blank" rel="noopener">标注文档</a>
-      <span class="sc-demo-toolbar__hint">演示用 · 左侧为微信模板消息 · 本地可加 <code>?tpl=followup</code> 或 <code>?tpl=off</code> 关闭</span>
+      <span class="sc-demo-toolbar__hint">演示用 · 左侧为微信模板消息，右侧为 H5 销售助手</span>
     </div>
     <div class="sc-demo-body" id="demo-body">
-    <aside id="wx-service-panel" class="sc-wx-service sc-hidden" aria-label="微信服务号消息（演示，非 H5 内）">
+    <aside id="wx-service-panel" class="sc-wx-service" aria-label="微信服务号消息（演示，非 H5 内）">
       <div class="sc-wx-service__status">
         <span class="sc-wx-service__time">9:41</span>
       </div>
