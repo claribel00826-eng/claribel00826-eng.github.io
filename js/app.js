@@ -89,43 +89,27 @@
     toast._t = setTimeout(() => el.classList.remove('is-show'), 2000);
   }
 
+  function ensureDemoSession() {
+    localStorage.setItem(TOKEN_KEY, '1');
+  }
+
   function showChatView() {
-    $('#view-login').classList.add('sc-hidden');
-    $('#view-chat').classList.remove('sc-hidden');
+    const chat = $('#view-chat');
+    if (chat) chat.classList.remove('sc-hidden');
     refreshHeader();
     syncExternalTemplatePanel();
   }
 
-  function showLoginView() {
-    $('#view-login').classList.remove('sc-hidden');
-    $('#view-chat').classList.add('sc-hidden');
-    syncExternalTemplatePanel();
-  }
-
   function route() {
-    const loggedIn = !!localStorage.getItem(TOKEN_KEY);
-    const hash = location.hash;
-
-    if (loggedIn) {
-      if (!hash || hash === '#login') {
-        if (hash !== '#chat') location.hash = '#chat';
-      }
-      if (location.hash === '#chat') {
-        showChatView();
-        return;
-      }
+    ensureDemoSession();
+    if (!location.hash || location.hash === '#login') {
+      location.hash = '#chat';
     }
-
-    if (hash === '#chat' && loggedIn) {
-      showChatView();
-      return;
-    }
-
-    showLoginView();
+    showChatView();
   }
 
   function bootChatSession() {
-    if (!localStorage.getItem(TOKEN_KEY)) return;
+    ensureDemoSession();
     if (!location.hash || location.hash === '#login') {
       location.hash = '#chat';
     }
@@ -516,9 +500,7 @@
     if (params.get('tpl') === 'off') return false;
     if (params.get('tpl') === 'followup') return true;
     /* GitHub Pages 演示：登录后进入 #chat 默认展示左侧服务号模板区 */
-    if (isDemoPagesHost()) {
-      return !!localStorage.getItem(TOKEN_KEY) && location.hash === '#chat';
-    }
+    if (isDemoPagesHost()) return true;
     return false;
   }
 
@@ -564,10 +546,7 @@
   }
 
   function handleTemplateFollowupFromWx() {
-    if (!localStorage.getItem(TOKEN_KEY)) {
-      toast('请先登录');
-      return;
-    }
+    ensureDemoSession();
     location.hash = '#chat';
     route();
     initWelcome();
@@ -1059,24 +1038,6 @@
     });
   }
 
-  function initLogin() {
-    $('#login-form').onsubmit = (e) => {
-      e.preventDefault();
-      const u = $('#login-user').value.trim();
-      const p = $('#login-pass').value;
-      if (!u || !p) {
-        toast('请输入账号和密码');
-        return;
-      }
-      const wasLoggedIn = !!localStorage.getItem(TOKEN_KEY);
-      localStorage.setItem(TOKEN_KEY, '1');
-      location.hash = '#chat';
-      route();
-      if (!wasLoggedIn) resetChat();
-      else bootChatSession();
-    };
-  }
-
   function initChat() {
     $('#header-customer').onclick = openCustomerSheet;
     const clearCustomerBtn = $('#clear-customer-chat');
@@ -1252,18 +1213,16 @@
   function init() {
     loadState();
     if (!state.ctx) state.ctx = {};
-    initLogin();
     initChat();
     window.addEventListener('hashchange', () => {
       route();
-      if (location.hash === '#chat' && localStorage.getItem(TOKEN_KEY)) {
+      if (location.hash === '#chat') {
         initWelcome();
         refreshHeader();
         if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
       }
     });
     window.addEventListener('pageshow', (e) => {
-      if (!localStorage.getItem(TOKEN_KEY)) return;
       route();
       if (e.persisted) {
         const box = $('#messages');

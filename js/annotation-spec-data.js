@@ -1,50 +1,11 @@
 /** 与 annotation-docs/01-首页与待跟进.md 一一对应 */
 window.AnnotationSpecData = {
-  'login-brand': {
-    name: '登录页品牌区',
-    module: '1.1',
-    content: ['Logo「销」、标题「销售助手」、副标题「制造业智能销售伙伴」'],
-    query: [],
-    interaction: ['只读展示']
-  },
-  'login-input': {
-    name: '登录输入框',
-    module: '1.1',
-    content: ['账号/密码输入；圆角输入框样式见 design-spec'],
-    query: [],
-    interaction: ['提交前前端非空校验（演示）']
-  },
-  'login-btn': {
-    name: '登录按钮',
-    module: '1.1',
-    content: ['主按钮「登录」'],
-    query: [],
-    interaction: ['演示账号 demo/123456 → 进入对话页 #chat']
-  },
   'chat-bubble-user': {
     name: '用户消息气泡',
     module: '2.3',
     content: ['右对齐用户话术气泡'],
     query: [],
     interaction: ['展示用户发送的文字（含模拟发送）']
-  },
-  'wx-template-panel': {
-    name: '微信服务号 · 模板消息区',
-    module: '3.4',
-    content: [
-      '演示入口：GitHub Pages 登录后 #chat 默认显示；或地址带 ?tpl=followup（与右侧 H5 并排）',
-      '顶栏：返回、服务号名称「销售助手服务号」',
-      '会话行：服务号头像 + 模板消息气泡（内含待跟进模板卡）',
-      '底部说明：微信内模板消息；点击按钮进入 H5 并拉取待跟进列表'
-    ],
-    query: [
-      '服务号模板消息由微信后台配置；演示页用静态卡还原字段与跳转语义',
-      '待跟进企业数量 N 与今日待跟进查询接口一致'
-    ],
-    interaction: [
-      '用户从微信点击服务号推送的模板消息 → 打开 H5（深链 tpl=followup）→ 左侧展示本区',
-      '点击模板卡按钮 → 见 card-template-followup'
-    ]
   },
   'card-template-followup': {
     name: '模板消息卡（待跟进）',
@@ -64,8 +25,8 @@ window.AnnotationSpecData = {
     interaction: [
       '【推送时机】每工作日 09:00 自动推送（正式环境按企业配置）',
       '【微信侧】用户在微信服务号会话中看到模板消息（样式由微信模板定义）',
-      '【演示】GitHub Pages 登录后 #chat 默认展示；本地需 ?tpl=followup；可用 ?tpl=off 关闭',
-      '【点击「查看待跟进列表」】须已登录 → 进入对话页 → 写入/刷新首屏 → 模拟发送「今日待跟进」→ 约 300ms 后回复待跟进列表卡',
+      '【演示】GitHub Pages 默认展示左侧微信区；本地需 ?tpl=followup；可用 ?tpl=off 关闭',
+      '【点击「查看待跟进列表」】进入对话页 → 写入/刷新首屏 → 模拟发送「今日待跟进」→ 约 300ms 后回复待跟进列表卡',
       '【等价操作】待跟进摘要卡点列表、技能条「待跟进」、话术含「今日待跟进」'
     ]
   },

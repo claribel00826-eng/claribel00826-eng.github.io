@@ -16,7 +16,7 @@
         type="button"
         id="btn-demo-reset"
         class="sc-demo-reset-btn"
-        title="清除本地会话并恢复为登录后首屏欢迎态"
+        title="清除本地会话并恢复为首屏欢迎态"
       >
         初始化页面
       </button>
@@ -30,10 +30,10 @@
         设计标注
       </button>
       <a class="sc-demo-toolbar__link" href="annotation-docs/index.html" target="_blank" rel="noopener">标注文档</a>
-      <span class="sc-demo-toolbar__hint">演示用 · 登录 demo/123456 后进入对话页即展示左侧模板消息 · 本地可加 <code>?tpl=followup</code></span>
+      <span class="sc-demo-toolbar__hint">演示用 · 左侧为微信模板消息 · 本地可加 <code>?tpl=followup</code> 或 <code>?tpl=off</code> 关闭</span>
     </div>
     <div class="sc-demo-body" id="demo-body">
-    <aside id="wx-service-panel" class="sc-wx-service sc-hidden" data-spec-id="wx-template-panel" aria-label="微信服务号消息（演示，非 H5 内）">
+    <aside id="wx-service-panel" class="sc-wx-service sc-hidden" aria-label="微信服务号消息（演示，非 H5 内）">
       <div class="sc-wx-service__status">
         <span class="sc-wx-service__time">9:41</span>
       </div>
@@ -51,24 +51,7 @@
       </div>
     </aside>
     <div class="sc-app">
-    <div id="view-login" class="sc-login" data-spec-id="login-brand">
-      <div class="sc-login__brand">
-        <div class="sc-login__logo">销</div>
-        <h1 class="sc-login__title">销售助手</h1>
-        <p class="sc-login__sub">制造业智能销售伙伴</p>
-      </div>
-      <form id="login-form">
-        <div class="sc-field" data-spec-id="login-input">
-          <input class="sc-input" id="login-user" type="text" placeholder="请输入手机号或账号" autocomplete="username" />
-        </div>
-        <div class="sc-field" data-spec-id="login-input">
-          <input class="sc-input" id="login-pass" type="password" placeholder="请输入密码" autocomplete="current-password" />
-        </div>
-        <button type="submit" class="sc-btn sc-btn--primary" data-spec-id="login-btn">登录</button>
-      </form>
-      <p class="sc-login__hint">演示账号：demo / 123456<br />模板入口：地址带 <code>?tpl=followup</code>，左侧为微信服务号消息</p>
-    </div>
-    <div id="view-chat" class="sc-chat sc-hidden">
+    <div id="view-chat" class="sc-chat">
       <header class="sc-header" data-spec-id="chat-header">
         <span class="sc-header__title" id="header-title">销售助手 · Pro</span>
       </header>
