@@ -10,9 +10,9 @@
   --radius: 8px;
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
   --font-title: 'Outfit', -apple-system, sans-serif;
-  /* H5 模拟视口高度（相对全屏缩短 10%） */
-  --sc-h5-height: 90vh;
-  --sc-h5-height-dvh: 90dvh;
+  /* H5 手机框：避免撑满整页视口 */
+  --sc-h5-width: 390px;
+  --sc-h5-height: min(844px, calc(100dvh - 72px));
 }
 
 *,
@@ -96,6 +96,25 @@ body {
 .sc-demo-body {
   flex: 1;
   min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+.sc-demo-body > .sc-app {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: var(--sc-h5-width);
+  height: var(--sc-h5-height);
+  max-height: var(--sc-h5-height);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 演示：微信服务号 + H5 并排（?tpl=followup） */
@@ -112,12 +131,11 @@ body {
 .sc-demo-shell.sc-demo--tpl .sc-app {
   flex: 0 0 auto;
   width: 100%;
-  max-width: 430px;
+  max-width: var(--sc-h5-width);
   margin: 0;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  overflow: hidden;
-  min-height: calc(var(--sc-h5-height) - 32px);
+  height: var(--sc-h5-height);
+  max-height: var(--sc-h5-height);
+  min-height: 0;
 }
 
 .sc-wx-service {
@@ -129,7 +147,9 @@ body {
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   background: #ededed;
-  min-height: 640px;
+  height: var(--sc-h5-height);
+  max-height: var(--sc-h5-height);
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -227,16 +247,22 @@ body {
     min-height: auto;
   }
 
-  .sc-demo-shell.sc-demo--tpl .sc-app {
-    min-height: var(--sc-h5-height);
+  .sc-demo-shell.sc-demo--tpl .sc-app,
+  .sc-demo-body > .sc-app {
+    height: min(844px, calc(100dvh - 88px));
+    max-height: min(844px, calc(100dvh - 88px));
+  }
+
+  .sc-wx-service {
+    height: min(844px, calc(100dvh - 88px));
+    max-height: min(844px, calc(100dvh - 88px));
   }
 }
 
 .sc-app {
   position: relative;
-  max-width: 430px;
+  max-width: var(--sc-h5-width);
   margin: 0 auto;
-  min-height: 100%;
   background: var(--color-bg);
   isolation: isolate;
 }
@@ -354,14 +380,13 @@ body {
   color: var(--color-text-muted);
 }
 
-/* Chat layout */
+/* Chat layout（高度由外层 .sc-app 手机框约束） */
 .sc-chat {
   display: flex;
   flex-direction: column;
-  height: var(--sc-h5-height);
-  height: var(--sc-h5-height-dvh);
-  max-height: var(--sc-h5-height);
-  max-height: var(--sc-h5-height-dvh);
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 
 .sc-header {
