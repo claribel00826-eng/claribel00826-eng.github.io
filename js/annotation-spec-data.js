@@ -160,8 +160,6 @@ window.AnnotationSpecData = {
       '<tr><td>待跟进</td><td>不要求</td><td>仅全局·功能</td><td>待跟进列表卡</td></tr>' +
       '<tr><td>写跟进</td><td>必填</td><td>全局 → 表单槽</td><td>写跟进抽屉</td></tr>' +
       '<tr><td>切换客户</td><td>不要求</td><td>仅全局·功能</td><td>选客户引导 / 列表</td></tr>' +
-      '<tr><td>帮助</td><td>不要求</td><td>仅全局·功能</td><td>说明文案</td></tr>' +
-      '<tr><td>兜底</td><td>不要求</td><td>意图未命中</td><td>引导文案</td></tr>' +
       '</tbody></table></div>' +
       '<p class="sc-spec-panel__label">话术示例</p>' +
       '<div class="sc-spec-table-wrap"><table class="sc-spec-table">' +
@@ -169,7 +167,6 @@ window.AnnotationSpecData = {
       '<tr><td>待跟进</td><td>今日待跟进</td></tr>' +
       '<tr><td>写跟进</td><td>写跟进；给华东精密机械写跟进，已拜访确认需求</td></tr>' +
       '<tr><td>切换客户</td><td>切换客户</td></tr>' +
-      '<tr><td>帮助</td><td>帮助</td></tr>' +
       '</tbody></table></div>'
   },
   'chat-welcome': {
