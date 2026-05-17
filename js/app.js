@@ -63,8 +63,43 @@
     return DemoData.customers.filter((c) => c.enterpriseId === state.enterpriseId);
   }
 
+  function todayYmd() {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10);
+  }
+
+  function getCustomerReminderDate(c) {
+    if (!c) return '';
+    const patches = state.ctx && state.ctx.customerPatches;
+    if (patches && patches[c.id] && 'reminderDate' in patches[c.id]) {
+      return patches[c.id].reminderDate || '';
+    }
+    return c.reminderDate || '';
+  }
+
+  function setCustomerReminderDate(customerId, reminderDate) {
+    const c = DemoData.customers.find((x) => x.id === customerId);
+    const val = (reminderDate || '').trim();
+    if (c) c.reminderDate = val || null;
+    if (!state.ctx.customerPatches) state.ctx.customerPatches = {};
+    state.ctx.customerPatches[customerId] = {
+      ...(state.ctx.customerPatches[customerId] || {}),
+      reminderDate: val
+    };
+    saveState();
+  }
+
+  /** 未设置提醒日期 → 每日推送；已设置 → 仅当今日 ≥ 提醒日期时纳入待跟进推送 */
+  function isDueForFollowUpPush(c) {
+    const rd = getCustomerReminderDate(c);
+    if (!rd) return true;
+    return rd <= todayYmd();
+  }
+
   function followUps() {
     return customersForEnterprise()
+      .filter(isDueForFollowUpPush)
       .slice()
       .sort((a, b) => {
         const ta = new Date(a.updatedAt || 0).getTime();
@@ -1112,6 +1147,8 @@
     $('#follow-content').value = prefill.content || '';
     $('#follow-time').value = nowDatetimeLocal();
     $('#follow-status').value = prefill.status === 'done' ? 'done' : 'ongoing';
+    const reminderEl = $('#follow-reminder-date');
+    if (reminderEl) reminderEl.value = prefill.reminderDate != null ? prefill.reminderDate : getCustomerReminderDate(c);
     $('#overlay-follow').classList.remove('sc-hidden');
     state._followCustomerId = c.id;
   }
@@ -1423,6 +1460,7 @@
       const addr = $('#follow-ship-address').value.trim();
       const content = $('#follow-content').value.trim();
       const time = $('#follow-time').value;
+      const reminderDate = ($('#follow-reminder-date') && $('#follow-reminder-date').value) || '';
       const status = $('#follow-status');
       const statusLabel = status.options[status.selectedIndex].text;
       if (!name || !phone) {
@@ -1438,7 +1476,11 @@
         return;
       }
       const c = getCustomer(state._followCustomerId || state.customerId);
+      if (c) setCustomerReminderDate(c.id, reminderDate);
       closeOverlays();
+      const reminderNote = reminderDate
+        ? '提醒日期：' + reminderDate + '（自该日起推送待跟进）'
+        : '提醒日期：未设置（每个工作日推送待跟进）';
       const summary =
         '联系人：' +
         name +
@@ -1451,7 +1493,9 @@
         '\n时间：' +
         time.replace('T', ' ') +
         '，状态：' +
-        statusLabel;
+        statusLabel +
+        '\n' +
+        reminderNote;
       pushUserMsg('已提交跟进记录');
       setTimeout(
         () =>
@@ -1462,6 +1506,8 @@
               escapeHtml(statusLabel) +
               '）。<br><span style="font-size:12px;color:#71717A">' +
               escapeHtml(content) +
+              '</span><br><span style="font-size:12px;color:#71717A">' +
+              escapeHtml(reminderNote) +
               '</span>'
           ),
         200

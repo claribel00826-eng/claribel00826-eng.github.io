@@ -24,6 +24,7 @@ window.DemoData = {
       contactAddress: '江苏省苏州市工业园区星湖街 328 号',
       shipAddress: '江苏省苏州市工业园区星湖街 328 号',
       address: '江苏省苏州市工业园区',
+      reminderDate: null,
       updatedAt: '2026-05-16T09:20:00'
     },
     {
@@ -44,6 +45,7 @@ window.DemoData = {
       contactAddress: '江苏省苏州市吴中区甪直镇工业园 A 栋',
       shipAddress: '江苏省苏州市吴中区甪直镇工业园',
       address: '江苏省苏州市吴中区',
+      reminderDate: null,
       updatedAt: '2026-05-15T14:00:00'
     },
     {
@@ -64,6 +66,7 @@ window.DemoData = {
       contactAddress: '广东省深圳市南山区科技园南路 18 号',
       shipAddress: '广东省深圳市南山区科技园南路',
       address: '广东省深圳市南山区',
+      reminderDate: '2026-05-20',
       updatedAt: '2026-05-14T11:30:00'
     },
     {
@@ -84,6 +87,7 @@ window.DemoData = {
       contactAddress: '广东省广州市番禺区大石街道工业大道 66 号',
       shipAddress: '广东省广州市番禺区大石街道',
       address: '广东省广州市番禺区',
+      reminderDate: '2026-05-16',
       updatedAt: '2026-05-13T16:45:00'
     }
   ],

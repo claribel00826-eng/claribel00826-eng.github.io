@@ -20,7 +20,7 @@ window.AnnotationSpecData = {
       'N：今日待跟进查询 → 待跟进企业数量（与摘要卡、列表卡一致）'
     ],
     interaction: [
-      '【推送时机】每工作日 09:00 自动推送（正式环境按企业配置）',
+      '【推送时机】每工作日 09:00 自动推送（正式环境按企业配置）；推送名单受客户「提醒日期」过滤（见 data-rules-followup）',
       '【微信侧】用户在微信服务号会话中看到模板消息（样式由微信模板定义）',
       '【点击「查看待跟进列表」】进入对话页 → 写入/刷新首屏 → 模拟发送「今日待跟进」→ 约 300ms 后回复待跟进列表卡'
     ]
@@ -125,49 +125,49 @@ window.AnnotationSpecData = {
     interaction: ['语音：松开后转文字再路由；键盘：发送后路由']
   },
   'chat-llm': {
-    name: '意图分配（三槽位）',
+    name: '意图分配与填槽',
     module: '5.1',
-
+    content: [
+      '用户输入 → 意图识别填全局槽 → 按功能路由跳转',
+      '写跟进：全局槽齐备后开抽屉，再填表单槽并提交'
+    ],
+    query: [],
     interaction: [
-      '认功能 → 写跟进再认客户 → 开抽屉按表单填槽',
-      '写跟进表单字段与校验见「写跟进 · 表单填槽」表',
-      '其他功能见「功能路由」表'
+      '① 意图阶段：填全局槽（功能 / 客户 / 产品）',
+      '② 写跟进：开抽屉后填表单槽（联系人等），校验见槽位总表',
+      '功能命中与缺槽处理见「功能路由」表'
     ],
     extraHtml:
-      '<p class="sc-spec-panel__label">槽位（本期）</p>' +
-      '<div class="sc-spec-table-wrap"><table class="sc-spec-table">' +
-      '<thead><tr><th>槽位</th><th>谁要填</th><th>从哪来</th></tr></thead><tbody>' +
-      '<tr><td>功能</td><td>都要</td><td>话术、语音、功能格、技能条</td></tr>' +
-      '<tr><td>客户</td><td>写跟进（开抽屉前）</td><td>顶栏、点选、话里名称、引导补选</td></tr>' +
-      '<tr><td>产品</td><td>本期不用</td><td>—</td></tr>' +
+      '<p class="sc-spec-panel__sub">本期槽位分两层：<strong>全局·意图</strong>（所有输入都要认功能）与 <strong>写跟进·表单</strong>（仅写跟进抽屉）。统一见下表。</p>' +
+      '<p class="sc-spec-panel__label">槽位总表</p>' +
+      '<div class="sc-spec-table-wrap"><table class="sc-spec-table sc-spec-table--slots">' +
+      '<thead><tr><th>层级</th><th>槽位</th><th>必填</th><th>适用</th><th>来源 / 默认</th><th>未填 / 缺槽</th></tr></thead><tbody>' +
+      '<tr class="sc-spec-table__layer-global"><td>全局·意图</td><td>功能</td><td>是</td><td>全部输入</td><td>话术、语音、欢迎功能格、底部技能条</td><td>未命中 → 兜底</td></tr>' +
+      '<tr class="sc-spec-table__layer-global"><td>全局·意图</td><td>客户</td><td>条件</td><td>写跟进等需客户功能</td><td>顶栏、列表点选、话里名称、引导卡补选</td><td>无客户 → 引导补选，不开抽屉</td></tr>' +
+      '<tr class="sc-spec-table__layer-global"><td>全局·意图</td><td>产品</td><td>否</td><td>本期预留</td><td>—</td><td>—</td></tr>' +
+      '<tr class="sc-spec-table__layer-form"><td>写跟进·表单</td><td>联系人</td><td>是</td><td>写跟进</td><td>客户主数据 contactName</td><td>toast：请填写联系人和联系方式</td></tr>' +
+      '<tr class="sc-spec-table__layer-form"><td>写跟进·表单</td><td>联系方式</td><td>是</td><td>写跟进</td><td>客户主数据 contactPhone</td><td>同上</td></tr>' +
+      '<tr class="sc-spec-table__layer-form"><td>写跟进·表单</td><td>发货地址</td><td>否</td><td>写跟进</td><td>客户主数据 shipAddress</td><td>—</td></tr>' +
+      '<tr class="sc-spec-table__layer-form"><td>写跟进·表单</td><td>跟进信息</td><td>是</td><td>写跟进</td><td>默认空；语音/话术可预填（「写跟进」后正文或逗号后内容）</td><td>toast：请填写跟进信息</td></tr>' +
+      '<tr class="sc-spec-table__layer-form"><td>写跟进·表单</td><td>跟进时间</td><td>是</td><td>写跟进</td><td>默认当前时间</td><td>toast：请选择跟进时间</td></tr>' +
+      '<tr class="sc-spec-table__layer-form"><td>写跟进·表单</td><td>跟进状态</td><td>是</td><td>写跟进</td><td>默认「跟进中」；话术含完成类词 →「跟进完成」</td><td>—</td></tr>' +
+      '<tr class="sc-spec-table__layer-form"><td>写跟进·表单</td><td>提醒日期</td><td>否</td><td>写跟进</td><td>客户已存提醒日期或空；空=每日推送</td><td>—</td></tr>' +
       '</tbody></table></div>' +
+      '<p class="sc-spec-panel__sub">表单「跟进中/完成」≠ 待跟进列表里的「待跟进」判定。</p>' +
       '<p class="sc-spec-panel__label">功能路由</p>' +
-      '<p class="sc-spec-panel__sub">写跟进：先意图填功能+客户 → 开抽屉 → 再按表单字段填槽（下表）。</p>' +
       '<div class="sc-spec-table-wrap"><table class="sc-spec-table sc-spec-table--route">' +
-      '<thead><tr><th>功能</th><th>要客户吗</th><th>缺了怎么办</th><th>跳转</th></tr></thead><tbody>' +
-      '<tr><td>待跟进</td><td>否</td><td>未认出意图 → 兜底</td><td>待跟进列表</td></tr>' +
-      '<tr><td>写跟进</td><td>是</td><td>无客户 → 引导补选</td><td>写跟进抽屉</td></tr>' +
-      '<tr><td>切换客户</td><td>否</td><td>—</td><td>选客户引导</td></tr>' +
-      '<tr><td>帮助</td><td>否</td><td>—</td><td>说明文案</td></tr>' +
-      '<tr><td>兜底</td><td>否</td><td>意图未命中</td><td>引导文案</td></tr>' +
+      '<thead><tr><th>功能</th><th>全局·客户</th><th>填槽阶段</th><th>跳转</th></tr></thead><tbody>' +
+      '<tr><td>待跟进</td><td>不要求</td><td>仅全局·功能</td><td>待跟进列表卡</td></tr>' +
+      '<tr><td>写跟进</td><td>必填</td><td>全局 → 表单槽</td><td>写跟进抽屉</td></tr>' +
+      '<tr><td>切换客户</td><td>不要求</td><td>仅全局·功能</td><td>选客户引导 / 列表</td></tr>' +
+      '<tr><td>帮助</td><td>不要求</td><td>仅全局·功能</td><td>说明文案</td></tr>' +
+      '<tr><td>兜底</td><td>不要求</td><td>意图未命中</td><td>引导文案</td></tr>' +
       '</tbody></table></div>' +
-      '<p class="sc-spec-panel__label">写跟进 · 表单填槽</p>' +
-      '<div class="sc-spec-table-wrap"><table class="sc-spec-table">' +
-      '<thead><tr><th>字段</th><th>必填</th><th>打开抽屉时</th><th>未填时</th></tr></thead><tbody>' +
-      '<tr><td>客户（意图）</td><td>是</td><td>已定企业</td><td>不开抽屉，先补客户</td></tr>' +
-      '<tr><td>联系人</td><td>是</td><td>主数据带入</td><td>toast：请填写联系人和联系方式</td></tr>' +
-      '<tr><td>联系方式</td><td>是</td><td>主数据带入</td><td>同上</td></tr>' +
-      '<tr><td>发货地址</td><td>否</td><td>主数据带入</td><td>—</td></tr>' +
-      '<tr><td>跟进信息</td><td>是</td><td>默认空；语音/话术可预填（逗号或「写跟进」后正文）</td><td>toast：请填写跟进信息</td></tr>' +
-      '<tr><td>跟进时间</td><td>是</td><td>默认当前时间</td><td>toast：请选择跟进时间</td></tr>' +
-      '<tr><td>跟进状态</td><td>是</td><td>默认跟进中</td><td>—</td></tr>' +
-      '</tbody></table></div>' +
-      '<p class="sc-spec-panel__sub">表单「跟进中/完成」≠ 新客户判定里的「待跟进」。</p>' +
-      '<p class="sc-spec-panel__label">原型话术示例</p>' +
+      '<p class="sc-spec-panel__label">话术示例</p>' +
       '<div class="sc-spec-table-wrap"><table class="sc-spec-table">' +
       '<thead><tr><th>功能</th><th>示例</th></tr></thead><tbody>' +
       '<tr><td>待跟进</td><td>今日待跟进</td></tr>' +
-      '<tr><td>写跟进</td><td>写跟进；给华东精密机械写跟进</td></tr>' +
+      '<tr><td>写跟进</td><td>写跟进；给华东精密机械写跟进，已拜访确认需求</td></tr>' +
       '<tr><td>切换客户</td><td>切换客户</td></tr>' +
       '<tr><td>帮助</td><td>帮助</td></tr>' +
       '</tbody></table></div>'
@@ -262,29 +262,22 @@ window.AnnotationSpecData = {
     name: '写跟进抽屉',
     module: '4.4',
     content: [
-      '字段：联系人*、联系方式*、发货地址、跟进信息*、跟进时间*、跟进状态（跟进中/完成）',
-      '填槽分两阶段：意图阶段定客户；打开后按主数据带入联系类字段，跟进信息由用户补'
+      '表单字段：联系人*、联系方式*、发货地址、跟进信息*、跟进时间*、跟进状态、提醒日期（选填）',
+      '提醒日期：未设置则每个工作日推送待跟进；已设置则自该日期起纳入推送',
+      '槽位定义见底部「意图」标注 · 槽位总表（写跟进·表单 层级）'
     ],
     query: [
-      '提交：客户 id、企业、跟进人 + 表单各字段',
+      '提交：客户 id、企业、跟进人 + 表单各字段（含提醒日期）',
+      '提醒日期写入客户主数据，用于待跟进推送筛选',
       '联系人/电话/地址：往来单位主数据；跟进内容为本次录入'
     ],
     interaction: [
+      '前置：意图阶段已填全局槽（功能=写跟进、客户已定）',
       '开抽屉：主数据带入联系人等；语音/话术可预填跟进信息与状态',
       '提交校验：联系人+联系方式、跟进信息、跟进时间必填',
-      '入口见意图「写跟进」；成功 → 关闭 + 确认气泡'
-    ],
-    extraHtml:
-      '<p class="sc-spec-panel__label">表单填槽明细</p>' +
-      '<div class="sc-spec-table-wrap"><table class="sc-spec-table">' +
-      '<thead><tr><th>字段</th><th>控件</th><th>必填</th><th>默认/带入</th></tr></thead><tbody>' +
-      '<tr><td>联系人</td><td>文本</td><td>是</td><td>客户.contactName</td></tr>' +
-      '<tr><td>联系方式</td><td>电话</td><td>是</td><td>客户.contactPhone</td></tr>' +
-      '<tr><td>发货地址</td><td>文本</td><td>否</td><td>客户.shipAddress</td></tr>' +
-      '<tr><td>跟进信息</td><td>多行</td><td>是</td><td>空；语音/话术解析后预填</td></tr>' +
-      '<tr><td>跟进时间</td><td>日期时间</td><td>是</td><td>当前时间</td></tr>' +
-      '<tr><td>跟进状态</td><td>下拉</td><td>是</td><td>跟进中</td></tr>' +
-      '</tbody></table></div>'
+      '提醒日期选填：提交后写入客户；影响后续待跟进推送节奏',
+      '成功 → 关闭抽屉 + 确认气泡'
+    ]
   },
   'sheet-customer': {
     name: '切换客户弹窗',
@@ -401,6 +394,7 @@ window.AnnotationSpecData = {
     query: [
       '【老客户待跟进】须同时满足：① 分管人员 = 当前登录用户；② 超时未下单：当前日期 − 订单最近有效日期 > 往来单位「销售提醒天数」（基准日期以企业主数据配置为准；无订单日期是否视为超时由企业主数据约定）',
       '【新客户待跟进】须同时满足：① 分管人员为空；② 当前客户跟进状态=待跟进',
+      '【筛选条件】客户未设置提醒日期 → 每个工作日 09:00 纳入待跟进推送；已设置提醒日期 → 仅当当前日期 ≥ 提醒日期时纳入推送（此前不推送）',
       '【合并】今日待跟进企业列表 = 老客户待跟进 ∪ 新客户待跟进；待跟进企业数量 = 列表企业数；每家仅属一类',
       '【排序】最近更新时间倒序（往来单位或跟进记录的最后更新时间，以接口字段为准）；同时间可按单位名称升序',
       '【条数】一次返回列表全量；摘要卡数量与列表卡行数一致，首屏不截断（若企业配置单次上限，列表分页由接口约定）',

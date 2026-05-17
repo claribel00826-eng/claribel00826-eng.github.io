@@ -276,6 +276,26 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
   white-space: nowrap;
 }
 
+.sc-spec-table--slots th:first-child,
+.sc-spec-table--slots td:first-child {
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.sc-spec-table__layer-global td:first-child {
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+.sc-spec-table__layer-form td:first-child {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.sc-spec-table__layer-global + .sc-spec-table__layer-form td {
+  border-top: 2px solid #d4d4d8;
+}
+
 @media (max-width: 640px) {
   body.sc-spec-on .sc-app {
     padding-bottom: 42vh;
