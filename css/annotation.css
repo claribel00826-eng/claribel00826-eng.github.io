@@ -181,7 +181,7 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
 
 /* 消息区整体：钉在客户条下方、消息列表右上，避开微信模板区与「清空记录」 */
 .sc-chat-dialog.sc-spec-pin-host > .sc-spec-pin {
-  top: 52px;
+  top: 6px;
   right: 10px;
   left: auto;
   z-index: 30;

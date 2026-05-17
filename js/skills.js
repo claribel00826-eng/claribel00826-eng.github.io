@@ -15,10 +15,17 @@ window.Skills = (function () {
     return (DemoData.skillUtterances && DemoData.skillUtterances[id]) || id;
   }
 
-  function requireCustomer() {
+  function enterSkill(skillId) {
+    if (App.switchActiveSkill) App.switchActiveSkill(skillId, { skipSkillAnnounce: true });
+  }
+
+  function requireCustomer(pendingSkillId) {
     const c = App.getCustomer(App.state.selectedFollowUpId || App.state.customerId);
     if (c) return c;
-    App.pushAiHtml('请先在右上角选择客户，或从待跟进列表选择一家企业。');
+    const skillId = pendingSkillId || App.state.activeSkill;
+    if (App.promptForCustomerSelection && skillId) {
+      App.promptForCustomerSelection(skillId, { skipUserMsg: true, delayMs: 0 });
+    }
     return null;
   }
 
@@ -432,6 +439,95 @@ window.Skills = (function () {
     App.$('#overlay-service').classList.remove('sc-hidden');
   }
 
+  function renderInsightCard(title, rows, specId) {
+    const body = rows
+      .map(
+        (r) =>
+          '<div class="sc-detail-item"><span class="sc-detail-label">' +
+          App.escapeHtml(r.label) +
+          '</span><span class="sc-detail-value">' +
+          App.escapeHtml(r.value) +
+          '</span></div>'
+      )
+      .join('');
+    const specAttr = specId ? ' data-spec-id="' + specId + '"' : '';
+    return (
+      '<div class="sc-card sc-card--detail"' +
+      specAttr +
+      '><div class="sc-card__head sc-card__head--compact">' +
+      App.escapeHtml(title) +
+      '</div><div class="sc-detail-grid">' +
+      body +
+      '</div></div>'
+    );
+  }
+
+  function runCapacity() {
+    const c = requireCustomer();
+    if (!c) return;
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为 <strong>' +
+        App.escapeHtml(c.name) +
+        '</strong> 汇总近 30 日产能：</p>' +
+        renderInsightCard('产能分析', [
+          { label: '产线负荷', value: '82%（3 条线满负荷）' },
+          { label: '可承诺日产能', value: '轴承组件 120 件/日' },
+          { label: '瓶颈工序', value: '热处理 · 平均等待 1.5 天' },
+          { label: '建议', value: '交期 ≤14 天订单可优先排产' }
+        ], 'card-insight-capacity')
+    );
+  }
+
+  function runInventory() {
+    const c = requireCustomer();
+    if (!c) return;
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为 <strong>' +
+        App.escapeHtml(c.name) +
+        '</strong> 查询在库与在途：</p>' +
+        renderInsightCard('库存查询', [
+          { label: '轴承组件 A 型', value: '现货 860 件 · 在途 200 件' },
+          { label: '传动齿轮箱 M3', value: '现货 42 台 · 安全库存 30 台' },
+          { label: '伺服电机 750W', value: '现货 18 台 · 预计 5 月 22 日到货' },
+          { label: '齐套率', value: '当前方案 SKU 齐套率 94%' }
+        ], 'card-insight-inventory')
+    );
+  }
+
+  function runBizAnalysis() {
+    const c = requireCustomer();
+    if (!c) return;
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为 <strong>' +
+        App.escapeHtml(c.name) +
+        '</strong> 生成业务分析：</p>' +
+        renderInsightCard('业务分析', [
+          { label: '近 12 月销售额', value: c.lastOrderAmount === '—' ? '暂无成交' : '累计 ¥318 万' },
+          { label: '同比', value: '+12.4%' },
+          { label: '订单频次', value: '月均 2.1 单' },
+          { label: '主力品类', value: '轴承组件、齿轮箱' },
+          { label: '客户等级', value: (c.level || '—') + ' 级' }
+        ], 'card-insight-biz')
+    );
+  }
+
+  function runPayment() {
+    const c = requireCustomer();
+    if (!c) return;
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为 <strong>' +
+        App.escapeHtml(c.name) +
+        '</strong> 汇总回款情况：</p>' +
+        renderInsightCard('回款分析', [
+          { label: '应收余额', value: '¥186,400' },
+          { label: '逾期', value: '¥42,000（逾期 18 天）' },
+          { label: '本月已回款', value: '¥96,400' },
+          { label: '最近回款日', value: '2026-05-12' },
+          { label: '信用建议', value: '逾期部分建议跟进对账后再下新单' }
+        ], 'card-insight-payment')
+    );
+  }
+
   function submitService() {
     const desc = App.$('#service-desc').value.trim();
     if (!desc) {
@@ -481,6 +577,18 @@ window.Skills = (function () {
       case 'service':
         runService();
         break;
+      case 'capacity':
+        runCapacity();
+        break;
+      case 'inventory':
+        runInventory();
+        break;
+      case 'biz-analysis':
+        runBizAnalysis();
+        break;
+      case 'payment':
+        runPayment();
+        break;
       default:
         App.toast('未知能力');
     }
@@ -488,35 +596,63 @@ window.Skills = (function () {
 
   function tryIntent(t) {
     if (/方案|配个方案|做方案/.test(t)) {
+      enterSkill('plan');
       startPlan();
       return true;
     }
     if (/报价/.test(t)) {
+      enterSkill('quote');
       runQuote();
       return true;
     }
     if (/交期|什么时候交/.test(t)) {
+      enterSkill('delivery');
       runDelivery();
       return true;
     }
     if (/下单|生成订单/.test(t)) {
+      enterSkill('order');
       runOrder();
       return true;
     }
     if (/复制|老订单/.test(t)) {
+      enterSkill('copy');
       runCopy();
       return true;
     }
     if (/变更.*订单|改订单/.test(t)) {
+      enterSkill('change');
       runChange();
       return true;
     }
     if (/进度|订单到哪|查订单/.test(t)) {
+      enterSkill('progress');
       runProgress();
       return true;
     }
     if (/投诉|售后|客服/.test(t)) {
+      enterSkill('service');
       runService();
+      return true;
+    }
+    if (/产能/.test(t)) {
+      enterSkill('capacity');
+      runCapacity();
+      return true;
+    }
+    if (/库存/.test(t)) {
+      enterSkill('inventory');
+      runInventory();
+      return true;
+    }
+    if (/业务分析|经营分析/.test(t)) {
+      enterSkill('biz-analysis');
+      runBizAnalysis();
+      return true;
+    }
+    if (/回款|应收/.test(t)) {
+      enterSkill('payment');
+      runPayment();
       return true;
     }
     return false;
@@ -553,18 +689,22 @@ window.Skills = (function () {
       return true;
     }
     if (action === 'skill-quote') {
+      enterSkill('quote');
       runQuote();
       return true;
     }
     if (action === 'skill-delivery') {
+      enterSkill('delivery');
       runDelivery();
       return true;
     }
     if (action === 'skill-order') {
+      enterSkill('order');
       runOrder();
       return true;
     }
     if (action === 'skill-plan') {
+      enterSkill('plan');
       startPlan();
       return true;
     }

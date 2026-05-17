@@ -52,29 +52,37 @@
     </aside>
     <div class="sc-app">
     <div id="view-chat" class="sc-chat">
-      <header class="sc-header" data-spec-id="chat-header">
-        <span class="sc-header__title" id="header-title">销售助手 · Pro</span>
-      </header>
-      <section class="sc-chat-dialog" data-spec-id="chat-messages">
-      <div class="sc-current-customer">
-        <div class="sc-current-customer__row">
-          <div class="sc-current-customer__picker" data-spec-id="chat-current-customer">
-            <button type="button" class="sc-current-customer__btn" id="header-customer" aria-label="切换客户">
-              <span class="sc-current-customer__meta">
-                <span class="sc-current-customer__label">当前客户</span>
-                <span class="sc-current-customer__name" id="current-customer-name">请选择客户</span>
-              </span>
-              <span class="sc-current-customer__tags" id="current-customer-tags"></span>
-              <span class="sc-current-customer__chevron" aria-hidden="true">›</span>
-            </button>
+      <header class="sc-header sc-header--with-status">
+        <div class="sc-header__top">
+          <span class="sc-header__title" id="header-title" data-spec-id="chat-header">销售助手 · Pro</span>
+          <button
+            type="button"
+            class="sc-header__clear"
+            id="clear-customer-chat"
+            data-spec-id="btn-clear-customer-chat"
+            aria-label="清空全部对话记录"
+          >
+            清空记录
+          </button>
+        </div>
+        <div class="sc-header__status" data-spec-id="chat-context-bar">
+          <div class="sc-status-item" data-spec-id="chat-current-skill">
+            <span class="sc-status-label">当前功能</span>
+            <span class="sc-status-value" id="header-skill">—</span>
           </div>
-          <div class="sc-current-customer__clear-wrap" data-spec-id="btn-clear-customer-chat">
-            <button type="button" class="sc-current-customer__clear" id="clear-customer-chat" aria-label="清空全部对话记录">
-              清空记录
-            </button>
+          <div class="sc-status-item sc-status-item--customer" data-spec-id="chat-current-customer">
+            <span class="sc-status-label">当前客户</span>
+            <span class="sc-status-value sc-status-value--empty" id="header-customer-display">未选择</span>
+            <span class="sc-status-tags" id="header-customer-tags" aria-hidden="true"></span>
           </div>
         </div>
-      </div>
+      </header>
+      <section
+        class="sc-chat-dialog"
+        data-spec-id="chat-messages"
+        data-spec-pin-root
+        aria-label="对话消息区"
+      >
       <main class="sc-messages" id="messages"></main>
       </section>
       <footer class="sc-dock">

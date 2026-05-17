@@ -131,15 +131,34 @@ window.DemoData = {
     { customerId: 'c3', skillId: 'followup', label: '3 天前' }
   ],
   skills: [
-    { id: 'followup', name: '待跟进', enabled: true },
-    { id: 'plan', name: '方案速配', enabled: true },
-    { id: 'quote', name: '报价', enabled: true },
-    { id: 'delivery', name: '交期', enabled: true },
-    { id: 'order', name: '订单', enabled: true },
-    { id: 'copy', name: '复制', enabled: true },
-    { id: 'change', name: '变更', enabled: true },
-    { id: 'progress', name: '进度', enabled: true },
-    { id: 'service', name: '客服', enabled: true }
+    { id: 'followup', name: '今日待跟', enabled: true, needsCustomer: false },
+    { id: 'plan', name: '方案速配', enabled: true, needsCustomer: true },
+    { id: 'quote', name: '产品报价', enabled: true, needsCustomer: true },
+    { id: 'delivery', name: '交期评审', enabled: true, needsCustomer: true },
+    { id: 'order', name: '确认下单', enabled: true, needsCustomer: true },
+    { id: 'copy', name: '复制订单', enabled: true, needsCustomer: true },
+    { id: 'change', name: '订单变更', enabled: true, needsCustomer: true },
+    { id: 'progress', name: '订单进度', enabled: true, needsCustomer: true },
+    { id: 'capacity', name: '产能分析', enabled: true, needsCustomer: true },
+    { id: 'inventory', name: '库存查询', enabled: true, needsCustomer: true },
+    { id: 'biz-analysis', name: '业务分析', enabled: true, needsCustomer: true },
+    { id: 'payment', name: '回款分析', enabled: true, needsCustomer: true },
+    { id: 'service', name: '客服工单', enabled: true, needsCustomer: true }
+  ],
+  /** 欢迎区功能网格：6×2；文案统一四字 */
+  welcomeFeatures: [
+    { id: 'followup', label: '今日待跟' },
+    { id: 'plan', label: '方案速配' },
+    { id: 'quote', label: '产品报价' },
+    { id: 'delivery', label: '交期评审' },
+    { id: 'order', label: '确认下单' },
+    { id: 'copy', label: '复制订单' },
+    { id: 'change', label: '订单变更' },
+    { id: 'progress', label: '订单进度' },
+    { id: 'capacity', label: '产能分析' },
+    { id: 'inventory', label: '库存查询' },
+    { id: 'biz-analysis', label: '业务分析' },
+    { id: 'payment', label: '回款分析' }
   ],
   skillUtterances: {
     followup: '今日待跟进',
@@ -150,12 +169,18 @@ window.DemoData = {
     copy: '复制上次订单',
     change: '变更订单',
     progress: '查订单进度',
-    service: '客户投诉'
+    capacity: '产能分析',
+    inventory: '库存查询',
+    'biz-analysis': '业务分析',
+    payment: '回款分析',
+    service: '客户投诉',
+    'write-follow': '写跟进',
+    'switch-customer': '切换客户',
+    help: '帮助'
   },
-  welcomeAi:
-    '你好，我是销售助手。可点下方待跟进查看企业，或使用底部 Skill 完成方案、报价、交期、下单等操作。',
+  welcomeAi: '你好，我是销售助手。点下方功能可直达对应能力，也可使用底部技能栏或语音输入。',
   welcomeHelp:
-    '支持：待跟进、方案速配、报价、交期、订单、复制订单、变更、查进度、客服工单。',
+    '支持：待跟进、方案、报价、交期、下单、复制/变更/进度，以及产能分析、库存查询、业务分析、回款分析；底部技能条另有客服等能力。未选客户时，部分功能会提示先选择客户。',
   templateFollowup: {
     channel: '服务号消息',
     title: '今日待跟进提醒',
@@ -165,12 +190,11 @@ window.DemoData = {
   },
   voiceSamples: [
     '今日待跟进',
+    '写跟进',
+    '给华东精密机械有限公司写跟进',
+    '给苏州恒力配件厂记录跟进，今天上午电话沟通了交期，客户希望下周报价',
     '切换客户',
-    '给华东精密配个方案',
-    '报价',
-    '查交期',
-    '生成订单',
-    '查订单进度'
+    '帮助'
   ],
   followStatusOptions: [
     { value: 'ongoing', label: '跟进中' },

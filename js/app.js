@@ -29,12 +29,20 @@
   function loadState() {
     try {
       const s = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
-      state = { ...state, ...s };
+      delete s.activeSkill;
+      state = { ...state, ...s, activeSkill: null };
     } catch (_) {}
   }
 
   function saveState() {
-    localStorage.setItem(STATE_KEY, JSON.stringify(state));
+    const persist = {
+      enterpriseId: state.enterpriseId,
+      customerId: state.customerId,
+      selectedFollowUpId: state.selectedFollowUpId,
+      voiceSampleIdx: state.voiceSampleIdx,
+      ctx: state.ctx
+    };
+    localStorage.setItem(STATE_KEY, JSON.stringify(persist));
   }
 
   function escapeHtml(s) {
@@ -119,31 +127,285 @@
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
   }
 
+  function skillNeedsCustomer(skillId) {
+    if (!skillId || skillId === 'followup' || skillId === 'help') return false;
+    if (skillId === 'write-follow' || skillId === 'switch-customer') return true;
+    const sk = DemoData.skills.find((s) => s.id === skillId);
+    if (sk && typeof sk.needsCustomer === 'boolean') return sk.needsCustomer;
+    return true;
+  }
+
   function refreshHeader() {
     const titleEl = $('#header-title');
     if (titleEl && DemoData.agentName) titleEl.textContent = DemoData.agentName;
-    const c = getCustomer();
-    const nameEl = $('#current-customer-name');
-    const tagsEl = $('#current-customer-tags');
-    const barBtn = $('#header-customer');
-    if (c) {
-      nameEl.textContent = c.name;
-      tagsEl.innerHTML =
-        '<span class="sc-tag sc-tag--category">' +
-        escapeHtml(c.category) +
-        '</span><span class="sc-badge ' +
-        customerTypeBadgeClass(c) +
-        '">' +
-        customerTypeLabel(c) +
-        '</span>';
-      barBtn.title = c.name + ' · ' + c.category + '（点击切换）';
-      barBtn.classList.add('sc-current-customer__btn--selected');
-    } else {
-      nameEl.textContent = '请选择客户';
-      tagsEl.innerHTML = '';
-      barBtn.title = '点击选择当前服务的客户';
-      barBtn.classList.remove('sc-current-customer__btn--selected');
+
+    const skillEl = $('#header-skill');
+    if (skillEl) {
+      skillEl.textContent = state.activeSkill ? getSkillLabel(state.activeSkill) : '—';
     }
+
+    const c = getCustomer();
+    const nameEl = $('#header-customer-display');
+    const tagsEl = $('#header-customer-tags');
+    if (nameEl) {
+      nameEl.textContent = c ? c.name : '未选择';
+      nameEl.classList.toggle('sc-status-value--empty', !c);
+    }
+    if (tagsEl) {
+      if (c) {
+        tagsEl.innerHTML =
+          '<span class="sc-tag sc-tag--category">' +
+          escapeHtml(c.category) +
+          '</span><span class="sc-badge ' +
+          customerTypeBadgeClass(c) +
+          '">' +
+          customerTypeLabel(c) +
+          '</span>';
+        tagsEl.removeAttribute('aria-hidden');
+      } else {
+        tagsEl.innerHTML = '';
+        tagsEl.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    const clearBtn = $('#clear-customer-chat');
+    if (clearBtn) {
+      const hasCustomer = !!c;
+      clearBtn.disabled = !hasCustomer;
+      clearBtn.setAttribute('aria-disabled', hasCustomer ? 'false' : 'true');
+      clearBtn.title = hasCustomer ? '清空全部对话记录' : '请先选择客户';
+    }
+  }
+
+  function buildCustomerPromptHtml(skillName) {
+    const label = skillName || '当前操作';
+    return (
+      '<div class="sc-customer-prompt" data-spec-id="card-customer-prompt">' +
+      '<p class="sc-reply-lead">进行 <strong>' +
+      escapeHtml(label) +
+      '</strong> 需要先确定客户。</p>' +
+      '<p class="sc-card__meta sc-customer-prompt__hint">请直接说出客户名称，或点击下方按钮从列表中选择：</p>' +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--primary" data-action="open-customer-sheet">选择客户</button>' +
+      '</div></div>'
+    );
+  }
+
+  function buildSwitchCustomerPromptHtml() {
+    return (
+      '<div class="sc-customer-prompt" data-spec-id="card-customer-prompt">' +
+      '<p class="sc-reply-lead">请指定要服务的客户。</p>' +
+      '<p class="sc-card__meta sc-customer-prompt__hint">请直接说出客户名称，或点击下方按钮从列表中选择：</p>' +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--primary" data-action="open-customer-sheet">选择客户</button>' +
+      '</div></div>'
+    );
+  }
+
+  function executeSkillAction(skillId, opts) {
+    opts = opts || {};
+    if (skillId === 'switch-customer') return;
+    if (skillId === 'followup') {
+      if (!opts.skipUserMsg) requestFollowUpListByClick();
+      else {
+        setTimeout(replyWithFollowUpList, opts.delayMs != null ? opts.delayMs : 300);
+      }
+      return;
+    }
+    if (skillId === 'write-follow') {
+      const c = getCustomer(state.selectedFollowUpId || state.customerId);
+      if (!opts.skipUserMsg) {
+        pushUserMsg(
+          (DemoData.skillUtterances && DemoData.skillUtterances['write-follow']) || '写跟进'
+        );
+      }
+      if (!c) return;
+      setTimeout(
+        () => openFollowSheet(c, state.pendingFollowFormSlots || {}),
+        opts.delayMs != null ? opts.delayMs : 300
+      );
+      if (state.pendingFollowFormSlots) delete state.pendingFollowFormSlots;
+      return;
+    }
+    const utter =
+      (DemoData.skillUtterances && DemoData.skillUtterances[skillId]) || getSkillLabel(skillId);
+    if (!opts.skipUserMsg) pushUserMsg(utter);
+    setTimeout(() => {
+      if (window.Skills) Skills.run(skillId);
+    }, opts.delayMs != null ? opts.delayMs : 300);
+  }
+
+  function resumePendingSkillRun() {
+    const skillId = state.pendingSkillRun;
+    if (!skillId) return;
+    delete state.pendingSkillRun;
+    executeSkillAction(skillId, { skipUserMsg: true });
+  }
+
+  function tryMatchCustomerByName(text) {
+    const q = (text || '').trim();
+    if (!q) return null;
+    const lower = q.toLowerCase();
+    const items = customersForEnterprise();
+    return (
+      items.find((c) => c.name === q) ||
+      items.find((c) => c.name.toLowerCase().includes(lower)) ||
+      items.find((c) => (c.code && c.code.toLowerCase().includes(lower)))
+    );
+  }
+
+  function isWriteFollowIntent(text) {
+    const t = (text || '').trim();
+    if (!t) return false;
+    if (/写跟进|记录跟进|录入跟进|记一下跟进/.test(t)) return true;
+    return /给.+写跟进|为.+写跟进|帮.+?(?:写|记|录).*?跟进/.test(t);
+  }
+
+  function tryMatchCustomerFromUtterance(text) {
+    const t = (text || '').trim();
+    if (!t) return null;
+    const items = customersForEnterprise()
+      .slice()
+      .sort((a, b) => (b.name || '').length - (a.name || '').length);
+    for (let i = 0; i < items.length; i++) {
+      if (t.indexOf(items[i].name) >= 0) return items[i];
+    }
+    const m = t.match(/(?:给|为|帮)(.+?)(?:写跟进|记录跟进|记一下跟进|录入跟进)/);
+    if (m && m[1]) {
+      return tryMatchCustomerByName(m[1].trim());
+    }
+    return null;
+  }
+
+  /** 从话术/语音解析写跟进表单填槽（联系人等仍由主数据带入） */
+  function parseWriteFollowSlots(text) {
+    const t = (text || '').trim();
+    const slots = {
+      customer: tryMatchCustomerFromUtterance(t),
+      content: '',
+      status: 'ongoing'
+    };
+    if (/跟进完成|已完成跟进|跟进结束了|标记完成/.test(t)) {
+      slots.status = 'done';
+    }
+
+    const afterIntent = t.match(/(?:写跟进|记录跟进|录入跟进|记一下跟进)\s*[,，：:]\s*(.+)/);
+    if (afterIntent && afterIntent[1]) {
+      slots.content = afterIntent[1].trim();
+      return slots;
+    }
+
+    const afterIntentNoSep = t.match(/(?:写跟进|记录跟进|录入跟进|记一下跟进)\s+(.+)/);
+    if (afterIntentNoSep && afterIntentNoSep[1]) {
+      const rest = afterIntentNoSep[1].trim();
+      if (rest.length >= 2) slots.content = rest;
+    }
+
+    if (!slots.content) {
+      let rest = t;
+      if (slots.customer) rest = rest.split(slots.customer.name).join('');
+      rest = rest
+        .replace(/(?:给|为|帮)[^，,：:]*?(?:写跟进|记录跟进|录入跟进|记一下跟进)/, '')
+        .replace(/写跟进|记录跟进|录入跟进|记一下跟进/g, '')
+        .replace(/跟进完成|已完成跟进|跟进结束了|标记完成/g, '')
+        .replace(/^[,，：:\s]+|[,，：:\s]+$/g, '');
+      if (rest.length >= 2) slots.content = rest;
+    }
+
+    return slots;
+  }
+
+  function stashWriteFollowFormSlots(slots) {
+    if (!slots) return;
+    if (slots.content || slots.status === 'done') {
+      state.pendingFollowFormSlots = {
+        content: slots.content || '',
+        status: slots.status || 'ongoing'
+      };
+    } else {
+      delete state.pendingFollowFormSlots;
+    }
+  }
+
+  function openFollowSheetWithPrefill(c, opts) {
+    opts = opts || {};
+    const delay = opts.delayMs != null ? opts.delayMs : 0;
+    const run = () => {
+      const prefill = state.pendingFollowFormSlots || opts.prefill || {};
+      const hadVoiceContent = !!(opts.fromVoice && prefill.content);
+      if (state.pendingFollowFormSlots) delete state.pendingFollowFormSlots;
+      openFollowSheet(c, prefill);
+      if (hadVoiceContent) {
+        pushAiHtml('已根据语音填入跟进信息，请核对联系人、时间与内容后提交。');
+        scrollMessages();
+        persistChatHistory();
+      }
+    };
+    if (delay) setTimeout(run, delay);
+    else run();
+  }
+
+  function handleWriteFollowIntent(text, opts) {
+    opts = opts || {};
+    switchActiveSkill('followup', { skipSkillAnnounce: true });
+    const delay = opts.delayMs != null ? opts.delayMs : 300;
+    const fromSpeech = opts.fromVoice === true;
+    const slots = parseWriteFollowSlots(text);
+    stashWriteFollowFormSlots(slots);
+
+    const matched = slots.customer;
+    if (matched) {
+      switchCustomer(matched.id, { skipCustomerAnnounce: fromSpeech });
+      openFollowSheetWithPrefill(matched, { delay: delay, fromVoice: fromSpeech });
+      return;
+    }
+    const cur = getCustomer(state.selectedFollowUpId || state.customerId);
+    if (cur) {
+      openFollowSheetWithPrefill(cur, { delay: delay, fromVoice: fromSpeech });
+      return;
+    }
+    promptForCustomerSelection('write-follow', { skipUserMsg: true, delayMs: delay });
+  }
+
+  function promptForCustomerSelection(skillId, opts) {
+    opts = opts || {};
+    state.pendingSkillRun = skillId;
+    const skillName = getSkillLabel(skillId === 'write-follow' ? 'followup' : skillId);
+    if (!opts.skipUserMsg) {
+      const utter =
+        (DemoData.skillUtterances && DemoData.skillUtterances[skillId]) || skillName;
+      pushUserMsg(utter);
+    }
+    const delay = opts.delayMs != null ? opts.delayMs : 300;
+    setTimeout(() => {
+      pushAiHtml(buildCustomerPromptHtml(skillName));
+      scrollMessages();
+      persistChatHistory();
+      if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
+    }, delay);
+  }
+
+  function runSkillEntry(skillId) {
+    if (!skillId) return;
+    closeOverlays();
+    if (skillId !== 'write-follow') {
+      const sk = DemoData.skills.find((s) => s.id === skillId);
+      if (sk && !sk.enabled) {
+        toast('该能力即将开放');
+        return;
+      }
+    }
+    const activeSkillId = skillId === 'write-follow' ? 'followup' : skillId;
+    switchActiveSkill(activeSkillId, { skipSkillAnnounce: true });
+    if (!skillNeedsCustomer(skillId)) {
+      executeSkillAction(skillId);
+      return;
+    }
+    if (getCustomer(state.selectedFollowUpId || state.customerId)) {
+      executeSkillAction(skillId);
+      return;
+    }
+    promptForCustomerSelection(skillId);
   }
 
   function getLocalDateKey() {
@@ -281,14 +543,16 @@
 
   function switchActiveSkill(skillId, opts) {
     opts = opts || {};
-    if (!skillId) return;
-    const changed = state.activeSkill !== skillId;
-    state.activeSkill = skillId;
+    if (skillId === undefined) return;
+    const next = skillId || null;
+    const changed = state.activeSkill !== next;
+    state.activeSkill = next;
     saveState();
     renderSkills();
+    refreshHeader();
     scrollActiveSkillIntoView();
-    if (changed && !opts.skipSkillAnnounce) {
-      pushSystem('已切换当前功能：' + getSkillLabel(skillId) + '。');
+    if (changed && next && !opts.skipSkillAnnounce) {
+      pushSystem('已切换当前功能：' + getSkillLabel(next) + '。');
     }
   }
 
@@ -303,6 +567,9 @@
     refreshHeader();
     if (changed && !opts.skipCustomerAnnounce) {
       pushCustomerSwitchPrompt(c);
+    }
+    if (opts.fromPicker && state.pendingSkillRun) {
+      resumePendingSkillRun();
     }
     if (opts.showDetail) {
       pushAiHtml(renderFollowUpDetailCard(c));
@@ -394,6 +661,7 @@
   }
 
   function clearChatHistoryAll() {
+    if (!getCustomer()) return;
     if (
       !window.confirm(
         '确定清空全部对话记录？\n将删除欢迎区、待跟进摘要、最近访问及本会话内所有消息（含本地缓存）。'
@@ -626,8 +894,59 @@
   }
 
   function requestFollowUpListByClick() {
+    switchActiveSkill('followup', { skipSkillAnnounce: true });
     pushUserMsg('今日待跟进');
     setTimeout(replyWithFollowUpList, 300);
+  }
+
+  function buildWelcomeFeatureGridHtml() {
+    const items = DemoData.welcomeFeatures || [];
+    if (!items.length) return '';
+    let html =
+      '<div class="sc-feature-grid" data-spec-id="chat-welcome-features" role="group" aria-label="快捷功能">';
+    items.forEach((item) => {
+      html +=
+        '<button type="button" class="sc-feature-chip" data-action="welcome-feature" data-skill-id="' +
+        escapeHtml(item.id) +
+        '">' +
+        escapeHtml(item.label) +
+        '</button>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  /** 欢迎区功能格：与底部 Skill 同路由，直达对应功能模式 */
+  function triggerWelcomeFeature(skillId) {
+    if (!skillId) return;
+    if (skillId === 'help') {
+      closeOverlays();
+      switchActiveSkill(null, { skipSkillAnnounce: true });
+      pushUserMsg((DemoData.skillUtterances && DemoData.skillUtterances.help) || '帮助');
+      setTimeout(() => pushAiHtml(DemoData.welcomeHelp), 300);
+      return;
+    }
+    if (skillId === 'switch-customer') {
+      closeOverlays();
+      switchActiveSkill(null, { skipSkillAnnounce: true });
+      pushUserMsg(
+        (DemoData.skillUtterances && DemoData.skillUtterances['switch-customer']) || '切换客户'
+      );
+      state.pendingSkillRun = 'switch-customer';
+      setTimeout(() => {
+        pushAiHtml(buildSwitchCustomerPromptHtml());
+        scrollMessages();
+        persistChatHistory();
+        if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
+      }, 300);
+      return;
+    }
+    if (skillId === 'write-follow') {
+      switchActiveSkill('followup', { skipSkillAnnounce: true });
+      runSkillEntry('write-follow');
+      return;
+    }
+    runSkillEntry(skillId);
   }
 
   function renderNextStepCard(cid) {
@@ -688,6 +1007,14 @@
     if (!btn) return;
     const action = btn.getAttribute('data-action');
     if (window.Skills && Skills.handleAction(action, btn)) return;
+    if (action === 'open-customer-sheet') {
+      openCustomerSheet();
+      return;
+    }
+    if (action === 'welcome-feature') {
+      triggerWelcomeFeature(btn.getAttribute('data-skill-id'));
+      return;
+    }
     if (action === 'template-followup') {
       requestFollowUpListByClick();
       return;
@@ -706,8 +1033,10 @@
       const c = getCustomer(cid);
       if (!c) return;
       if (step === 'follow') {
+        switchActiveSkill('followup', { skipSkillAnnounce: true });
         openFollowSheet(c);
       } else if (step === 'plan') {
+        switchActiveSkill('plan', { skipSkillAnnounce: true });
         Skills.startPlan(c);
       } else if (step === 'later') {
         pushAiHtml('好的，需要时随时说客户名称或点待跟进继续。');
@@ -720,27 +1049,46 @@
     replyWithFollowUpList();
   }
 
-  function handleIntent(text) {
+  function handleIntent(text, opts) {
+    opts = opts || {};
     const t = text.trim();
     if (!t) return;
-    pushUserMsg(t);
+    if (!opts.skipUserMsg) pushUserMsg(t);
+    if (state.pendingSkillRun) {
+      const matched = tryMatchCustomerByName(t);
+      if (matched) {
+        switchCustomer(matched.id, { fromPicker: true });
+        return;
+      }
+      setTimeout(() => {
+        pushAiHtml(
+          '未找到「' +
+            escapeHtml(t) +
+            '」。请核对客户名称，或点击上方对话中的「选择客户」按钮从列表中选择。'
+        );
+        scrollMessages();
+        persistChatHistory();
+      }, 300);
+      return;
+    }
     if (/待跟进|跟进哪些|今天要跟/.test(t)) {
+      switchActiveSkill('followup', { skipSkillAnnounce: true });
       setTimeout(showFollowUpList, 300);
       return;
     }
-    if (/写跟进|记录跟进/.test(t)) {
-      const c = getCustomer(state.selectedFollowUpId || state.customerId);
-      if (!c) {
-        setTimeout(() => {
-          pushAiHtml('请先从今日待跟进列表选择一家企业。');
-        }, 300);
-        return;
-      }
-      setTimeout(() => openFollowSheet(c), 300);
+    if (isWriteFollowIntent(t)) {
+      handleWriteFollowIntent(t, { delayMs: 300, fromVoice: false });
       return;
     }
     if (/切换客户|换客户|选择客户|选客户/.test(t)) {
-      setTimeout(openCustomerSheet, 200);
+      switchActiveSkill(null, { skipSkillAnnounce: true });
+      state.pendingSkillRun = 'switch-customer';
+      setTimeout(() => {
+        pushAiHtml(buildSwitchCustomerPromptHtml());
+        scrollMessages();
+        persistChatHistory();
+        if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
+      }, 300);
       return;
     }
     if (window.Skills && Skills.tryIntent(t)) return;
@@ -755,14 +1103,15 @@
     }, 300);
   }
 
-  function openFollowSheet(c) {
+  function openFollowSheet(c, prefill) {
+    prefill = prefill || {};
     $('#sheet-follow-title').textContent = '写跟进 — ' + c.name;
     $('#follow-contact-name').value = c.contactName || '';
     $('#follow-contact-phone').value = c.contactPhone || '';
     $('#follow-ship-address').value = c.shipAddress || '';
-    $('#follow-content').value = '';
+    $('#follow-content').value = prefill.content || '';
     $('#follow-time').value = nowDatetimeLocal();
-    $('#follow-status').value = 'ongoing';
+    $('#follow-status').value = prefill.status === 'done' ? 'done' : 'ongoing';
     $('#overlay-follow').classList.remove('sc-hidden');
     state._followCustomerId = c.id;
   }
@@ -826,20 +1175,7 @@
       b.className =
         'sc-skill' + (state.activeSkill && state.activeSkill === sk.id ? ' sc-skill--active' : '');
       b.textContent = sk.name;
-      b.onclick = () => {
-        if (!sk.enabled) {
-          toast('该能力即将开放');
-          return;
-        }
-        switchActiveSkill(sk.id);
-        const utter = (DemoData.skillUtterances && DemoData.skillUtterances[sk.id]) || sk.name;
-        if (sk.id === 'followup') {
-          requestFollowUpListByClick();
-          return;
-        }
-        pushUserMsg(utter);
-        Skills.run(sk.id);
-      };
+      b.onclick = () => runSkillEntry(sk.id);
       bar.appendChild(b);
     });
   }
@@ -880,12 +1216,11 @@
   function createHomeScreenRows() {
     const welcomeHtml =
       '<div class="sc-welcome-block" data-spec-id="chat-welcome">' +
-      '<p>' +
+      '<p class="sc-welcome-block__lead">' +
       escapeHtml(DemoData.welcomeAi) +
       '</p>' +
-      '<p class="sc-card__meta" style="margin-top:8px">' +
-      escapeHtml(DemoData.welcomeHelp) +
-      '</p></div>';
+      buildWelcomeFeatureGridHtml() +
+      '</div>';
     const rowWelcome = document.createElement('div');
     rowWelcome.className = 'sc-msg';
     rowWelcome.dataset.homeScreen = '1';
@@ -993,6 +1328,8 @@
     state.voiceSampleIdx = 0;
     state.ctx = {};
     delete state._followCustomerId;
+    delete state.pendingSkillRun;
+    delete state.pendingFollowFormSlots;
     saveState();
 
     const composer = $('#composer');
@@ -1020,11 +1357,11 @@
   }
 
   function initChat() {
-    $('#header-customer').onclick = openCustomerSheet;
     const clearCustomerBtn = $('#clear-customer-chat');
     if (clearCustomerBtn) {
       clearCustomerBtn.onclick = (e) => {
         e.stopPropagation();
+        if (clearCustomerBtn.disabled) return;
         clearChatHistoryAll();
       };
     }
@@ -1041,7 +1378,15 @@
       voice.textContent = '按住 说话';
       const sample = DemoData.voiceSamples[state.voiceSampleIdx % DemoData.voiceSamples.length];
       state.voiceSampleIdx++;
-      if (sample) handleIntent(sample);
+      if (sample) {
+        const t = sample.trim();
+        pushUserMsg(t);
+        if (isWriteFollowIntent(t)) {
+          handleWriteFollowIntent(t, { delayMs: 300, fromVoice: true });
+        } else {
+          handleIntent(t, { skipUserMsg: true });
+        }
+      }
       setTimeout(() => {
         voiceBusy = false;
       }, 400);
@@ -1187,7 +1532,11 @@
       escapeHtml,
       toast,
       closeOverlays,
-      requestFollowUpListByClick
+      requestFollowUpListByClick,
+      promptForCustomerSelection,
+      skillNeedsCustomer,
+      openCustomerSheet,
+      switchActiveSkill
     });
   }
 
