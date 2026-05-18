@@ -1,4 +1,4 @@
-/** 与 annotation-docs/01-首页与待跟进.md 一一对应 */
+/** v1.0.0 · 与 annotation-docs/01-首页与待跟进.md 一一对应 */
 window.AnnotationSpecData = {
   'chat-bubble-user': {
     name: '用户消息气泡',

@@ -1,4 +1,3 @@
-# 部署版本入口 + v1.0.0 等子目录到 GitHub Pages
 name: Deploy static site to GitHub Pages
 
 on:
@@ -22,26 +21,19 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Prepare Pages artifact
         run: |
           set -e
           mkdir -p _pages
           cp index.html _pages/
-          cp -r v1.0.0 _pages/
+          cp -r v1.0.0 shared _pages/
           touch _pages/.nojekyll
           cp index.html _pages/404.html
-          test -f _pages/index.html
           test -f _pages/v1.0.0/index.html
           test -f _pages/v1.0.0/js/app.js
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: _pages
-
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
