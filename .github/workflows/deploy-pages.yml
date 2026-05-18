@@ -1,4 +1,4 @@
-# 部署根目录静态站点（index.html + css/ + js/）到 GitHub Pages
+# 部署版本入口 + v1.0.0 等子目录到 GitHub Pages
 name: Deploy static site to GitHub Pages
 
 on:
@@ -30,14 +30,12 @@ jobs:
           set -e
           mkdir -p _pages
           cp index.html _pages/
-          cp -r css js _pages/
-          if [ -d annotation-docs ]; then cp -r annotation-docs _pages/; fi
-          cp .nojekyll _pages/ 2>/dev/null || touch _pages/.nojekyll
+          cp -r v1.0.0 _pages/
+          touch _pages/.nojekyll
           cp index.html _pages/404.html
           test -f _pages/index.html
-          test -f _pages/js/app.js
-          test -f _pages/js/annotation-spec-data.js
-          test -f _pages/annotation-docs/01-首页与待跟进.md
+          test -f _pages/v1.0.0/index.html
+          test -f _pages/v1.0.0/js/app.js
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

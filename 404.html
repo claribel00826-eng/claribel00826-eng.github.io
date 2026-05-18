@@ -2,253 +2,140 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>销售助手</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>销售助手 · 原型版本</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/main.css" />
-  <link rel="stylesheet" href="css/annotation.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --border: #e4e4e7;
+      --text: #18181b;
+      --muted: #71717a;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "DM Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .portal {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+    }
+    .portal__brand {
+      font-family: Outfit, "PingFang SC", sans-serif;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 6px;
+    }
+    .portal__desc {
+      margin: 0 0 32px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+    .portal__label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+    .version-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .version-card {
+      display: block;
+      padding: 16px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .version-card:hover {
+      border-color: #c7d2fe;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.08);
+    }
+    .version-card:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+    .version-card__row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .version-card__id {
+      font-family: Outfit, monospace;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .version-card__tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #eef2ff;
+      color: #4338ca;
+      white-space: nowrap;
+    }
+    .version-card__meta {
+      margin: 8px 0 0;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .version-card__arrow {
+      font-size: 18px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .portal__foot {
+      margin-top: 40px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
 </head>
 <body>
-  <div class="sc-demo-shell sc-demo--tpl" id="demo-shell">
-    <div class="sc-demo-toolbar" aria-label="演示控制（非 H5 内）">
-      <button
-        type="button"
-        id="btn-demo-reset"
-        class="sc-demo-reset-btn"
-        title="清除本地会话并恢复为首屏欢迎态"
-      >
-        初始化页面
-      </button>
-      <button
-        type="button"
-        id="btn-spec-toggle"
-        class="sc-demo-reset-btn sc-demo-spec-btn"
-        title="开启后显示右侧标注面板与各模块「标注」按钮（Alt+D 快捷键）"
-        aria-pressed="false"
-      >
-        设计标注
-      </button>
-      <a class="sc-demo-toolbar__link" href="annotation-docs/index.html" target="_blank" rel="noopener">标注文档</a>
-      <span class="sc-demo-toolbar__hint">演示用 · 左侧为微信模板消息，右侧为 H5 销售助手</span>
-    </div>
-    <div class="sc-demo-body" id="demo-body">
-    <aside id="wx-service-panel" class="sc-wx-service" aria-label="微信服务号消息（演示，非 H5 内）">
-      <div class="sc-wx-service__status">
-        <span class="sc-wx-service__time">9:41</span>
-      </div>
-      <header class="sc-wx-service__nav">
-        <span class="sc-wx-service__back" aria-hidden="true">‹</span>
-        <span class="sc-wx-service__name">销售助手服务号</span>
-      </header>
-      <div class="sc-wx-service__chat">
-        <div class="sc-wx-service__row">
-          <div class="sc-wx-service__avatar" aria-hidden="true">销</div>
-          <div class="sc-wx-service__bubble" id="wx-template-mount">
+  <main class="portal">
+    <h1 class="portal__brand">销售助手 H5 原型</h1>
+    <p class="portal__desc">选择版本进入可交互演示页（含设计标注）。每个版本为独立静态站点目录。</p>
+    <p class="portal__label">版本列表</p>
+    <ul class="version-list">
+      <li>
+        <a class="version-card" href="v1.0.0/index.html">
+          <div class="version-card__row">
+            <span class="version-card__id">v1.0.0</span>
+            <span class="version-card__tag">当前</span>
+            <span class="version-card__arrow" aria-hidden="true">→</span>
           </div>
-        </div>
-        <p class="sc-wx-service__hint">微信内模板消息；点击按钮进入右侧 H5 并拉取待跟进列表</p>
-      </div>
-    </aside>
-    <div class="sc-app">
-    <div id="view-chat" class="sc-chat">
-      <header class="sc-header sc-header--with-status">
-        <div class="sc-header__top">
-          <span class="sc-header__title" id="header-title" data-spec-id="chat-header">销售助手 · Pro</span>
-          <button
-            type="button"
-            class="sc-header__clear"
-            id="clear-customer-chat"
-            data-spec-id="btn-clear-customer-chat"
-            aria-label="清空全部对话记录"
-          >
-            清空记录
-          </button>
-        </div>
-        <div class="sc-header__status" data-spec-id="chat-context-bar">
-          <div class="sc-status-item" data-spec-id="chat-current-skill">
-            <span class="sc-status-label">当前功能</span>
-            <span class="sc-status-value" id="header-skill">—</span>
-          </div>
-          <div class="sc-status-item sc-status-item--customer" data-spec-id="chat-current-customer">
-            <span class="sc-status-label">当前客户</span>
-            <span class="sc-status-value sc-status-value--empty" id="header-customer-display">未选择</span>
-            <span class="sc-status-tags" id="header-customer-tags" aria-hidden="true"></span>
-          </div>
-        </div>
-      </header>
-      <section
-        class="sc-chat-dialog"
-        data-spec-id="chat-messages"
-        data-spec-pin-root
-        aria-label="对话消息区"
-      >
-      <main class="sc-messages" id="messages"></main>
-      </section>
-      <footer class="sc-dock">
-        <div class="sc-dock-skills sc-dock-skills--full" data-spec-id="chat-skill-bar">
-          <div class="sc-skills-scroll" id="skill-scroll">
-            <div class="sc-skills-track" id="skill-bar">
-            </div>
-          </div>
-        </div>
-        <div class="sc-composer" id="composer" data-spec-id="chat-input-bar">
-          <button type="button" class="sc-mode-toggle" id="mode-toggle">键盘</button>
-          <button type="button" class="sc-voice" id="voice-btn">按住 说话</button>
-          <input type="text" class="sc-text-input" id="text-input" placeholder="输入消息…" />
-          <button type="button" class="sc-send" id="send-btn" aria-label="发送">➤</button>
-        </div>
-      </footer>
-    </div>
-
-  <div id="overlay-follow" class="sc-overlay sc-hidden">
-    <div class="sc-sheet sc-sheet--form" data-spec-id="sheet-followup" onclick="event.stopPropagation()">
-      <div class="sc-sheet__head">
-        <span id="sheet-follow-title">写跟进</span>
-        <button type="button" class="sc-sheet__close" id="sheet-follow-close" aria-label="关闭">×</button>
-      </div>
-      <div class="sc-form-scroll">
-        <label class="sc-field-label">联系人</label>
-        <input class="sc-input sc-input--field" id="follow-contact-name" type="text" placeholder="联系人姓名" />
-        <label class="sc-field-label">联系方式</label>
-        <input class="sc-input sc-input--field" id="follow-contact-phone" type="tel" placeholder="手机或电话" />
-        <label class="sc-field-label">发货地址</label>
-        <input class="sc-input sc-input--field" id="follow-ship-address" type="text" placeholder="发货地址" />
-        <label class="sc-field-label">跟进信息</label>
-        <textarea class="sc-textarea" id="follow-content" placeholder="请输入跟进内容…"></textarea>
-        <label class="sc-field-label">跟进时间</label>
-        <input class="sc-input sc-input--field" id="follow-time" type="datetime-local" />
-        <label class="sc-field-label">跟进状态</label>
-        <select class="sc-input sc-input--field" id="follow-status">
-          <option value="ongoing">跟进中</option>
-          <option value="done">跟进完成</option>
-        </select>
-        <label class="sc-field-label">提醒日期</label>
-        <input class="sc-input sc-input--field" id="follow-reminder-date" type="date" />
-        <p class="sc-field-hint">不填：每个工作日推送待跟进；填写后：自该日期起按提醒推送（此前不推送）</p>
-      </div>
-      <button type="button" class="sc-btn sc-btn--primary" id="follow-submit">提交</button>
-    </div>
-  </div>
-
-  <!-- 选客户 -->
-    <div id="overlay-customer" class="sc-overlay sc-hidden">
-    <div class="sc-sheet sc-sheet--customer" data-spec-id="sheet-customer" onclick="event.stopPropagation()">
-      <div class="sc-sheet__head">
-        <span>切换客户</span>
-        <button type="button" class="sc-sheet__close" id="sheet-customer-close" aria-label="关闭">×</button>
-      </div>
-      <input type="search" class="sc-search" id="customer-search" placeholder="搜索客户名称或编码" autocomplete="off" />
-      <div class="sc-filter-row" id="customer-category-filters" role="tablist" aria-label="往来单位类型"></div>
-      <p class="sc-sheet__empty sc-hidden" id="customer-list-empty">无匹配客户，请调整筛选条件</p>
-      <div class="sc-customer-list" id="customer-list"></div>
-    </div>
-  </div>
-
-  <div id="overlay-enterprise" class="sc-overlay sc-hidden">
-    <div class="sc-sheet" data-spec-id="sheet-enterprise" onclick="event.stopPropagation()">
-      <div class="sc-sheet__head">
-        <span>切换企业</span>
-        <button type="button" class="sc-sheet__close" id="sheet-ent-close">×</button>
-      </div>
-      <div id="enterprise-list"></div>
-    </div>
-  </div>
-
-
-  <div id="overlay-delivery" class="sc-overlay sc-hidden">
-    <div class="sc-sheet sc-sheet--form" data-spec-id="sheet-delivery" onclick="event.stopPropagation()">
-      <div class="sc-sheet__head">
-        <span>交期评审</span>
-        <button type="button" class="sc-sheet__close" id="delivery-close" aria-label="关闭">×</button>
-      </div>
-      <p class="sc-card__meta" id="delivery-hint"></p>
-      <label class="sc-field-label">期望交期</label>
-      <input class="sc-input sc-input--field" id="delivery-date" type="date" />
-      <button type="button" class="sc-btn sc-btn--primary" id="delivery-submit">提交评审</button>
-    </div>
-  </div>
-
-  <div id="overlay-order" class="sc-overlay sc-hidden">
-    <div class="sc-sheet" data-spec-id="sheet-order" onclick="event.stopPropagation()">
-      <div class="sc-sheet__head">
-        <span>订单确认</span>
-        <button type="button" class="sc-sheet__close" id="order-close" aria-label="关闭">×</button>
-      </div>
-      <div id="order-confirm-body" class="sc-card__meta"></div>
-      <button type="button" class="sc-btn sc-btn--primary" id="order-submit">确认下单</button>
-    </div>
-  </div>
-
-  <div id="overlay-change" class="sc-overlay sc-hidden">
-    <div class="sc-sheet sc-sheet--form" data-spec-id="sheet-change" onclick="event.stopPropagation()">
-      <div class="sc-sheet__head">
-        <span id="change-title">变更订单</span>
-        <button type="button" class="sc-sheet__close" id="change-close" aria-label="关闭">×</button>
-      </div>
-      <label class="sc-field-label">变更原因</label>
-      <select class="sc-input sc-input--field" id="change-reason"></select>
-      <label class="sc-field-label">备注</label>
-      <textarea class="sc-textarea" id="change-remark" placeholder="请说明变更内容…"></textarea>
-      <button type="button" class="sc-btn sc-btn--primary" id="change-submit">提交变更</button>
-    </div>
-  </div>
-
-  <div id="overlay-service" class="sc-overlay sc-hidden">
-    <div class="sc-sheet sc-sheet--form" data-spec-id="sheet-service" onclick="event.stopPropagation()">
-      <div class="sc-sheet__head">
-        <span>客服工单 — <span id="service-customer"></span></span>
-        <button type="button" class="sc-sheet__close" id="service-close" aria-label="关闭">×</button>
-      </div>
-      <label class="sc-field-label">问题描述</label>
-      <textarea class="sc-textarea" id="service-desc" placeholder="请描述客户投诉或售后问题…"></textarea>
-      <button type="button" class="sc-btn sc-btn--primary" id="service-submit">提交工单</button>
-    </div>
-  </div>
-
-  <div id="overlay-quote" class="sc-overlay sc-hidden">
-    <div class="sc-sheet sc-sheet--form" data-spec-id="sheet-quote" onclick="event.stopPropagation()">
-      <div class="sc-sheet__head">
-        <span>产品报价</span>
-        <button type="button" class="sc-sheet__close" id="quote-close">×</button>
-      </div>
-      <p class="sc-card__meta" id="quote-scheme-hint"></p>
-      <label class="sc-field-label">优惠折扣（%）</label>
-      <input class="sc-input sc-input--field" id="quote-discount" type="number" min="0" max="30" value="0" />
-      <button type="button" class="sc-btn sc-btn--primary" id="quote-submit">生成报价单</button>
-    </div>
-  </div>
-
-  <!-- PDF 预览 -->
-  <div id="pdf-modal" class="sc-pdf sc-hidden" data-spec-id="modal-pdf">
-    <div class="sc-pdf__bar">
-      <button type="button" class="sc-btn sc-btn--ghost" id="pdf-close">返回</button>
-      <span style="flex:1;text-align:center;font-weight:600">文档预览</span>
-      <span style="width:48px"></span>
-    </div>
-    <div class="sc-pdf__body">PDF 预览演示</div>
-  </div>
-
-    </div>
-    </div>
-  </div>
-
-  <div id="toast" class="sc-toast"></div>
-
-  <aside class="sc-spec-panel" id="spec-panel">
-    <div class="sc-spec-panel__head">
-      <span class="sc-spec-panel__head-title">设计标注</span>
-      <button type="button" id="spec-close" class="sc-spec-close sc-hidden" aria-label="关闭标注">关闭标注</button>
-    </div>
-    <div class="sc-spec-panel__body" id="spec-panel-body">
-      <p>验收模式：点击各模块右上角「标注」查看查询与交互说明。</p>
-    </div>
-  </aside>
-
-  <script src="js/demo-data.js"></script>
-  <script src="js/annotation-spec-data.js"></script>
-  <script src="js/skills.js"></script>
-  <script src="js/annotation.js"></script>
-  <script src="js/app.js"></script>
+          <p class="version-card__meta">制造业外勤销售助手 · 对话首页、待跟进、写跟进与意图填槽演示</p>
+        </a>
+      </li>
+    </ul>
+    <p class="portal__foot">演示账号见各版本页说明 · 本地路径 <code>.output/index.html</code></p>
+  </main>
 </body>
 </html>
