@@ -1,5 +1,8 @@
 :root {
   --sc-spec-panel-width: 560px;
+  --sc-spec-panel-height: 42vh;
+  --sc-spec-panel-min-width: 320px;
+  --sc-spec-panel-max-width: 920px;
 }
 
 .sc-spec-panel {
@@ -16,6 +19,52 @@
   display: flex;
   flex-direction: column;
   font-size: 12px;
+}
+
+.sc-spec-panel__resize {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  margin-left: -5px;
+  cursor: ew-resize;
+  z-index: 5;
+  touch-action: none;
+}
+
+.sc-spec-panel__resize::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 56px;
+  border-radius: 3px;
+  background: #a1a1aa;
+  opacity: 0.35;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.sc-spec-panel:hover .sc-spec-panel__resize::after,
+.sc-spec-panel__resize:hover::after,
+.sc-spec-panel__resize.is-dragging::after {
+  opacity: 1;
+  background: #4f46e5;
+}
+
+body.sc-spec-resizing {
+  cursor: ew-resize !important;
+  user-select: none;
+}
+
+body.sc-spec-resizing .sc-spec-panel {
+  transition: none;
+}
+
+body.sc-spec-resizing * {
+  cursor: ew-resize !important;
 }
 
 body.sc-spec-on .sc-spec-panel {
@@ -224,6 +273,16 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
   color: #3f3f46;
 }
 
+.sc-spec-scope-banner {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  background: #eef2ff;
+  border-radius: 6px;
+  color: #312e81;
+}
+
 .sc-spec-panel__dl {
   margin: 0;
   display: grid;
@@ -282,6 +341,12 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
   font-weight: 500;
 }
 
+.sc-spec-table--slots th:nth-child(4),
+.sc-spec-table--slots td:nth-child(4) {
+  text-align: center;
+  white-space: nowrap;
+}
+
 .sc-spec-table__layer-global td:first-child {
   background: #f0f9ff;
   color: #0369a1;
@@ -298,12 +363,12 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
 
 @media (max-width: 640px) {
   body.sc-spec-on .sc-app {
-    padding-bottom: 42vh;
+    padding-bottom: var(--sc-spec-panel-height);
   }
 
   body.sc-spec-on .sc-spec-panel {
     width: 100%;
-    height: 42vh;
+    height: var(--sc-spec-panel-height);
     top: auto;
     bottom: 0;
     left: 0;
@@ -312,4 +377,30 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
     border-top: 1px solid #e4e4e7;
   }
 
+  .sc-spec-panel__resize {
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: auto;
+    width: 100%;
+    height: 12px;
+    margin-left: 0;
+    cursor: ns-resize;
+  }
+
+  .sc-spec-panel__resize::after {
+    left: 50%;
+    top: 4px;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 3px;
+  }
+
+  body.sc-spec-resizing {
+    cursor: ns-resize !important;
+  }
+
+  body.sc-spec-resizing * {
+    cursor: ns-resize !important;
+  }
 }

@@ -1,6 +1,6 @@
-# PRD：制造业外勤销售 · 纯对话智能体 H5 · v1.0.0
+# PRD：制造业外勤销售 · 纯对话智能体 H5 · v1.1.0
 
-> **版本目录**：`.output/v1.0.0/`  
+> **版本目录**：`.output/v1.1.0/`  
 > **可运行原型**：[index.html](./index.html)（版本索引：[../index.html](../index.html)）  
 > **公共资产**：[竞品](../shared/competitive-analysis.md) · [架构](../shared/architecture.md) · [UI 基线](../shared/design-spec.md)  
 > 最后更新：2026-05-18  

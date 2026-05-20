@@ -1,4 +1,4 @@
-# 设计规范 · v1.0.0
+# 设计规范 · v1.1.0
 
 > **继承**：视觉 token 与 [../shared/design-spec.md](../shared/design-spec.md) 一致。  
 > 本版本 H5 实现见 `css/main.css`、`css/annotation.css`。

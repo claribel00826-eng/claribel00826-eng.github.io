@@ -1,11 +1,13 @@
 (function () {
   const TOKEN_KEY = 'sc_token';
   const STATE_KEY = 'sc_state';
-  const CHAT_HISTORY_KEY = 'sc_chat_history';
   const DAILY_HOME_KEY = 'sc_daily_home';
   const CHAT_HISTORY_MAX = 200;
+  const API_BASE = (typeof window !== 'undefined' && window.SC_API_BASE) || 'http://127.0.0.1:8000';
 
   let chatPersistSuspended = false;
+  let chatSaveTimer = null;
+  let chatSavePending = null;
 
   let state = {
     enterpriseId: 'ent-east',
@@ -13,7 +15,8 @@
     selectedFollowUpId: null,
     activeSkill: null,
     voiceSampleIdx: 0,
-    ctx: {}
+    ctx: {},
+    flowStepId: 1
   };
 
   const CUSTOMER_PARTNER_TABS = [
@@ -92,21 +95,22 @@
 
   /** 未设置提醒日期 → 每日推送；已设置 → 仅当今日 ≥ 提醒日期时纳入待跟进推送 */
   function isDueForFollowUpPush(c) {
-    const rd = getCustomerReminderDate(c);
-    if (!rd) return true;
-    return rd <= todayYmd();
+    return DemoData.isDueForFollowUpPush(c, todayYmd(), getCustomerReminderDate);
   }
 
   function followUps() {
-    return customersForEnterprise()
-      .filter(isDueForFollowUpPush)
-      .slice()
-      .sort((a, b) => {
-        const ta = new Date(a.updatedAt || 0).getTime();
-        const tb = new Date(b.updatedAt || 0).getTime();
-        if (tb !== ta) return tb - ta;
-        return (a.name || '').localeCompare(b.name || '', 'zh-CN');
-      });
+    const user = DemoData.demoSalesUser || DemoData.salesperson;
+    return DemoData.getTodayFollowUpCustomers(
+      customersForEnterprise(),
+      user,
+      todayYmd(),
+      getCustomerReminderDate
+    ).sort((a, b) => {
+      const ta = new Date(a.updatedAt || 0).getTime();
+      const tb = new Date(b.updatedAt || 0).getTime();
+      if (tb !== ta) return tb - ta;
+      return (a.name || '').localeCompare(b.name || '', 'zh-CN');
+    });
   }
 
   function customerTypeLabel(c) {
@@ -212,25 +216,30 @@
     }
   }
 
-  function buildCustomerPromptHtml(skillName) {
-    const label = skillName || '当前操作';
-    return (
+  function buildCustomerPromptHtml(skillId) {
+    const sid = skillId === 'write-follow' ? 'write-follow' : skillId;
+    const label = getSkillLabel(skillId === 'write-follow' ? 'followup' : skillId) || '当前操作';
+    const hints = DemoData.skillCustomerOneLineHints || {};
+    const oneLine = hints[sid] || hints[skillId] || '';
+    let html =
       '<div class="sc-customer-prompt" data-spec-id="card-customer-prompt">' +
       '<p class="sc-reply-lead">进行 <strong>' +
       escapeHtml(label) +
-      '</strong> 需要先确定客户。</p>' +
-      '<p class="sc-card__meta sc-customer-prompt__hint">请直接说出客户名称，或点击下方按钮从列表中选择：</p>' +
+      '</strong> 须先确定客户。</p>';
+    if (oneLine) {
+      html += '<p class="sc-card__meta sc-customer-prompt__oneliner">' + escapeHtml(oneLine) + '</p>';
+    }
+    html +=
       '<div class="sc-card__actions-inline">' +
       '<button type="button" class="sc-btn sc-btn--primary" data-action="open-customer-sheet">选择客户</button>' +
-      '</div></div>'
-    );
+      '</div></div>';
+    return html;
   }
 
   function buildSwitchCustomerPromptHtml() {
     return (
       '<div class="sc-customer-prompt" data-spec-id="card-customer-prompt">' +
       '<p class="sc-reply-lead">请指定要服务的客户。</p>' +
-      '<p class="sc-card__meta sc-customer-prompt__hint">请直接说出客户名称，或点击下方按钮从列表中选择：</p>' +
       '<div class="sc-card__actions-inline">' +
       '<button type="button" class="sc-btn sc-btn--primary" data-action="open-customer-sheet">选择客户</button>' +
       '</div></div>'
@@ -413,7 +422,7 @@
     }
     const delay = opts.delayMs != null ? opts.delayMs : 300;
     setTimeout(() => {
-      pushAiHtml(buildCustomerPromptHtml(skillName));
+      pushAiHtml(buildCustomerPromptHtml(skillId));
       scrollMessages();
       persistChatHistory();
       if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
@@ -576,6 +585,46 @@
     }
   }
 
+  function disableFlowControlsInRow(row) {
+    if (!row) return;
+    row.querySelectorAll('[data-action]').forEach((el) => {
+      if (el.tagName === 'BUTTON' || el.classList.contains('sc-follow-row')) {
+        el.disabled = true;
+        el.setAttribute('aria-disabled', 'true');
+        el.classList.add('is-flow-stale');
+      }
+    });
+  }
+
+  function invalidateFlowStep(stepId) {
+    document
+      .querySelectorAll('#messages .sc-msg[data-flow-step="' + stepId + '"]')
+      .forEach((row) => disableFlowControlsInRow(row));
+  }
+
+  /** 用户每发一条新消息，失效当前步上所有对话内按钮 */
+  function onUserMessageForFlow(text) {
+    const t = (text || '').trim();
+    if (!t) return;
+    const stepToInvalidate = state.flowStepId || 1;
+    invalidateFlowStep(String(stepToInvalidate));
+    state.flowStepId = stepToInvalidate + 1;
+  }
+
+  function currentFlowStepId() {
+    return state.flowStepId || 1;
+  }
+
+  function stampFlowStep(row) {
+    if (row && row.classList && row.classList.contains('sc-msg')) {
+      row.dataset.flowStep = String(currentFlowStepId());
+    }
+  }
+
+  function resetFlowState() {
+    state.flowStepId = 1;
+  }
+
   function switchActiveSkill(skillId, opts) {
     opts = opts || {};
     if (skillId === undefined) return;
@@ -635,16 +684,59 @@
     return node.dataset.customerId || null;
   }
 
-  function getChatHistoryStore() {
-    try {
-      return JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '{}');
-    } catch (_) {
-      return {};
-    }
+  function chatHistoryUrl(enterpriseId, suffix) {
+    const base = API_BASE.replace(/\/$/, '') + '/api/v1/chat-history';
+    if (suffix === '_all') return base + '/_all';
+    return base + '/' + encodeURIComponent(enterpriseId);
   }
 
-  function saveChatHistoryStore(store) {
-    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(store));
+  async function apiFetchChatHistory(enterpriseId) {
+    const res = await fetch(chatHistoryUrl(enterpriseId), {
+      method: 'GET',
+      headers: { Accept: 'application/json' }
+    });
+    if (!res.ok) throw new Error('load chat history ' + res.status);
+    const data = await res.json();
+    return data.items || [];
+  }
+
+  async function apiSaveChatHistory(enterpriseId, items) {
+    const res = await fetch(chatHistoryUrl(enterpriseId), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ items: items })
+    });
+    if (!res.ok) throw new Error('save chat history ' + res.status);
+    return res.json();
+  }
+
+  async function apiDeleteChatHistory(enterpriseId) {
+    const res = await fetch(chatHistoryUrl(enterpriseId), { method: 'DELETE' });
+    if (!res.ok) throw new Error('delete chat history ' + res.status);
+  }
+
+  async function apiDeleteAllChatHistory() {
+    const res = await fetch(chatHistoryUrl('', '_all'), { method: 'DELETE' });
+    if (!res.ok) throw new Error('delete all chat history ' + res.status);
+  }
+
+  function scheduleChatHistorySave(enterpriseId, items) {
+    chatSavePending = { enterpriseId: enterpriseId, items: items };
+    clearTimeout(chatSaveTimer);
+    chatSaveTimer = setTimeout(function () {
+      flushChatHistorySave();
+    }, 400);
+  }
+
+  async function flushChatHistorySave() {
+    if (!chatSavePending) return;
+    const job = chatSavePending;
+    chatSavePending = null;
+    try {
+      await apiSaveChatHistory(job.enterpriseId, job.items);
+    } catch (err) {
+      console.warn('[chat-history] save failed', err);
+    }
   }
 
   function serializeChatMessages() {
@@ -686,42 +778,57 @@
     if (chatPersistSuspended) return;
     const entId = enterpriseId || state.enterpriseId;
     if (!entId) return;
-    const store = getChatHistoryStore();
-    store[entId] = serializeChatMessages();
-    saveChatHistoryStore(store);
+    scheduleChatHistorySave(entId, serializeChatMessages());
   }
 
-  function clearAllChatHistory() {
-    localStorage.removeItem(CHAT_HISTORY_KEY);
+  async function clearAllChatHistory() {
+    try {
+      await apiDeleteAllChatHistory();
+    } catch (err) {
+      console.warn('[chat-history] clear all failed', err);
+    }
   }
 
-  function clearChatHistoryAll() {
+  async function clearChatHistoryAll() {
     if (!getCustomer()) return;
     if (
       !window.confirm(
-        '确定清空全部对话记录？\n将删除欢迎区、待跟进摘要、最近访问及本会话内所有消息（含本地缓存）。'
+        '确定清空全部对话记录？\n将删除欢迎区、待跟进摘要、最近访问及本会话内所有消息（数据库中的记录）。'
       )
     ) {
       return;
     }
     const box = $('#messages');
     if (!box) return;
+    try {
+      await flushChatHistorySave();
+      await apiDeleteChatHistory(state.enterpriseId);
+    } catch (err) {
+      toast('清空失败，请确认后端服务已启动');
+      console.warn(err);
+      return;
+    }
     chatPersistSuspended = true;
     box.innerHTML = '';
     delete box.dataset.inited;
+    resetFlowState();
     chatPersistSuspended = false;
-    const store = getChatHistoryStore();
-    store[state.enterpriseId] = [];
-    saveChatHistoryStore(store);
     scrollMessages();
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
     toast('已清空全部对话记录');
   }
 
-  function restoreChatHistory() {
+  async function restoreChatHistory() {
     const box = $('#messages');
     if (!box) return false;
-    const items = getChatHistoryStore()[state.enterpriseId];
+    let items;
+    try {
+      items = await apiFetchChatHistory(state.enterpriseId);
+    } catch (err) {
+      console.warn('[chat-history] load failed', err);
+      toast('聊天记录加载失败，请确认后端已启动（' + API_BASE + '）');
+      return false;
+    }
     if (!items || !items.length) return false;
 
     chatPersistSuspended = true;
@@ -745,6 +852,7 @@
       } else if (item.type === 'ai') {
         const row = document.createElement('div');
         row.className = 'sc-msg';
+        row.dataset.flowStep = '0';
         if (item.customerId) row.dataset.customerId = item.customerId;
         row.innerHTML =
           '<div class="sc-bubble sc-bubble--ai">' +
@@ -754,6 +862,10 @@
       }
     });
     chatPersistSuspended = false;
+    document.querySelectorAll('#messages .sc-msg[data-flow-step="0"]').forEach((row) => {
+      disableFlowControlsInRow(row);
+    });
+    resetFlowState();
     bindRecentHandlers();
     scrollMessages();
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
@@ -771,6 +883,7 @@
   }
 
   function pushUserMsg(text) {
+    onUserMessageForFlow(text);
     const wrap = document.createElement('div');
     wrap.className = 'sc-msg sc-msg--user';
     wrap.innerHTML =
@@ -788,6 +901,7 @@
     row.className = 'sc-msg';
     row.innerHTML =
       '<div class="sc-bubble sc-bubble--ai">' + html + '</div>';
+    stampFlowStep(row);
     stampCustomerScope(row);
     $('#messages').appendChild(row);
     scrollMessages();
@@ -1040,6 +1154,10 @@
   function onMessageClick(e) {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
+    if (btn.disabled || btn.classList.contains('is-flow-stale')) {
+      toast('已有新消息，请使用最新对话中的操作');
+      return;
+    }
     const action = btn.getAttribute('data-action');
     if (window.Skills && Skills.handleAction(action, btn)) return;
     if (action === 'open-customer-sheet') {
@@ -1088,11 +1206,31 @@
     opts = opts || {};
     const t = text.trim();
     if (!t) return;
+    if (opts.skipUserMsg) onUserMessageForFlow(t);
     if (!opts.skipUserMsg) pushUserMsg(t);
     if (state.pendingSkillRun) {
-      const matched = tryMatchCustomerByName(t);
+      const pendingSkill = state.pendingSkillRun;
+      const parsed =
+        DemoData.tryParseCustomerDemandUtterance &&
+        DemoData.tryParseCustomerDemandUtterance(t, customersForEnterprise());
+      const matched = (parsed && parsed.customer) || tryMatchCustomerByName(t);
       if (matched) {
-        switchCustomer(matched.id, { fromPicker: true });
+        delete state.pendingSkillRun;
+        switchCustomer(matched.id, {
+          fromPicker: false,
+          skipCustomerAnnounce: !!parsed
+        });
+        const demand =
+          parsed && parsed.demandText && parsed.demandText.trim().length >= 6
+            ? parsed.demandText.trim()
+            : '';
+        if (demand && window.Skills && Skills.tryIntent(demand)) {
+          return;
+        }
+        setTimeout(
+          () => executeSkillAction(pendingSkill, { skipUserMsg: true }),
+          300
+        );
         return;
       }
       setTimeout(() => {
@@ -1181,7 +1319,9 @@
           closeOverlays();
           return;
         }
-        persistChatHistory(prevEnt);
+        flushChatHistorySave().then(function () {
+          persistChatHistory(prevEnt);
+        });
         state.enterpriseId = e.id;
         const c = getCustomer();
         if (c && c.enterpriseId !== e.id) {
@@ -1193,9 +1333,15 @@
         closeOverlays();
         const box = $('#messages');
         delete box.dataset.sessionReady;
-        loadChatForEnterprise();
-        syncExternalTemplatePanel();
-        box.dataset.sessionReady = '1';
+        loadChatForEnterprise()
+          .then(function () {
+            syncExternalTemplatePanel();
+            box.dataset.sessionReady = '1';
+          })
+          .catch(function (err) {
+            console.warn(err);
+            box.dataset.sessionReady = '1';
+          });
         pushSystem('已切换企业：' + e.name + '。请重新选择客户。');
       };
       list.appendChild(btn);
@@ -1250,34 +1396,26 @@
     /* 最近访问点击由 #messages 事件委托处理（onMessagesClick） */
   }
 
+  /** 首屏欢迎 + 待跟进摘要 + 最近访问：合并为一条助手消息（同一 flowStep） */
   function createHomeScreenRows() {
-    const welcomeHtml =
+    const bundleHtml =
+      '<div class="sc-home-bundle">' +
       '<div class="sc-welcome-block" data-spec-id="chat-welcome">' +
       '<p class="sc-welcome-block__lead">' +
       escapeHtml(DemoData.welcomeAi) +
       '</p>' +
       buildWelcomeFeatureGridHtml() +
-      '</div>';
-    const rowWelcome = document.createElement('div');
-    rowWelcome.className = 'sc-msg';
-    rowWelcome.dataset.homeScreen = '1';
-    rowWelcome.innerHTML =
-      '<div class="sc-bubble sc-bubble--ai">' + welcomeHtml + '</div>';
-    const rowSummary = document.createElement('div');
-    rowSummary.className = 'sc-msg';
-    rowSummary.dataset.homeScreen = '1';
-    rowSummary.innerHTML =
-      '<div class="sc-bubble sc-bubble--ai">' +
+      '</div>' +
       renderFollowUpSummary() +
-      '</div>';
-    const rowRecent = document.createElement('div');
-    rowRecent.className = 'sc-msg';
-    rowRecent.dataset.homeScreen = '1';
-    rowRecent.innerHTML =
-      '<div class="sc-bubble sc-bubble--ai">' +
       buildRecentSectionHtml() +
       '</div>';
-    return [rowWelcome, rowSummary, rowRecent];
+    const row = document.createElement('div');
+    row.className = 'sc-msg';
+    row.dataset.homeScreen = '1';
+    row.dataset.flowStep = '1';
+    row.innerHTML =
+      '<div class="sc-bubble sc-bubble--ai sc-bubble--home">' + bundleHtml + '</div>';
+    return [row];
   }
 
   function insertHomeScreenMessages(box, mode) {
@@ -1310,11 +1448,12 @@
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
   }
 
-  function loadChatForEnterprise() {
+  async function loadChatForEnterprise() {
     const box = $('#messages');
     box.innerHTML = '';
     delete box.dataset.inited;
-    const hadHistory = restoreChatHistory();
+    resetFlowState();
+    const hadHistory = await restoreChatHistory();
     if (needsDailyHomeScreen()) {
       if (hadHistory) {
         prependDailyHomeScreen(box);
@@ -1333,21 +1472,26 @@
     const box = $('#messages');
     if (box.dataset.sessionReady === '1') return;
     box.dataset.sessionReady = '1';
-    loadChatForEnterprise();
-    syncExternalTemplatePanel();
+    loadChatForEnterprise()
+      .then(function () {
+        syncExternalTemplatePanel();
+      })
+      .catch(function (err) {
+        console.warn(err);
+      });
   }
 
   function initWelcome() {
     ensureChatSession();
   }
 
-  function resetChat() {
-    clearAllChatHistory();
+  async function resetChat() {
+    await clearAllChatHistory();
     clearDailyHomeMarker();
     const box = $('#messages');
     delete box.dataset.inited;
     delete box.dataset.sessionReady;
-    loadChatForEnterprise();
+    await loadChatForEnterprise();
     box.dataset.sessionReady = '1';
     syncExternalTemplatePanel();
   }
@@ -1367,6 +1511,7 @@
     delete state._followCustomerId;
     delete state.pendingSkillRun;
     delete state.pendingFollowFormSlots;
+    resetFlowState();
     saveState();
 
     const composer = $('#composer');
@@ -1377,7 +1522,9 @@
     localStorage.setItem(TOKEN_KEY, '1');
     location.hash = '#chat';
     route();
-    resetChat();
+    resetChat().catch(function (err) {
+      console.warn(err);
+    });
     refreshHeader();
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
     toast('已恢复为初始状态');
@@ -1406,17 +1553,86 @@
 
     renderSkills();
 
+    function bindVoiceHoldButton(btn, getTranscript, onDone) {
+      if (!btn) return;
+      let busy = false;
+      function endVoice() {
+        if (!btn.classList.contains('is-recording') || busy) return;
+        busy = true;
+        btn.classList.remove('is-recording');
+        btn.textContent = '按住 说话';
+        const t = (getTranscript() || '').trim();
+        if (t) onDone(t);
+        setTimeout(() => {
+          busy = false;
+        }, 400);
+      }
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        btn.classList.add('is-recording');
+        btn.textContent = '松开 结束';
+      });
+      btn.addEventListener('touchend', endVoice);
+      btn.addEventListener('mousedown', () => {
+        btn.classList.add('is-recording');
+        btn.textContent = '松开 结束';
+      });
+      btn.addEventListener('mouseup', endVoice);
+    }
+
+    function dispatchQuoteSetupUtterance(t) {
+      state._quoteSetupVoice = true;
+      try {
+        if (window.Skills && Skills.tryIntent(t)) return;
+        handleIntent(t, { skipUserMsg: true });
+      } finally {
+        state._quoteSetupVoice = false;
+      }
+    }
+
+    let quoteVoiceIdx = 0;
+    const quoteVoiceBar = $('#quote-setup-voice-bar');
+    const quoteVoiceBtn = $('#quote-setup-voice-btn');
+    const quoteSetupMode = $('#quote-setup-mode-toggle');
+    const quoteSetupInput = $('#quote-setup-text-input');
+    const quoteSetupSend = $('#quote-setup-send-btn');
+
+    bindVoiceHoldButton(
+      quoteVoiceBtn,
+      () => {
+        const samples = DemoData.quoteVoiceSamples || [];
+        return samples[quoteVoiceIdx++ % Math.max(samples.length, 1)] || '';
+      },
+      dispatchQuoteSetupUtterance
+    );
+
+    if (quoteSetupMode && quoteVoiceBar) {
+      quoteSetupMode.onclick = () => {
+        quoteVoiceBar.classList.toggle('is-text');
+        quoteSetupMode.textContent = quoteVoiceBar.classList.contains('is-text') ? '语音' : '键盘';
+      };
+    }
+    if (quoteSetupSend && quoteSetupInput) {
+      quoteSetupSend.onclick = () => {
+        const t = (quoteSetupInput.value || '').trim();
+        if (!t) return;
+        quoteSetupInput.value = '';
+        dispatchQuoteSetupUtterance(t);
+      };
+      quoteSetupInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') quoteSetupSend.click();
+      });
+    }
+
     const voice = $('#voice-btn');
-    let voiceBusy = false;
-    function endVoice() {
-      if (!voice.classList.contains('is-recording') || voiceBusy) return;
-      voiceBusy = true;
-      voice.classList.remove('is-recording');
-      voice.textContent = '按住 说话';
-      const sample = DemoData.voiceSamples[state.voiceSampleIdx % DemoData.voiceSamples.length];
-      state.voiceSampleIdx++;
-      if (sample) {
-        const t = sample.trim();
+    bindVoiceHoldButton(
+      voice,
+      () => {
+        const sample = DemoData.voiceSamples[state.voiceSampleIdx % DemoData.voiceSamples.length];
+        state.voiceSampleIdx++;
+        return sample;
+      },
+      (t) => {
         pushUserMsg(t);
         if (isWriteFollowIntent(t)) {
           handleWriteFollowIntent(t, { delayMs: 300, fromVoice: true });
@@ -1424,21 +1640,7 @@
           handleIntent(t, { skipUserMsg: true });
         }
       }
-      setTimeout(() => {
-        voiceBusy = false;
-      }, 400);
-    }
-    voice.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      voice.classList.add('is-recording');
-      voice.textContent = '松开 结束';
-    });
-    voice.addEventListener('touchend', endVoice);
-    voice.addEventListener('mousedown', () => {
-      voice.classList.add('is-recording');
-      voice.textContent = '松开 结束';
-    });
-    voice.addEventListener('mouseup', endVoice);
+    );
 
     $('#mode-toggle').onclick = () => $('#composer').classList.toggle('is-text');
 
@@ -1476,7 +1678,12 @@
         return;
       }
       const c = getCustomer(state._followCustomerId || state.customerId);
-      if (c) setCustomerReminderDate(c.id, reminderDate);
+      if (c) {
+        setCustomerReminderDate(c.id, reminderDate);
+        if (c.customerType === 'new') {
+          c.latestFollowStatus = status.value === 'done' ? 'done' : 'ongoing';
+        }
+      }
       closeOverlays();
       const reminderNote = reminderDate
         ? '提醒日期：' + reminderDate + '（自该日起推送待跟进）'
@@ -1537,11 +1744,61 @@
       });
     }
 
-    $('#quote-close').onclick = closeOverlays;
-    $('#overlay-quote').onclick = (e) => {
-      if (e.target.id === 'overlay-quote') closeOverlays();
-    };
-    $('#quote-submit').onclick = () => Skills.submitQuote();
+    const quoteSetupClose = $('#quote-setup-close');
+    if (quoteSetupClose) quoteSetupClose.onclick = closeOverlays;
+    const quoteSetupOverlay = $('#overlay-quote-setup');
+    if (quoteSetupOverlay) {
+      quoteSetupOverlay.onclick = (e) => {
+        if (e.target.id === 'overlay-quote-setup') closeOverlays();
+      };
+    }
+    const quoteSetupNext = $('#quote-setup-next');
+    if (quoteSetupNext) quoteSetupNext.onclick = () => Skills.quoteSetupNext();
+
+    const quoteTplClose = $('#quote-template-close');
+    if (quoteTplClose) quoteTplClose.onclick = closeOverlays;
+    const quoteTplOverlay = $('#overlay-quote-template');
+    if (quoteTplOverlay) {
+      quoteTplOverlay.onclick = (e) => {
+        if (e.target.id === 'overlay-quote-template') closeOverlays();
+      };
+    }
+    const quoteTplSubmit = $('#quote-template-submit');
+    if (quoteTplSubmit) quoteTplSubmit.onclick = () => Skills.submitQuoteTemplate();
+
+    document.addEventListener('change', (e) => {
+      const skuSel = e.target.closest('[data-action="quote-sku"]');
+      if (skuSel && window.Skills) Skills.handleAction('quote-sku', skuSel);
+      const quoteLineSku = e.target.closest('[data-action="quote-line-sku"]');
+      if (quoteLineSku && window.Skills && Skills.onQuoteLineSkuChange) Skills.onQuoteLineSkuChange(quoteLineSku);
+      const orderSku = e.target.closest('[data-action="order-sku"]');
+      if (orderSku && window.Skills) Skills.handleAction('order-sku', orderSku);
+    });
+
+    document.addEventListener('input', (e) => {
+      if (
+        e.target.closest('[data-action="quote-line-price"]') ||
+        e.target.closest('[data-action="quote-line-qty"]')
+      ) {
+        if (window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
+      }
+    });
+
+    const planTplClose = $('#plan-template-close');
+    if (planTplClose) planTplClose.onclick = closeOverlays;
+    const planTplOverlay = $('#overlay-plan-template');
+    if (planTplOverlay) {
+      planTplOverlay.onclick = (e) => {
+        if (e.target.id === 'overlay-plan-template') closeOverlays();
+      };
+    }
+    const planTplSubmit = $('#plan-template-submit');
+    if (planTplSubmit) planTplSubmit.onclick = () => Skills.submitPlanTemplate();
+
+    document.addEventListener('change', (e) => {
+      const sel = e.target.closest('[data-action="plan-sku"]');
+      if (sel && window.Skills) Skills.handleAction('plan-sku', sel);
+    });
 
     $('#delivery-close').onclick = closeOverlays;
     $('#overlay-delivery').onclick = (e) => {
@@ -1609,7 +1866,7 @@
       if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
     });
     window.addEventListener('pagehide', () => {
-      persistChatHistory();
+      flushChatHistorySave();
     });
     route();
     bootChatSession();
