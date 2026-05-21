@@ -71,16 +71,28 @@
             <span class="sc-status-value" id="header-skill">—</span>
           </div>
           <div class="sc-status-item sc-status-item--customer" data-spec-id="chat-current-customer">
-            <span class="sc-status-label">当前客户</span>
-            <span class="sc-status-value sc-status-value--empty" id="header-customer-display">未选择</span>
-            <span class="sc-status-tags" id="header-customer-tags" aria-hidden="true"></span>
+            <div class="sc-status-item__top">
+              <span class="sc-status-label">当前客户</span>
+              <button
+                type="button"
+                class="sc-status-switch"
+                id="btn-switch-customer"
+                data-spec-id="btn-switch-customer"
+                aria-label="切换客户"
+              >
+                切换
+              </button>
+            </div>
+            <div class="sc-status-customer-body">
+              <span class="sc-status-value sc-status-value--empty" id="header-customer-display">未选择</span>
+              <span class="sc-status-tags" id="header-customer-tags" aria-hidden="true"></span>
+            </div>
           </div>
         </div>
       </header>
       <section
         class="sc-chat-dialog"
         data-spec-id="chat-messages"
-        data-spec-pin-root
         aria-label="对话消息区"
       >
       <main class="sc-messages" id="messages"></main>
@@ -101,6 +113,7 @@
       </footer>
     </div>
 
+  <div id="sc-portal" class="sc-portal" aria-hidden="false">
   <div id="overlay-follow" class="sc-overlay sc-hidden">
     <div class="sc-sheet sc-sheet--form" data-spec-id="sheet-followup" onclick="event.stopPropagation()">
       <div class="sc-sheet__head">
@@ -207,7 +220,7 @@
   </div>
 
   <div id="overlay-plan-template" class="sc-overlay sc-hidden">
-    <div class="sc-sheet sc-sheet--form sc-sheet--plan-template" data-spec-id="sheet-plan-template" onclick="event.stopPropagation()">
+    <div class="sc-sheet sc-sheet--form sc-sheet--plan-template" data-spec-id="sheet-plan-template" data-spec-pin-root onclick="event.stopPropagation()">
       <div class="sc-sheet__head">
         <span>选择方案模板</span>
         <button type="button" class="sc-sheet__close" id="plan-template-close">×</button>
@@ -225,7 +238,7 @@
   </div>
 
     <div id="overlay-quote-setup" class="sc-overlay sc-hidden">
-    <div class="sc-sheet sc-sheet--form sc-sheet--quote-setup" data-spec-id="sheet-quote-setup" onclick="event.stopPropagation()">
+    <div class="sc-sheet sc-sheet--form sc-sheet--quote-setup" data-spec-id="sheet-quote-setup" data-spec-pin-root onclick="event.stopPropagation()">
       <div class="sc-sheet__head">
         <span id="quote-setup-title">逐项报价</span>
         <button type="button" class="sc-sheet__close" id="quote-setup-close">×</button>
@@ -247,13 +260,20 @@
     </div>
   </div>
 <div id="overlay-quote-template" class="sc-overlay sc-hidden">
-    <div class="sc-sheet sc-sheet--form" data-spec-id="sheet-quote-template" onclick="event.stopPropagation()">
+    <div class="sc-sheet sc-sheet--form sc-sheet--plan-template" data-spec-id="sheet-quote-template" data-spec-pin-root onclick="event.stopPropagation()">
       <div class="sc-sheet__head">
         <span>选择报价单模板</span>
         <button type="button" class="sc-sheet__close" id="quote-template-close">×</button>
       </div>
+      <p class="sc-card__meta sc-plan-tpl-voice-hint">可说：第1个、标准报价单（即选中并生成报价单）；也可单独说「生成报价单」</p>
       <div id="quote-template-list" class="sc-plan-tpl-list"></div>
       <button type="button" class="sc-btn sc-btn--primary" id="quote-template-submit">生成报价单</button>
+      <div class="sc-quote-setup-voice sc-quote-setup-voice--dock" data-spec-id="quote-template-voice" id="quote-template-voice-bar">
+        <button type="button" class="sc-voice sc-voice--sheet" id="quote-template-voice-btn">按住 说话</button>
+        <input type="text" class="sc-input sc-input--field sc-quote-setup-voice-input" id="quote-template-text-input" placeholder="如：第1个 / 标准报价单" autocomplete="off" />
+        <button type="button" class="sc-sheet-voice-mode" id="quote-template-mode-toggle" aria-label="切换键盘">键盘</button>
+        <button type="button" class="sc-send sc-send--sheet" id="quote-template-send-btn" aria-label="发送">➤</button>
+      </div>
     </div>
   </div>
 
@@ -261,11 +281,15 @@
   <div id="pdf-modal" class="sc-pdf sc-hidden" data-spec-id="modal-pdf">
     <div class="sc-pdf__bar">
       <button type="button" class="sc-btn sc-btn--ghost" id="pdf-close">返回</button>
-      <span style="flex:1;text-align:center;font-weight:600">文档预览</span>
-      <span style="width:48px"></span>
+      <span class="sc-pdf__bar-title" id="pdf-bar-title">文档预览</span>
+      <div class="sc-pdf__bar-actions">
+        <button type="button" class="sc-btn sc-btn--ghost sc-btn--sm" id="pdf-download" disabled>下载</button>
+        <button type="button" class="sc-btn sc-btn--ghost-primary sc-btn--sm" id="pdf-forward" disabled>转发</button>
+      </div>
     </div>
     <div class="sc-pdf__body" id="pdf-body"></div>
   </div>
+  </div><!-- /sc-portal -->
 
     </div>
     </div>
@@ -283,7 +307,10 @@
     </div>
   </aside>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
   <script src="js/demo-data.js"></script>
+  <script src="js/pdf-export.js"></script>
   <script src="js/annotation-spec-data.js"></script>
   <script src="js/annotation-spec-scope.js"></script>
   <script src="js/skills.js"></script>

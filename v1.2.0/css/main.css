@@ -479,6 +479,46 @@ body {
   align-items: flex-start;
 }
 
+.sc-status-item__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.sc-status-switch {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--color-primary);
+  border-radius: 6px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.sc-status-switch:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.sc-status-switch:active {
+  transform: scale(0.98);
+}
+
+.sc-status-customer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+}
+
 .sc-status-label {
   font-size: 11px;
   color: var(--color-text-muted);
@@ -1356,7 +1396,21 @@ button.is-flow-stale,
   cursor: pointer;
 }
 
-/* Overlay（限定在 H5 .sc-app 内，避免相对整页居中偏移） */
+/* 弹层 / PDF 统一挂载在 .sc-app 内全屏门户，避免 flex 子节点错位 */
+.sc-portal {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.sc-portal > .sc-overlay:not(.sc-hidden),
+.sc-portal > .sc-pdf:not(.sc-hidden) {
+  pointer-events: auto;
+}
+
+/* 底部抽屉 */
 .sc-overlay {
   position: absolute;
   inset: 0;
@@ -1555,11 +1609,11 @@ button.is-flow-stale,
   transform: translateX(-50%) translateY(0);
 }
 
-/* PDF modal（与弹层同属 H5 框内） */
+/* PDF：H5 内全屏「新页」，盖在抽屉之上 */
 .sc-pdf {
   position: absolute;
   inset: 0;
-  z-index: 180;
+  z-index: 220;
   background: var(--color-surface);
   display: flex;
   flex-direction: column;
@@ -1568,9 +1622,36 @@ button.is-flow-stale,
 .sc-pdf__bar {
   display: flex;
   align-items: center;
-  padding: env(safe-area-inset-top) 12px 0;
+  gap: 8px;
+  padding: env(safe-area-inset-top) 8px 0 12px;
   min-height: 48px;
   border-bottom: 1px solid var(--color-border);
+}
+
+.sc-pdf__bar-title {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+  font-size: 15px;
+  min-width: 0;
+}
+
+.sc-pdf__bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sc-btn--sm {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.sc-pdf__bar-actions .sc-btn:disabled {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .sc-pdf__body {

@@ -543,6 +543,7 @@ window.DemoData = {
     '本单报价 3500'
   ],
   planTemplateVoiceSamples: ['第1个', '选第二个', '标准技术方案', '保存方案'],
+  quoteTemplateVoiceSamples: ['第1个', '选第二个', '标准报价单', '生成报价单'],
   /** 新客户方案 · 需求经底部输入区提交；可与 voiceSamples 共用演示话术 */
   planDemandVoiceSamples: [
     '伺服电机和传动齿轮箱各2台，用于自动化产线',

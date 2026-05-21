@@ -89,21 +89,12 @@ window.Annotation = (function () {
     return esc(t);
   }
 
+  /** 【标题】后正文整段同级展示；分号仅作句内停顿，不拆缩进子列表。真子级用无【】的独立数组行。 */
   function splitKickerLead(line) {
     const km = /^【[^】]+】/.exec(line || '');
     if (!km) return { kicker: null, lead: line || '', subs: [] };
     const rest = (line || '').slice(km[0].length).trim();
-    const parts = rest.split(/[；;]/).map(function (s) {
-      return s.trim();
-    }).filter(Boolean);
-    if (parts.length <= 1) {
-      return { kicker: km[0], lead: parts[0] || '', subs: [] };
-    }
-    return {
-      kicker: km[0],
-      lead: parts[0],
-      subs: parts.slice(1)
-    };
+    return { kicker: km[0], lead: rest, subs: [] };
   }
 
   function normalizeSpecSubs(subs, parentKicker) {
@@ -402,10 +393,36 @@ window.Annotation = (function () {
     return true;
   }
 
+  /** 仅当「直接父节点」为 pin-root 时不挂钉（如抽屉内的语音条）；不阻断更深层业务卡 */
+  function hasSpecPinRootParent(host) {
+    const parent = host && host.parentElement;
+    return !!(parent && parent.hasAttribute && parent.hasAttribute('data-spec-pin-root'));
+  }
+
+  function isMessagesBusinessCard(host) {
+    const id = host && host.getAttribute('data-spec-id');
+    if (!id || !isInScope(id)) return false;
+    if (!host.classList || !host.classList.contains('sc-card')) return false;
+    return !!host.closest('#messages');
+  }
+
   function shouldAttachSpecPin(host) {
     if (!host) return false;
     if (host.hasAttribute('data-spec-pin-root')) return true;
+    if (hasSpecPinRootParent(host)) return false;
+    if (isMessagesBusinessCard(host)) return true;
     return isInnermostSpecHost(host);
+  }
+
+  function rescanSpecPins() {
+    if (!isOn() || !window.AnnotationSpecData) return;
+    document.querySelectorAll('[data-spec-id]').forEach((el) => {
+      delete el.dataset.specBtnBound;
+    });
+    document.querySelectorAll('.sc-dock').forEach((d) => {
+      delete d.dataset.llmSpecBound;
+    });
+    scanHosts();
   }
 
   function attachButton(host) {
@@ -611,5 +628,5 @@ window.Annotation = (function () {
     init();
   }
 
-  return { init, isOn, toggle, setOn, applyMode, renderPanelBody, scanHosts, isInScope };
+  return { init, isOn, toggle, setOn, applyMode, renderPanelBody, scanHosts, rescanSpecPins, isInScope };
 })();

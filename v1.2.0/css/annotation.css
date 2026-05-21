@@ -228,12 +228,17 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
   right: 8px;
 }
 
-/* 消息区整体：钉在客户条下方、消息列表右上，避开微信模板区与「清空记录」 */
-.sc-chat-dialog.sc-spec-pin-host > .sc-spec-pin {
-  top: 6px;
-  right: 10px;
-  left: auto;
-  z-index: 30;
+/* 对话区内业务卡：避免 .sc-card overflow:hidden 裁切右上角标注钉 */
+body.sc-spec-on #messages .sc-card.sc-spec-pin-host {
+  overflow: visible;
+}
+
+body.sc-spec-on #messages .sc-bubble--ai {
+  overflow: visible;
+}
+
+#messages .sc-card.sc-spec-pin-host > .sc-spec-pin {
+  z-index: 12;
 }
 
 .sc-spec-panel__title {
@@ -450,7 +455,7 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
 }
 
 @media (max-width: 640px) {
-  body.sc-spec-on .sc-app {
+  body.sc-spec-on .sc-demo-shell.sc-demo--tpl .sc-demo-body {
     padding-bottom: var(--sc-spec-panel-height);
   }
 

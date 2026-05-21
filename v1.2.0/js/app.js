@@ -218,6 +218,11 @@
       clearBtn.setAttribute('aria-disabled', hasCustomer ? 'false' : 'true');
       clearBtn.title = hasCustomer ? '清空全部对话记录' : '请先选择客户';
     }
+
+    const switchBtn = $('#btn-switch-customer');
+    if (switchBtn) {
+      switchBtn.title = c ? '切换当前客户：' + c.name : '选择客户';
+    }
   }
 
   function buildCustomerPromptHtml(skillId) {
@@ -1478,6 +1483,7 @@
     closeOverlays();
     const pdf = $('#pdf-modal');
     if (pdf) pdf.classList.add('sc-hidden');
+    document.body.classList.remove('sc-pdf-open');
 
     state.enterpriseId = 'ent-east';
     state.customerId = null;
@@ -1643,6 +1649,50 @@
       });
     }
 
+    function dispatchQuoteTemplateUtterance(t) {
+      state._quoteTemplateVoice = true;
+      try {
+        if (window.Skills && Skills.tryIntent(t)) return;
+        handleIntent(t, { skipUserMsg: true });
+      } finally {
+        state._quoteTemplateVoice = false;
+      }
+    }
+
+    let quoteTplVoiceIdx = 0;
+    const quoteTplVoiceBar = $('#quote-template-voice-bar');
+    const quoteTplVoiceBtn = $('#quote-template-voice-btn');
+    const quoteTplMode = $('#quote-template-mode-toggle');
+    const quoteTplInput = $('#quote-template-text-input');
+    const quoteTplSend = $('#quote-template-send-btn');
+
+    bindVoiceHoldButton(
+      quoteTplVoiceBtn,
+      () => {
+        const samples = DemoData.quoteTemplateVoiceSamples || DemoData.voiceSamples || [];
+        return samples[quoteTplVoiceIdx++ % Math.max(samples.length, 1)] || '';
+      },
+      dispatchQuoteTemplateUtterance
+    );
+
+    if (quoteTplMode && quoteTplVoiceBar) {
+      quoteTplMode.onclick = () => {
+        quoteTplVoiceBar.classList.toggle('is-text');
+        quoteTplMode.textContent = quoteTplVoiceBar.classList.contains('is-text') ? '语音' : '键盘';
+      };
+    }
+    if (quoteTplSend && quoteTplInput) {
+      quoteTplSend.onclick = () => {
+        const t = (quoteTplInput.value || '').trim();
+        if (!t) return;
+        quoteTplInput.value = '';
+        dispatchQuoteTemplateUtterance(t);
+      };
+      quoteTplInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') quoteTplSend.click();
+      });
+    }
+
     const voice = $('#voice-btn');
     bindVoiceHoldButton(
       voice,
@@ -1663,13 +1713,24 @@
 
     $('#mode-toggle').onclick = () => $('#composer').classList.toggle('is-text');
 
-    $('#send-btn').onclick = () => {
-      const t = ($('#text-input').value || '').trim();
+    const textInput = $('#text-input');
+    const sendBtn = $('#send-btn');
+    function sendTextMessage() {
+      const t = (textInput && textInput.value ? textInput.value : '').trim();
       if (!t) return;
-      $('#text-input').value = '';
+      if (textInput) textInput.value = '';
       $('#composer').classList.remove('is-text');
       handleIntent(t);
-    };
+    }
+    if (sendBtn) sendBtn.onclick = sendTextMessage;
+    if (textInput) {
+      textInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          sendTextMessage();
+        }
+      });
+    }
 
     $('#sheet-follow-close').onclick = closeOverlays;
     $('#overlay-follow').onclick = (e) => {
@@ -1740,6 +1801,11 @@
       );
     };
 
+    const btnSwitchCustomer = $('#btn-switch-customer');
+    if (btnSwitchCustomer) {
+      btnSwitchCustomer.onclick = () => openCustomerSheet();
+    }
+
     $('#sheet-customer-close').onclick = closeOverlays;
     $('#overlay-customer').onclick = (e) => {
       if (e.target.id === 'overlay-customer') closeOverlays();
@@ -1751,7 +1817,22 @@
       if (e.target.id === 'overlay-enterprise') closeOverlays();
     };
 
-    $('#pdf-close').onclick = () => $('#pdf-modal').classList.add('sc-hidden');
+    $('#pdf-close').onclick = () => {
+      $('#pdf-modal').classList.add('sc-hidden');
+      document.body.classList.remove('sc-pdf-open');
+    };
+    const pdfDownload = $('#pdf-download');
+    if (pdfDownload) {
+      pdfDownload.onclick = () => {
+        if (window.Skills && Skills.downloadPdfDocument) Skills.downloadPdfDocument();
+      };
+    }
+    const pdfForward = $('#pdf-forward');
+    if (pdfForward) {
+      pdfForward.onclick = () => {
+        if (window.Skills && Skills.forwardPdfDocument) Skills.forwardPdfDocument();
+      };
+    }
 
     const changeSel = $('#change-reason');
     if (changeSel && !changeSel.options.length) {

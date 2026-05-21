@@ -11,6 +11,7 @@ window.AnnotationSpecScope = {
   ids: [
     'data-rules-chat-flow',
     'chat-messages',
+    'btn-switch-customer',
     'chat-llm',
     'card-plan-demand',
     'card-plan-pick',
@@ -25,6 +26,7 @@ window.AnnotationSpecScope = {
     'sheet-quote-setup',
     'quote-setup-voice',
     'sheet-quote-template',
+    'quote-template-voice',
     'card-quote',
     'card-quote-select',
     'card-order-source',
