@@ -256,6 +256,29 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
   color: #18181b;
 }
 
+.sc-spec-panel__label.sc-spec-feature {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid #e4e4e7;
+  font-size: 13px;
+  color: #4f46e5;
+}
+
+.sc-spec-panel__label.sc-spec-feature:first-of-type {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: none;
+}
+
+.sc-spec-panel__label.sc-spec-feature__section {
+  margin: 8px 0 4px;
+  padding-left: 8px;
+  border-left: 3px solid #c7d2fe;
+  font-size: 11px;
+  font-weight: 600;
+  color: #3f3f46;
+}
+
 .sc-spec-kicker {
   color: #4f46e5;
   font-weight: 600;
@@ -387,9 +410,15 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
 .sc-spec-table--route th:first-child,
 .sc-spec-table--route td:first-child,
 .sc-spec-table--route th:nth-child(2),
-.sc-spec-table--route td:nth-child(2),
-.sc-spec-table--route th:nth-child(3),
-.sc-spec-table--route td:nth-child(3) {
+.sc-spec-table--route td:nth-child(2) {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.sc-spec-table--slot th:first-child,
+.sc-spec-table--slot td:first-child,
+.sc-spec-table--slot th:nth-child(2),
+.sc-spec-table--slot td:nth-child(2) {
   text-align: center;
   white-space: nowrap;
 }

@@ -253,6 +253,30 @@
   function executeSkillAction(skillId, opts) {
     opts = opts || {};
     if (skillId === 'switch-customer') return;
+    if (skillId === 'scheme-quote') {
+      const ctx = state.ctx || (state.ctx = {});
+      const utterance = ctx.pendingSchemeQuoteUtterance || '按方案报价';
+      delete ctx.pendingSchemeQuoteUtterance;
+      if (!opts.skipUserMsg) {
+        pushUserMsg(utterance);
+      }
+      setTimeout(() => {
+        if (window.Skills && Skills.runSchemeQuoteEntry) Skills.runSchemeQuoteEntry(utterance);
+      }, opts.delayMs != null ? opts.delayMs : 300);
+      return;
+    }
+    if (skillId === 'order-by-quote') {
+      const ctx = state.ctx || (state.ctx = {});
+      const utterance = ctx.pendingOrderByQuoteUtterance || '按报价单下单';
+      delete ctx.pendingOrderByQuoteUtterance;
+      if (!opts.skipUserMsg) {
+        pushUserMsg(utterance);
+      }
+      setTimeout(() => {
+        if (window.Skills && Skills.runOrderByQuoteEntry) Skills.runOrderByQuoteEntry(utterance);
+      }, opts.delayMs != null ? opts.delayMs : 300);
+      return;
+    }
     if (skillId === 'followup') {
       if (!opts.skipUserMsg) requestFollowUpListByClick();
       else {
@@ -293,8 +317,11 @@
   function tryMatchCustomerByName(text) {
     const q = (text || '').trim();
     if (!q) return null;
-    const lower = q.toLowerCase();
     const items = customersForEnterprise();
+    if (window.DemoData && DemoData.findCustomerByQuery) {
+      return DemoData.findCustomerByQuery(q, items);
+    }
+    const lower = q.toLowerCase();
     return (
       items.find((c) => c.name === q) ||
       items.find((c) => c.name.toLowerCase().includes(lower)) ||
@@ -498,16 +525,22 @@
   }
 
   function filteredCustomersForPicker() {
-    const q = ($('#customer-search').value || '').trim().toLowerCase();
+    const q = ($('#customer-search').value || '').trim();
     const tab = customerPickerTab;
-    return customersForEnterprise().filter((c) => {
+    const matchFn = window.DemoData && DemoData.customerMatchesQuery;
+    const scoreFn = window.DemoData && DemoData.customerSearchScore;
+    const items = customersForEnterprise().filter((c) => {
       if ((c.partnerType || 'customer') !== tab) return false;
       if (!q) return true;
+      if (matchFn) return DemoData.customerMatchesQuery(c, q);
+      const lower = q.toLowerCase();
       return (
-        c.name.toLowerCase().includes(q) ||
-        (c.code && c.code.toLowerCase().includes(q))
+        c.name.toLowerCase().includes(lower) ||
+        (c.code && c.code.toLowerCase().includes(lower))
       );
     });
+    if (!q || !scoreFn) return items;
+    return items.slice().sort((a, b) => DemoData.customerSearchScore(b, q) - DemoData.customerSearchScore(a, q));
   }
 
   function renderCustomerCategoryFilters() {
@@ -572,6 +605,8 @@
   }
 
   function getSkillLabel(skillId) {
+    if (skillId === 'scheme-quote') return '按方案报价';
+    if (skillId === 'order-by-quote') return '按报价单下单';
     const sk = DemoData.skills.find((s) => s.id === skillId);
     return sk ? sk.name : skillId;
   }
@@ -1219,6 +1254,7 @@
       return;
     }
     if (window.Skills && Skills.tryIntent(t)) return;
+    if (window.Skills && Skills.tryGuideAfterIntentFail && Skills.tryGuideAfterIntentFail(t)) return;
     if (/帮助|能做什么/.test(t)) {
       setTimeout(() => pushAiHtml(DemoData.welcomeHelp), 300);
       return;
@@ -1560,6 +1596,50 @@
       };
       quoteSetupInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') quoteSetupSend.click();
+      });
+    }
+
+    function dispatchPlanTemplateUtterance(t) {
+      state._planTemplateVoice = true;
+      try {
+        if (window.Skills && Skills.tryIntent(t)) return;
+        handleIntent(t, { skipUserMsg: true });
+      } finally {
+        state._planTemplateVoice = false;
+      }
+    }
+
+    let planTplVoiceIdx = 0;
+    const planTplVoiceBar = $('#plan-template-voice-bar');
+    const planTplVoiceBtn = $('#plan-template-voice-btn');
+    const planTplMode = $('#plan-template-mode-toggle');
+    const planTplInput = $('#plan-template-text-input');
+    const planTplSend = $('#plan-template-send-btn');
+
+    bindVoiceHoldButton(
+      planTplVoiceBtn,
+      () => {
+        const samples = DemoData.planTemplateVoiceSamples || DemoData.voiceSamples || [];
+        return samples[planTplVoiceIdx++ % Math.max(samples.length, 1)] || '';
+      },
+      dispatchPlanTemplateUtterance
+    );
+
+    if (planTplMode && planTplVoiceBar) {
+      planTplMode.onclick = () => {
+        planTplVoiceBar.classList.toggle('is-text');
+        planTplMode.textContent = planTplVoiceBar.classList.contains('is-text') ? '语音' : '键盘';
+      };
+    }
+    if (planTplSend && planTplInput) {
+      planTplSend.onclick = () => {
+        const t = (planTplInput.value || '').trim();
+        if (!t) return;
+        planTplInput.value = '';
+        dispatchPlanTemplateUtterance(t);
+      };
+      planTplInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') planTplSend.click();
       });
     }
 

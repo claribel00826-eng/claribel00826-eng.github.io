@@ -44,12 +44,19 @@ window.Annotation = (function () {
     return d.innerHTML;
   }
 
-  /** 合并 content + query；行首【标题】高亮 */
+  /** 合并 content + query + interaction（无【】的交互行自动加【操作】）；行首【标题】高亮 */
   function specDetailLines(spec) {
     if (!spec) return [];
     const lines = [];
     if (spec.content && spec.content.length) lines.push.apply(lines, spec.content);
     if (spec.query && spec.query.length) lines.push.apply(lines, spec.query);
+    if (spec.interaction && spec.interaction.length) {
+      spec.interaction.forEach(function (line) {
+        const t = (line || '').trim();
+        if (!t) return;
+        lines.push(/^【/.test(t) ? t : '【操作】' + t);
+      });
+    }
     return lines;
   }
 
@@ -176,7 +183,7 @@ window.Annotation = (function () {
     if (!lines || !lines.length) return html;
     html +=
       '<p class="sc-spec-panel__label">' +
-      esc(label || '内容与查询') +
+      esc(label || '业务说明') +
       '</p>' +
       renderSpecDetailGroups(buildSpecDetailGroups(lines));
     return html;
@@ -359,29 +366,25 @@ window.Annotation = (function () {
     html += '<p class="sc-spec-panel__meta">文档章节 ' + esc(spec.module) + ' · 本版验收模块</p>';
     html += renderGlobalNotesHtml();
     html = appendDetailListHtml(html, specDetailLines(spec));
-    if (spec.interaction && spec.interaction.length) {
-      html += '<p class="sc-spec-panel__label">交互逻辑</p><ul class="sc-spec-panel__ul">';
-      spec.interaction.forEach((line) => {
-        html += '<li>' + esc(line) + '</li>';
-      });
-      html += '</ul>';
-    }
     if (id === 'chat-messages' && isInScope('data-rules-chat-flow') && getSpec('data-rules-chat-flow')) {
       const dr = getSpec('data-rules-chat-flow');
       const drLines = specDetailLines(dr);
       if (drLines.length) {
         html = appendDetailListHtml(html, drLines, dr.name);
       }
-      if (dr.interaction && dr.interaction.length) {
-        html += '<p class="sc-spec-panel__label">交互逻辑（续）</p><ul class="sc-spec-panel__ul">';
-        dr.interaction.forEach((line) => {
-          html += '<li>' + esc(line) + '</li>';
-        });
-        html += '</ul>';
+    }
+    if (id === 'chat-llm' && window.AnnotationIntentFlows) {
+      html += window.AnnotationIntentFlows.getHtml();
+    } else if (spec.extraHtml) {
+      html += spec.extraHtml;
+    }
+    body.innerHTML = html;
+    if (id === 'chat-llm' && typeof mermaid !== 'undefined') {
+      const blocks = body.querySelectorAll('pre.mermaid');
+      if (blocks.length) {
+        mermaid.run({ nodes: blocks }).catch(function () {});
       }
     }
-    if (spec.extraHtml) html += spec.extraHtml;
-    body.innerHTML = html;
   }
 
   function highlight(el) {
@@ -472,7 +475,7 @@ window.Annotation = (function () {
       }
     }
     html +=
-      '<p>点击各模块 <strong>标注</strong> 看流程内逻辑；底部 <strong>意图</strong> 为槽位路由：读到哪些槽 → 跳哪 → 填什么数据。</p>';
+      '<p>点击各模块 <strong>标注</strong> 查看流程逻辑；底部 <strong>意图</strong> 说明输入识别、字段合并与缺槽引导规则。</p>';
     return html;
   }
 

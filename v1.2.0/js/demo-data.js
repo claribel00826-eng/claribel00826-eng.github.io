@@ -488,6 +488,7 @@ window.DemoData = {
       '可一句话生成方案（话术含选品、规格与数量）。示例：给深圳创源配伺服电机和传动齿轮箱各2台',
     quote:
       '可一句话生成报价单（话术含按方案或选品、规格、数量、本单单价）。示例：给深圳创源按方案报价',
+    'scheme-quote': '须先选客户；系统校验该客户是否已有方案，有则列出方案供选择',
     order:
       '可一句话生成订单（话术含按报价单或直选品名、数量与单价）。示例：给华东精密下单，配伺服电机10台单价2100'
   },
@@ -540,6 +541,13 @@ window.DemoData = {
     '选择模板',
     '确认下单',
     '本单报价 3500'
+  ],
+  planTemplateVoiceSamples: ['第1个', '选第二个', '标准技术方案', '保存方案'],
+  /** 新客户方案 · 需求经底部输入区提交；可与 voiceSamples 共用演示话术 */
+  planDemandVoiceSamples: [
+    '伺服电机和传动齿轮箱各2台，用于自动化产线',
+    '需要直线导轨和PLC触摸屏做设备改造',
+    '液压泵站、气缸和电磁阀'
   ],
   followStatusOptions: [
     { value: 'ongoing', label: '跟进中' },
@@ -669,15 +677,17 @@ window.DemoData = {
     return DemoData.products.filter((p) => DemoData.productMatchesCustomerCategory(p, customer));
   },
 
-  /** 存货描述与需求文本匹配分（0–1），演示用；仅比较 demand 关键词与 inventoryDesc 字段 */
-  matchInventoryScore(demandText, inventoryDesc) {
-    if (!demandText || !inventoryDesc) return 0;
+  /** 存货描述与需求文本匹配分（0–1），演示用；需求词命中 inventoryDesc 或品名 */
+  matchInventoryScore(demandText, inventoryDesc, productName) {
+    if (!demandText) return 0;
     const tokens = demandText.split(/[\s,，、]+/).filter((t) => t.length >= 2);
     if (!tokens.length) return 0;
-    const desc = inventoryDesc.toLowerCase();
     let hit = 0;
     tokens.forEach((t) => {
-      if (desc.indexOf(t.toLowerCase()) >= 0) hit++;
+      const k = t.toLowerCase();
+      const inDesc = inventoryDesc && inventoryDesc.toLowerCase().indexOf(k) >= 0;
+      const inName = productName && productName.toLowerCase().indexOf(k) >= 0;
+      if (inDesc || inName) hit++;
     });
     return hit / tokens.length;
   },
@@ -688,7 +698,7 @@ window.DemoData = {
    * - 新客户：先客户性质×产品类型 → 再 demandHint×存货描述，分 >0.8，Top10
    * filterText 同时过滤品名/规格/存货描述
    */
-  recommendProducts(customer, filterText, currentUser) {
+  recommendProducts(customer, filterText, currentUser, demandText) {
     const all = DemoData.products;
     let rows = [];
     const kind = DemoData.planCustomerKind(customer, currentUser);
@@ -708,13 +718,16 @@ window.DemoData = {
       });
       rows = rows.slice(0, 10);
     } else {
-      const demand = customer.demandHint || '';
+      const demand =
+        demandText != null && String(demandText).trim()
+          ? String(demandText).trim()
+          : customer.demandHint || '';
       const th = DemoData.PLAN_RECOMMEND_SCORE_NEW;
       const pool = DemoData.newCustomerProductPool(customer);
       rows = pool
         .map((p) => ({
           product: p,
-          score: DemoData.matchInventoryScore(demand, p.inventoryDesc),
+          score: DemoData.matchInventoryScore(demand, p.inventoryDesc, p.name),
           tag: '需求匹配'
         }))
         .filter((r) => r.score > th)
@@ -750,25 +763,28 @@ window.DemoData = {
    * - 老客户：全库余量；筛选词匹配品名/规格/存货描述；按品名排序
    * - 新客户：demandHint×inventoryDesc 弱匹配 (0.2, 0.8]；或有筛选词且命中三字段之一；按匹配分降序
    */
-  planMoreProducts(customer, recIds, filterText, currentUser) {
+  planMoreProducts(customer, recIds, filterText, currentUser, demandText) {
     const exclude = recIds instanceof Set ? recIds : new Set(recIds || []);
     const f = (filterText || '').trim();
     const kind = customer ? DemoData.planCustomerKind(customer, currentUser) : 'new';
 
     if (customer && kind === 'new') {
-      const demand = customer.demandHint || '';
+      const demand =
+        demandText != null && String(demandText).trim()
+          ? String(demandText).trim()
+          : customer.demandHint || '';
       const hi = DemoData.PLAN_RECOMMEND_SCORE_NEW;
       const lo = DemoData.PLAN_MORE_MIN_SCORE_NEW;
       return DemoData.newCustomerProductPool(customer)
         .filter((p) => !exclude.has(p.id))
         .map((p) => ({
           product: p,
-          score: DemoData.matchInventoryScore(demand, p.inventoryDesc)
+          score: DemoData.matchInventoryScore(demand, p.inventoryDesc, p.name)
         }))
         .filter((r) => {
           if (r.score > hi) return false;
-          if (r.score > lo) return DemoData.productPassesPlanFilter(r.product, f);
-          return f && DemoData.productPassesPlanFilter(r.product, f);
+          if (f) return DemoData.productPassesPlanFilter(r.product, f);
+          return true;
         })
         .sort(
           (a, b) =>
@@ -813,6 +829,79 @@ window.DemoData = {
     return 1;
   },
 
+  /** 搜索归一化：小写、去空白与常见分隔符，便于模糊比对 */
+  normalizeSearchText(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/[（）()·\-—_,，。.、／/]/g, '');
+  },
+
+  /** 客户抽屉可检索字段 */
+  customerSearchFields(c) {
+    if (!c) return [];
+    return [c.name, c.code, c.settlementCustomer, c.category].filter(Boolean);
+  },
+
+  /**
+   * 模糊得分：连续子串优先；否则 query 字符按序出现在 target 中（IDE 式子序列）
+   * @returns {number} 无匹配 -1
+   */
+  searchTextScore(query, target) {
+    const q = DemoData.normalizeSearchText(query);
+    const t = DemoData.normalizeSearchText(target);
+    if (!q) return 0;
+    if (!t) return -1;
+    const idx = t.indexOf(q);
+    if (idx >= 0) return 2000 - idx - (t.length - q.length) * 0.2;
+    if (q.length < 2) return -1;
+    let qi = 0;
+    let gaps = 0;
+    let last = -1;
+    for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+      if (t[ti] === q[qi]) {
+        if (last >= 0) gaps += ti - last - 1;
+        last = ti;
+        qi++;
+      }
+    }
+    if (qi < q.length) return -1;
+    return 800 - gaps * 4 - (t.length - q.length);
+  },
+
+  customerMatchesQuery(c, query) {
+    const q = (query || '').trim();
+    if (!q) return true;
+    return DemoData.customerSearchFields(c).some((f) => DemoData.searchTextScore(q, f) >= 0);
+  },
+
+  customerSearchScore(c, query) {
+    const q = (query || '').trim();
+    if (!q) return 0;
+    let best = -1;
+    DemoData.customerSearchFields(c).forEach((f) => {
+      const s = DemoData.searchTextScore(q, f);
+      if (s > best) best = s;
+    });
+    return best;
+  },
+
+  /** 在当前企业客户列表中按模糊查询取最佳一条（话术/语音解析共用） */
+  findCustomerByQuery(query, customers) {
+    const q = (query || '').trim();
+    if (!q || !customers || !customers.length) return null;
+    let best = null;
+    let bestScore = -1;
+    customers.forEach((c) => {
+      const s = DemoData.customerSearchScore(c, q);
+      if (s > bestScore) {
+        bestScore = s;
+        best = c;
+      }
+    });
+    return bestScore >= 0 ? best : null;
+  },
+
   /**
    * 从整句解析客户 + 保留原需求（选客户引导后粘贴示例用）
    * @param {string} text
@@ -840,18 +929,9 @@ window.DemoData = {
       const m = t.match(patterns[i]);
       if (!m || !m[1]) continue;
       const part = m[1].trim();
-      const lower = part.toLowerCase();
       const hit =
         sorted.find((c) => c.name === part) ||
-        sorted.find(
-          (c) =>
-            (c.name && c.name.indexOf(part) >= 0) ||
-            (c.name && part.indexOf(c.name) >= 0) ||
-            (c.code && c.code.toLowerCase().indexOf(lower) >= 0)
-        ) ||
-        customers.find(
-          (c) => c.name && c.name.toLowerCase().indexOf(lower) >= 0
-        );
+        DemoData.findCustomerByQuery(part, customers);
       if (hit) return { customer: hit, demandText: t };
     }
     return null;
@@ -924,7 +1004,7 @@ window.DemoData = {
       .sort((a, b) => b.score - a.score);
 
     if (!rows.length && customer) {
-      rows = DemoData.recommendProducts(customer, t)
+      rows = DemoData.recommendProducts(customer, t, undefined, t)
         .slice(0, 4)
         .map((r) => ({
           product: r.product,

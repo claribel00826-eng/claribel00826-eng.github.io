@@ -138,7 +138,7 @@
         <span>切换客户</span>
         <button type="button" class="sc-sheet__close" id="sheet-customer-close" aria-label="关闭">×</button>
       </div>
-      <input type="search" class="sc-search" id="customer-search" placeholder="搜索客户名称或编码" autocomplete="off" />
+      <input type="search" class="sc-search" id="customer-search" placeholder="模糊搜索名称、编码（支持不连续关键字）" autocomplete="off" />
       <div class="sc-filter-row" id="customer-category-filters" role="tablist" aria-label="往来单位类型"></div>
       <p class="sc-sheet__empty sc-hidden" id="customer-list-empty">无匹配客户，请调整筛选条件</p>
       <div class="sc-customer-list" id="customer-list"></div>
@@ -207,13 +207,20 @@
   </div>
 
   <div id="overlay-plan-template" class="sc-overlay sc-hidden">
-    <div class="sc-sheet sc-sheet--form" data-spec-id="sheet-plan-template" onclick="event.stopPropagation()">
+    <div class="sc-sheet sc-sheet--form sc-sheet--plan-template" data-spec-id="sheet-plan-template" onclick="event.stopPropagation()">
       <div class="sc-sheet__head">
         <span>选择方案模板</span>
         <button type="button" class="sc-sheet__close" id="plan-template-close">×</button>
       </div>
+      <p class="sc-card__meta sc-plan-tpl-voice-hint">可说：第1个、选第二个、标准技术方案；说「保存方案」确认</p>
       <div id="plan-template-list" class="sc-plan-tpl-list"></div>
       <button type="button" class="sc-btn sc-btn--primary" id="plan-template-submit">保存方案</button>
+      <div class="sc-quote-setup-voice sc-quote-setup-voice--dock" data-spec-id="plan-template-voice" id="plan-template-voice-bar">
+        <button type="button" class="sc-voice sc-voice--sheet" id="plan-template-voice-btn">按住 说话</button>
+        <input type="text" class="sc-input sc-input--field sc-quote-setup-voice-input" id="plan-template-text-input" placeholder="如：第1个 / 标准技术方案" autocomplete="off" />
+        <button type="button" class="sc-sheet-voice-mode" id="plan-template-mode-toggle" aria-label="切换键盘">键盘</button>
+        <button type="button" class="sc-send sc-send--sheet" id="plan-template-send-btn" aria-label="发送">➤</button>
+      </div>
     </div>
   </div>
 
