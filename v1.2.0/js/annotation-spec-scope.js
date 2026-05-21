@@ -16,6 +16,7 @@ window.AnnotationSpecScope = {
     'card-plan-cart',
     'sheet-plan-template',
     'card-scheme',
+    'card-scheme-pick',
     'card-quote-source',
     'card-quote-pick',
     'card-quote-cart',
@@ -23,10 +24,12 @@ window.AnnotationSpecScope = {
     'quote-setup-voice',
     'sheet-quote-template',
     'card-quote',
+    'card-quote-select',
     'card-order-source',
     'card-order-pick',
     'card-order-cart',
     'sheet-order',
-    'card-order-success'
+    'card-order-success',
+    'modal-pdf'
   ]
 };

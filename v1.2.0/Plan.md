@@ -41,8 +41,7 @@ v1.2.0/  （继承 v1.1.0 全部文件 + 本版增量）
 
 ## 聊天记录
 
-- 不再使用 `localStorage`（`sc_chat_history`）
-- 后端 `backend/` SQLite + API，H5 通过 `window.SC_API_BASE`（默认 `http://127.0.0.1:8000`）读写
+- 按企业 ID 写入浏览器 `localStorage`（键名 `sc_chat_history`），纯前端演示，不调用后端接口
 
 ## 验收清单
 

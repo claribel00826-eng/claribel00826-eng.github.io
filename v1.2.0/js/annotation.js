@@ -44,6 +44,144 @@ window.Annotation = (function () {
     return d.innerHTML;
   }
 
+  /** 合并 content + query；行首【标题】高亮 */
+  function specDetailLines(spec) {
+    if (!spec) return [];
+    const lines = [];
+    if (spec.content && spec.content.length) lines.push.apply(lines, spec.content);
+    if (spec.query && spec.query.length) lines.push.apply(lines, spec.query);
+    return lines;
+  }
+
+  function parentKickerLabel(kicker) {
+    if (!kicker) return '';
+    return kicker.replace(/^【|】$/g, '');
+  }
+
+  /** 子行去掉与父区块重复的「推荐区·」等前缀 */
+  function normalizeSpecSubLine(sub, parentKicker) {
+    const t = (sub || '').trim();
+    if (!t || !parentKicker) return t;
+    const label = parentKickerLabel(parentKicker);
+    const dotted = label + '·';
+    if (t.indexOf(dotted) === 0) return t.slice(dotted.length);
+    return t;
+  }
+
+  function formatSpecSubLine(line) {
+    const t = (line || '').trim();
+    const m = /^([^：\n]{2,16})(：)([\s\S]*)$/.exec(t);
+    if (m) {
+      return (
+        '<span class="sc-spec-sub-kicker">' +
+        esc(m[1] + m[2]) +
+        '</span>' +
+        esc(m[3])
+      );
+    }
+    return esc(t);
+  }
+
+  function splitKickerLead(line) {
+    const km = /^【[^】]+】/.exec(line || '');
+    if (!km) return { kicker: null, lead: line || '', subs: [] };
+    const rest = (line || '').slice(km[0].length).trim();
+    const parts = rest.split(/[；;]/).map(function (s) {
+      return s.trim();
+    }).filter(Boolean);
+    if (parts.length <= 1) {
+      return { kicker: km[0], lead: parts[0] || '', subs: [] };
+    }
+    return {
+      kicker: km[0],
+      lead: parts[0],
+      subs: parts.slice(1)
+    };
+  }
+
+  function normalizeSpecSubs(subs, parentKicker) {
+    return (subs || []).map(function (s) {
+      return normalizeSpecSubLine(s, parentKicker);
+    });
+  }
+
+  function isSpecDetailSubLine(line) {
+    return line && !/^【/.test(line);
+  }
+
+  /** 按【区块】分组；无【】的续行归入上一区块子列表 */
+  function buildSpecDetailGroups(lines) {
+    const groups = [];
+    (lines || []).forEach(function (line) {
+      const t = (line || '').trim();
+      if (!t) return;
+      const km = /^【[^】]+】/.exec(t);
+      if (km) {
+        const chunk = splitKickerLead(t);
+        groups.push({
+          kicker: chunk.kicker,
+          lead: chunk.lead,
+          subs: normalizeSpecSubs(chunk.subs, chunk.kicker)
+        });
+        return;
+      }
+      if (groups.length && isSpecDetailSubLine(t)) {
+        const parent = groups[groups.length - 1].kicker;
+        groups[groups.length - 1].subs.push(normalizeSpecSubLine(t, parent));
+        return;
+      }
+      groups.push({ kicker: null, lead: t, subs: [] });
+    });
+    return groups;
+  }
+
+  function renderSpecDetailGroups(groups) {
+    let html = '<ul class="sc-spec-panel__ul sc-spec-detail">';
+    groups.forEach(function (g) {
+      html += '<li class="sc-spec-block">';
+      if (g.kicker) {
+        html +=
+          '<p class="sc-spec-block__head"><strong class="sc-spec-kicker">' +
+          esc(g.kicker) +
+          '</strong>';
+        if (g.lead) html += esc(g.lead);
+        html += '</p>';
+      } else if (g.lead) {
+        html += '<p class="sc-spec-block__head">' + esc(g.lead) + '</p>';
+      }
+      if (g.subs && g.subs.length) {
+        html += '<ul class="sc-spec-panel__subul">';
+        g.subs.forEach(function (sub) {
+          html += '<li>' + formatSpecSubLine(sub) + '</li>';
+        });
+        html += '</ul>';
+      }
+      html += '</li>';
+    });
+    html += '</ul>';
+    return html;
+  }
+
+  function renderGlobalNotesHtml() {
+    const g = window.AnnotationSpecGlobal;
+    if (!g || !g.notes || !g.notes.length) return '';
+    let html = '<div class="sc-spec-global">';
+    html += '<p class="sc-spec-panel__label">' + esc(g.title || '全局说明') + '</p>';
+    html += renderSpecDetailGroups(buildSpecDetailGroups(g.notes));
+    html += '</div>';
+    return html;
+  }
+
+  function appendDetailListHtml(html, lines, label) {
+    if (!lines || !lines.length) return html;
+    html +=
+      '<p class="sc-spec-panel__label">' +
+      esc(label || '内容与查询') +
+      '</p>' +
+      renderSpecDetailGroups(buildSpecDetailGroups(lines));
+    return html;
+  }
+
   function getScope() {
     return window.AnnotationSpecScope || null;
   }
@@ -219,20 +357,8 @@ window.Annotation = (function () {
     }
     let html = '<p class="sc-spec-panel__title">' + esc(spec.name) + '</p>';
     html += '<p class="sc-spec-panel__meta">文档章节 ' + esc(spec.module) + ' · 本版验收模块</p>';
-    if (spec.content && spec.content.length) {
-      html += '<p class="sc-spec-panel__label">内容</p><ul class="sc-spec-panel__ul">';
-      spec.content.forEach((line) => {
-        html += '<li>' + esc(line) + '</li>';
-      });
-      html += '</ul>';
-    }
-    if (spec.query && spec.query.length) {
-      html += '<p class="sc-spec-panel__label">查询逻辑</p><ul class="sc-spec-panel__ul">';
-      spec.query.forEach((line) => {
-        html += '<li>' + esc(line) + '</li>';
-      });
-      html += '</ul>';
-    }
+    html += renderGlobalNotesHtml();
+    html = appendDetailListHtml(html, specDetailLines(spec));
     if (spec.interaction && spec.interaction.length) {
       html += '<p class="sc-spec-panel__label">交互逻辑</p><ul class="sc-spec-panel__ul">';
       spec.interaction.forEach((line) => {
@@ -242,12 +368,9 @@ window.Annotation = (function () {
     }
     if (id === 'chat-messages' && isInScope('data-rules-chat-flow') && getSpec('data-rules-chat-flow')) {
       const dr = getSpec('data-rules-chat-flow');
-      if (dr.query && dr.query.length) {
-        html += '<p class="sc-spec-panel__label">' + esc(dr.name) + '</p><ul class="sc-spec-panel__ul">';
-        dr.query.forEach((line) => {
-          html += '<li>' + esc(line) + '</li>';
-        });
-        html += '</ul>';
+      const drLines = specDetailLines(dr);
+      if (drLines.length) {
+        html = appendDetailListHtml(html, drLines, dr.name);
       }
       if (dr.interaction && dr.interaction.length) {
         html += '<p class="sc-spec-panel__label">交互逻辑（续）</p><ul class="sc-spec-panel__ul">';

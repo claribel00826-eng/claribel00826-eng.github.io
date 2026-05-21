@@ -1575,12 +1575,86 @@ button.is-flow-stale,
 
 .sc-pdf__body {
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f4f4f5;
+  overflow: auto;
+  padding: 16px;
+  background: #e8e8ec;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sc-pdf-empty {
+  margin: 40px auto;
+  text-align: center;
   color: var(--color-text-muted);
   font-size: 14px;
+}
+
+.sc-pdf-doc {
+  max-width: 360px;
+  margin: 0 auto;
+  padding: 20px 18px 24px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.sc-pdf-doc__title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sc-pdf-doc__meta {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.sc-pdf-doc__table {
+  width: 100%;
+  margin: 14px 0;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.sc-pdf-doc__table th,
+.sc-pdf-doc__table td {
+  border: 1px solid var(--color-border);
+  padding: 6px 4px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.sc-pdf-doc__table th {
+  background: #f8f8fa;
+  font-weight: 600;
+}
+
+.sc-pdf-doc__num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sc-pdf-doc__foot {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.sc-pdf-doc__total {
+  margin: 0;
+  text-align: right;
+  font-size: 15px;
+}
+
+.sc-pdf-doc__note {
+  margin: 0;
+  text-align: right;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 .sc-welcome-block__lead {

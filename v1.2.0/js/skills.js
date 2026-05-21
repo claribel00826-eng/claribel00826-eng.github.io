@@ -13,6 +13,11 @@ window.Skills = (function () {
     return App.state.ctx;
   }
 
+  /** 当前助手页内的补充说明，不触发「新页面」失效 */
+  function pushAiMeta(html) {
+    App.pushAiHtml(html, { samePage: true });
+  }
+
   function utteranceFor(id) {
     return (DemoData.skillUtterances && DemoData.skillUtterances[id]) || id;
   }
@@ -35,10 +40,171 @@ window.Skills = (function () {
     return App.getCustomer(App.state.selectedFollowUpId || App.state.customerId);
   }
 
-  function schemeForActiveCustomer() {
+  function ensureSchemesStore() {
+    if (!Array.isArray(ctx().schemes)) {
+      ctx().schemes = [];
+      if (ctx().scheme && ctx().scheme.id) ctx().schemes.push(ctx().scheme);
+    }
+  }
+
+  function schemesForCustomer(cid) {
+    ensureSchemesStore();
+    return ctx().schemes.filter((s) => s.customerId === cid);
+  }
+
+  function persistScheme(scheme) {
+    ensureSchemesStore();
+    const idx = ctx().schemes.findIndex((s) => s.id === scheme.id);
+    if (idx >= 0) ctx().schemes[idx] = scheme;
+    else ctx().schemes.push(scheme);
+    ctx().scheme = scheme;
+    ctx().activeSchemeId = scheme.id;
+    App.saveState();
+    return scheme;
+  }
+
+  function schemePickSummary(s) {
+    const lines = s.lines || [];
+    if (!lines.length) return '无明细';
+    const preview = lines
+      .slice(0, 2)
+      .map((l) => (l.name || '品项') + '×' + (l.qty || 1))
+      .join('、');
+    return lines.length > 2 ? preview + ' 等' + lines.length + '项' : preview;
+  }
+
+  function renderSchemePickCard(list) {
+    const rows = list
+      .slice()
+      .reverse()
+      .map(
+        (s) =>
+          '<button type="button" class="sc-follow-row sc-follow-row--select" data-action="quote-pick-scheme" data-scheme-id="' +
+          App.escapeHtml(s.id) +
+          '"><span class="sc-follow-row__name">方案 ' +
+          App.escapeHtml(s.id) +
+          '</span><span class="sc-follow-row__meta">' +
+          App.escapeHtml(s.templateName || '—') +
+          ' · ' +
+          App.escapeHtml(schemePickSummary(s)) +
+          '</span></button>'
+      )
+      .join('');
+    return (
+      '<div class="sc-card sc-card--compact" data-spec-id="card-scheme-pick">' +
+      '<div class="sc-card__head sc-card__head--compact">选择方案</div>' +
+      '<div class="sc-follow-list">' +
+      rows +
+      '</div></div>'
+    );
+  }
+
+  function schemeForActiveCustomer(preferredId) {
     const c = activeCustomer();
-    if (!c || !ctx().scheme || ctx().scheme.customerId !== c.id) return null;
-    return ctx().scheme;
+    if (!c) return null;
+    const list = schemesForCustomer(c.id);
+    if (!list.length) return null;
+    if (preferredId) {
+      const hit = list.find((s) => s.id === preferredId);
+      if (hit) return hit;
+    }
+    if (ctx().activeSchemeId) {
+      const hit = list.find((s) => s.id === ctx().activeSchemeId);
+      if (hit) return hit;
+    }
+    return list[list.length - 1];
+  }
+
+  function pushSchemePickForQuote(c, leadHtml) {
+    const list = schemesForCustomer(c.id);
+    enterSkill('quote');
+    App.pushAiHtml(
+      (leadHtml ||
+        '<p class="sc-reply-lead">本客户有 <strong>' +
+          list.length +
+          '</strong> 个方案，请选择要报价的方案：</p>') + renderSchemePickCard(list)
+    );
+  }
+
+  function ensureQuotesStore() {
+    if (!Array.isArray(ctx().quotes)) {
+      ctx().quotes = [];
+      if (ctx().quote && ctx().quote.id) ctx().quotes.push(ctx().quote);
+    }
+  }
+
+  function quotesForCustomer(cid) {
+    ensureQuotesStore();
+    return ctx().quotes.filter((q) => q.customerId === cid);
+  }
+
+  function persistQuote(quote) {
+    ensureQuotesStore();
+    const idx = ctx().quotes.findIndex((q) => q.id === quote.id);
+    if (idx >= 0) ctx().quotes[idx] = quote;
+    else ctx().quotes.push(quote);
+    ctx().quote = quote;
+    ctx().activeQuoteId = quote.id;
+    App.saveState();
+    return quote;
+  }
+
+  function quotePickSummary(q) {
+    const n = (q.lines || []).length;
+    return fmtMoney(q.total != null ? q.total : 0) + (n ? ' · ' + n + ' 项' : '');
+  }
+
+  function renderQuoteSelectCard(list) {
+    const rows = list
+      .slice()
+      .reverse()
+      .map(
+        (q) =>
+          '<button type="button" class="sc-follow-row sc-follow-row--select" data-action="order-pick-quote" data-quote-id="' +
+          App.escapeHtml(q.id) +
+          '"><span class="sc-follow-row__name">报价单 ' +
+          App.escapeHtml(q.id) +
+          '</span><span class="sc-follow-row__meta">' +
+          App.escapeHtml(q.templateName || '—') +
+          ' · ' +
+          App.escapeHtml(quotePickSummary(q)) +
+          '</span></button>'
+      )
+      .join('');
+    return (
+      '<div class="sc-card sc-card--compact" data-spec-id="card-quote-select">' +
+      '<div class="sc-card__head sc-card__head--compact">选择报价单</div>' +
+      '<div class="sc-follow-list">' +
+      rows +
+      '</div></div>'
+    );
+  }
+
+  function quoteForActiveCustomer(preferredId) {
+    const c = activeCustomer();
+    if (!c) return null;
+    const list = quotesForCustomer(c.id);
+    if (!list.length) return null;
+    if (preferredId) {
+      const hit = list.find((q) => q.id === preferredId);
+      if (hit) return hit;
+    }
+    if (ctx().activeQuoteId) {
+      const hit = list.find((q) => q.id === ctx().activeQuoteId);
+      if (hit) return hit;
+    }
+    return list[list.length - 1];
+  }
+
+  function pushQuotePickForOrder(c, leadHtml) {
+    const list = quotesForCustomer(c.id);
+    enterSkill('order');
+    App.pushAiHtml(
+      (leadHtml ||
+        '<p class="sc-reply-lead">本客户有 <strong>' +
+          list.length +
+          '</strong> 个报价单，请选择要下单的报价单：</p>') + renderQuoteSelectCard(list)
+    );
   }
 
   /** 按方案报价前无方案时：用推荐品静默生成当前客户方案 */
@@ -73,17 +239,51 @@ window.Skills = (function () {
     });
     if (!lines.length) return null;
     const total = lines.reduce((s, l) => s + l.sub, 0);
-    const schemeId = 'PL' + Date.now().toString().slice(-8);
-    ctx().scheme = {
-      id: schemeId,
+    const scheme = persistScheme({
+      id: 'PL' + Date.now().toString().slice(-8),
       customerId: c.id,
       templateId: tpl.id,
       templateName: tpl.name,
       lines: lines,
-      total: total
-    };
-    if (!opts.silent) confirmPlan(tpl.id);
-    return ctx().scheme;
+      total: total,
+      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
+    });
+    if (!opts.silent) {
+      App.closeOverlays();
+      pushSchemeCard(scheme, c, tpl);
+    }
+    return scheme;
+  }
+
+  function pushSchemeCard(scheme, c, tpl) {
+    const lineHtml = (scheme.lines || [])
+      .map(
+        (l) =>
+          '<p class="sc-card__meta">' +
+          App.escapeHtml(l.name) +
+          ' · ' +
+          App.escapeHtml(l.skuLabel) +
+          ' ×' +
+          l.qty +
+          '</p>'
+      )
+      .join('');
+    App.pushAiHtml(
+      '<div class="sc-card" data-spec-id="card-scheme"><div class="sc-card__head sc-card__head--compact">方案 ' +
+        App.escapeHtml(scheme.id) +
+        '</div><div class="sc-card__row sc-card__row--compact"><p class="sc-card__meta">客户：' +
+        App.escapeHtml(c.name) +
+        '</p><p class="sc-card__meta">模板：' +
+        App.escapeHtml((tpl && tpl.name) || scheme.templateName || '—') +
+        '（方案正文不含价格）</p>' +
+        lineHtml +
+        '<div class="sc-card__actions-inline">' +
+        '<button type="button" class="sc-btn sc-btn--ghost" data-action="open-pdf" data-pdf="方案">预览 PDF</button>' +
+        '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="quote-from-scheme" data-scheme-id="' +
+        App.escapeHtml(scheme.id) +
+        '">去报价</button>' +
+        '</div></div></div>'
+    );
   }
 
   function ordersForCustomer(cid) {
@@ -101,13 +301,117 @@ window.Skills = (function () {
     return '¥' + n.toLocaleString('zh-CN');
   }
 
-  function openPdf(title) {
-    const modal = App.$('#pdf-modal');
-    if (modal) {
-      const t = modal.querySelector('.sc-pdf__bar span:nth-child(2)');
-      if (t) t.textContent = title || '预览';
-      modal.classList.remove('sc-hidden');
+  function pdfKindIsQuote(kind) {
+    const k = (kind || '').trim();
+    return k === '报价' || k === 'quote' || k === '报价单';
+  }
+
+  /** 方案 / 报价单 PDF 预览正文（演示 HTML，非真实 PDF 文件） */
+  function renderPdfDocument(kind) {
+    const isQuote = pdfKindIsQuote(kind);
+    const c = activeCustomer();
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (isQuote) {
+      const q = ctx().quote;
+      if (!q || !q.lines || !q.lines.length) {
+        return '<p class="sc-pdf-empty">请先生成报价单后再预览。</p>';
+      }
+      const cust = App.getCustomer(q.customerId) || c;
+      const rows = q.lines
+        .map(
+          (l, i) =>
+            '<tr><td>' +
+            (i + 1) +
+            '</td><td>' +
+            App.escapeHtml(l.inventoryName || l.name || '—') +
+            '</td><td>' +
+            App.escapeHtml(l.skuLabel || l.inventorySpec || '—') +
+            '</td><td class="sc-pdf-doc__num">' +
+            (l.qty || 0) +
+            '</td><td>' +
+            App.escapeHtml(l.salesUnit || '—') +
+            '</td><td class="sc-pdf-doc__num">' +
+            fmtMoney(l.quotePrice != null ? l.quotePrice : l.unitPrice || 0) +
+            '</td><td class="sc-pdf-doc__num">' +
+            fmtMoney(l.sub != null ? l.sub : (l.quotePrice || 0) * (l.qty || 1)) +
+            '</td></tr>'
+        )
+        .join('');
+      const total = q.total != null ? q.total : q.lines.reduce((s, l) => s + (l.sub || 0), 0);
+      return (
+        '<article class="sc-pdf-doc" data-pdf-type="quote">' +
+        '<header class="sc-pdf-doc__head"><h1 class="sc-pdf-doc__title">销售报价单</h1>' +
+        '<p class="sc-pdf-doc__meta">单号：' +
+        App.escapeHtml(q.id) +
+        ' · 日期：' +
+        today +
+        '</p><p class="sc-pdf-doc__meta">客户：' +
+        App.escapeHtml(cust ? cust.name : '—') +
+        '</p><p class="sc-pdf-doc__meta">版式：' +
+        App.escapeHtml(q.templateName || '—') +
+        '</p></header>' +
+        '<table class="sc-pdf-doc__table"><thead><tr><th>序</th><th>品名</th><th>规格</th><th>数量</th><th>单位</th><th>单价</th><th>金额</th></tr></thead><tbody>' +
+        rows +
+        '</tbody></table>' +
+        '<footer class="sc-pdf-doc__foot"><p class="sc-pdf-doc__total">含税合计 <strong>' +
+        fmtMoney(total) +
+        '</strong></p></footer></article>'
+      );
     }
+
+    const s = ctx().scheme;
+    if (!s || !s.lines || !s.lines.length) {
+      return '<p class="sc-pdf-empty">请先生成方案后再预览。</p>';
+    }
+    const cust = App.getCustomer(s.customerId) || c;
+    const rows = s.lines
+      .map(
+        (l, i) =>
+          '<tr><td>' +
+          (i + 1) +
+          '</td><td>' +
+          App.escapeHtml(l.name || '—') +
+          '</td><td>' +
+          App.escapeHtml(l.skuLabel || '—') +
+          '</td><td class="sc-pdf-doc__num">' +
+          (l.qty || 0) +
+          '</td><td>套</td></tr>'
+      )
+      .join('');
+    const qtySum = s.lines.reduce((n, l) => n + (l.qty || 0), 0);
+    return (
+      '<article class="sc-pdf-doc" data-pdf-type="scheme">' +
+      '<header class="sc-pdf-doc__head"><h1 class="sc-pdf-doc__title">技术方案</h1>' +
+      '<p class="sc-pdf-doc__meta">编号：' +
+      App.escapeHtml(s.id) +
+      ' · 日期：' +
+      today +
+      '</p><p class="sc-pdf-doc__meta">客户：' +
+      App.escapeHtml(cust ? cust.name : '—') +
+      '</p><p class="sc-pdf-doc__meta">模板：' +
+      App.escapeHtml(s.templateName || '—') +
+      '（正文不含单价与金额）</p></header>' +
+      '<table class="sc-pdf-doc__table"><thead><tr><th>序</th><th>品名</th><th>规格</th><th>数量</th><th>单位</th></tr></thead><tbody>' +
+      rows +
+      '</tbody></table>' +
+      '<footer class="sc-pdf-doc__foot"><p class="sc-pdf-doc__note">合计数量 ' +
+      qtySum +
+      ' 件（套），本方案不展示价格</p></footer></article>'
+    );
+  }
+
+  function openPdf(title, kind) {
+    const modal = App.$('#pdf-modal');
+    if (!modal) return;
+    const k = kind || title || '';
+    const isQuote = pdfKindIsQuote(k);
+    const t = modal.querySelector('.sc-pdf__bar span:nth-child(2)');
+    const body = modal.querySelector('.sc-pdf__body');
+    if (t) t.textContent = isQuote ? '报价单预览' : '方案预览';
+    if (body) body.innerHTML = renderPdfDocument(k);
+    modal.classList.remove('sc-hidden');
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
   }
 
   function ensurePlan(customer) {
@@ -314,10 +618,13 @@ window.Skills = (function () {
   }
 
   function recommendLeadHtml(c) {
-    if (c.customerType === 'old') {
-      return '<p class="sc-card__meta sc-plan-rec-hint">推荐区：历史订单 Top10（时间倒序）</p>';
+    if (DemoData.isOldCustomer(c, DemoData.demoSalesUser)) {
+      return '<p class="sc-card__meta sc-plan-rec-hint">推荐区：本客户历史订单（时间倒序，最多十条）</p>';
     }
-    return '<p class="sc-card__meta sc-plan-rec-hint">推荐区：需求关键词 × 存货描述 &gt;0.8；更多产品 0.2～0.8</p>';
+    if (DemoData.isNewCustomer(c)) {
+      return '<p class="sc-card__meta sc-plan-rec-hint">推荐区：先按客户性质与产品类型筛选，再按需求关键词与存货描述匹配（超过八成）</p>';
+    }
+    return '<p class="sc-card__meta sc-plan-rec-hint">推荐区：按客户档案类型展示</p>';
   }
 
   function renderProductPickCard() {
@@ -388,6 +695,7 @@ window.Skills = (function () {
   function startPlan(customer) {
     const c = ensurePlan(customer);
     if (!c) return;
+    if (ctx().plan) ctx().plan.filter = '';
     App.pushAiHtml(
       '<p class="sc-reply-lead">为 <strong>' + App.escapeHtml(c.name) + '</strong> 配方案。</p>' +
         renderProductPickCard()
@@ -446,41 +754,18 @@ window.Skills = (function () {
     });
     const total = lines.reduce((s, l) => s + l.sub, 0);
     const schemeId = 'PL' + Date.now().toString().slice(-8);
-    ctx().scheme = {
+    persistScheme({
       id: schemeId,
       customerId: c.id,
       templateId: tpl.id,
       templateName: tpl.name,
       lines,
-      total
-    };
+      total,
+      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
+    });
     App.closeOverlays();
-    const lineHtml = lines
-      .map(
-        (l) =>
-          '<p class="sc-card__meta">' +
-          App.escapeHtml(l.name) +
-          ' · ' +
-          App.escapeHtml(l.skuLabel) +
-          ' ×' +
-          l.qty +
-          '</p>'
-      )
-      .join('');
-    App.pushAiHtml(
-      '<div class="sc-card" data-spec-id="card-scheme"><div class="sc-card__head sc-card__head--compact">方案 ' +
-        schemeId +
-        '</div><div class="sc-card__row sc-card__row--compact"><p class="sc-card__meta">客户：' +
-        App.escapeHtml(c.name) +
-        '</p><p class="sc-card__meta">模板：' +
-        App.escapeHtml(tpl.name) +
-        '（方案正文不含价格）</p>' +
-        lineHtml +
-        '<div class="sc-card__actions-inline">' +
-        '<button type="button" class="sc-btn sc-btn--ghost" data-action="open-pdf" data-pdf="方案">预览 PDF</button>' +
-        '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="quote-from-scheme">去报价</button>' +
-        '</div></div></div>'
-    );
+    const scheme = schemeForActiveCustomer(schemeId);
+    pushSchemeCard(scheme, c, tpl);
   }
 
   function submitPlanTemplate() {
@@ -509,7 +794,7 @@ window.Skills = (function () {
     const t = (text || '').trim();
     if (!t) return true;
     if (
-      /^(配个方案|做方案|生成方案|保存方案|加购|报价|确认下单|生成订单|今日待跟进|帮助|切换客户|待跟进)$/.test(
+      /^(配个方案|做方案|生成方案|保存方案|加购|去报价|报价|确认下单|生成订单|今日待跟进|帮助|切换客户|待跟进)$/.test(
         t
       )
     ) {
@@ -519,17 +804,47 @@ window.Skills = (function () {
     return false;
   }
 
-  function isQuoteDemandText(text) {
-    return /报价|报个价|报一下价|出报价|单价|折扣|打折|几折|含税|按方案/.test(text || '');
+  function isOrderDemandText(text) {
+    const t = (text || '').trim();
+    return /下单|生成订单|确认下单/.test(t);
   }
 
-  /** 一句话描述需求（非纯技能口令） */
+  /** 进入报价流程的短口令（走分步：来源卡 / 逐项报价），不一句话直出报价单 */
+  function isQuoteEntryPhrase(text) {
+    const t = (text || '').trim();
+    return /^(去报价|报价|产品报价|报个价|报一下价|出报价|按方案报价)\s*$/.test(t);
+  }
+
+  function isQuoteDemandText(text) {
+    const t = (text || '').trim();
+    if (isOrderDemandText(t) || isQuoteEntryPhrase(t)) return false;
+    return /报价|报个价|报一下价|出报价|单价|折扣|打折|几折|含税|按方案/.test(t);
+  }
+
+  /** 已有方案时，是否允许一句话直接生成报价单卡（须含折扣/单价等，或较长描述） */
+  function isOneShotSchemeQuote(text) {
+    const t = (text || '').trim();
+    if (isQuoteEntryPhrase(t)) return false;
+    if (!/按方案|方案报价|当前方案|用这个方案/.test(t)) {
+      return /单价|折扣|打折|几折|含税|\d+/.test(t) && t.length > 6;
+    }
+    return /单价|折扣|打折|几折|含税|\d+|给.+报价/.test(t);
+  }
+
+  /** 一句话描述需求（非纯技能口令）；不含「配个方案」类入口话术（避免「个」字误触） */
   function isNaturalDemandText(text) {
     const t = (text || '').trim();
     if (!t || t.length < 5 || isPlainSkillPhrase(t)) return false;
     if (/^(方案|报价|下单|待跟进|写跟进)\s*$/.test(t)) return false;
     if (isQuoteDemandText(t)) return true;
-    if (/需要|想要|来一套|各\s*\d|数量|台|套|个|件|电机|轴承|齿轮|密封|产线|自动化|产线|PLC|导轨/.test(t)) {
+    if (/配(?:个)?方案|做方案|方案速配/.test(t) && !/\d+\s*[台套件个只]|[各每]\s*\d|伺服|电机|轴承|齿轮|密封|PLC|导轨|产线|自动化/.test(t)) {
+      return false;
+    }
+    if (
+      /需要|想要|来一套|各\s*\d+\s*个?|\d+\s*个|\d+\s*台|\d+\s*套|数量|电机|轴承|齿轮|密封|产线|自动化|PLC|导轨/.test(
+        t
+      )
+    ) {
       return true;
     }
     return t.length >= 12 && !/^(配个|做方案|报价|选品)\s*/.test(t);
@@ -547,14 +862,14 @@ window.Skills = (function () {
 
   function tryGenerateSchemeFromDemand(text) {
     const t = (text || '').trim();
-    if (!t || isQuoteDemandText(t) || !isNaturalDemandText(t)) return false;
+    if (!t || isOrderDemandText(t) || isQuoteDemandText(t) || !isNaturalDemandText(t)) return false;
     const c = ensurePlan();
     if (!c) return false;
 
     const matches = DemoData.matchProductsFromDemandText(c, t);
     if (!matches.length) {
       App.toast('未能从描述中匹配产品，请补充品名关键词或走选品流程');
-      ctx().plan.filter = t.slice(0, 40);
+      if (ctx().plan) ctx().plan.filter = '';
       enterSkill('plan');
       startPlan(c);
       return true;
@@ -597,34 +912,40 @@ window.Skills = (function () {
     const total = pending.lines.reduce((s, l) => s + l.sub, 0);
     let schemeId = pending.schemeId;
     if (pending.saveAsScheme && pending.sourceType === 'direct') schemeId = saveSchemeFromPending(pending);
-    const quoteId = 'QT' + Date.now().toString().slice(-8);
-    ctx().quote = {
-      id: quoteId,
+    const quote = persistQuote({
+      id: 'QT' + Date.now().toString().slice(-8),
       templateId: tpl.id,
       templateName: tpl.name,
       schemeId: schemeId,
       customerId: c.id,
       total: total,
-      lines: pending.lines
-    };
+      lines: pending.lines,
+      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
+    });
     ctx().quotePending = null;
     App.closeOverlays();
+    pushQuoteCard(quote, c, tpl);
+  }
+
+  function pushQuoteCard(quote, c, tpl) {
     App.pushAiHtml(
       '<div class="sc-card" data-spec-id="card-quote"><div class="sc-card__head sc-card__head--compact">报价单 ' +
-        quoteId +
+        App.escapeHtml(quote.id) +
         '</div><div class="sc-card__row sc-card__row--compact"><p class="sc-card__meta">客户：' +
         App.escapeHtml(c.name) +
         '</p><p class="sc-card__meta">模板：' +
-        App.escapeHtml(tpl.name) +
+        App.escapeHtml((tpl && tpl.name) || quote.templateName || '—') +
         '</p><p class="sc-card__meta"><strong>报价金额 ' +
-        fmtMoney(total) +
-        '</strong></p><div class="sc-card__actions-inline"><button type="button" class="sc-btn sc-btn--ghost" data-action="open-pdf" data-pdf="报价">看 PDF</button><button type="button" class="sc-btn sc-btn--ghost-primary" data-action="order-from-quote">生成订单</button></div></div></div>'
+        fmtMoney(quote.total) +
+        '</strong></p><div class="sc-card__actions-inline"><button type="button" class="sc-btn sc-btn--ghost" data-action="open-pdf" data-pdf="报价">看 PDF</button><button type="button" class="sc-btn sc-btn--ghost-primary" data-action="order-from-quote" data-quote-id="' +
+        App.escapeHtml(quote.id) +
+        '">生成订单</button></div></div></div>'
     );
   }
 
   function tryGenerateQuoteFromDemand(text) {
     const t = (text || '').trim();
-    if (!t) return false;
+    if (!t || isOrderDemandText(t)) return false;
     const c = activeCustomer() || requireCustomer();
     if (!c) return false;
 
@@ -638,16 +959,26 @@ window.Skills = (function () {
     const productMatches = DemoData.matchProductsFromDemandText(c, t);
     const strongProductQuote =
       isQuoteDemandText(t) && productMatches.some((r) => r.score >= 0.5);
-    const schemeQuote = scheme && (explicitScheme || (isQuoteDemandText(t) && !strongProductQuote));
+    const schemeQuote =
+      scheme && isOneShotSchemeQuote(t) && (explicitScheme || isQuoteDemandText(t)) && !strongProductQuote;
 
     if (schemeQuote) {
-      let lines = linesFromScheme(scheme);
+      const list = schemesForCustomer(c.id);
+      if (!list.length && !scheme) return false;
+      if (list.length > 1) {
+        ctx().pendingSchemeQuoteDemand = t;
+        pushSchemePickForQuote(c);
+        return true;
+      }
+      const picked = scheme || list[0];
+      if (!picked) return false;
+      let lines = linesFromScheme(picked);
       if (!lines.length) return false;
       const rate = applyDiscountToQuoteLines(lines, t);
       enterSkill('quote');
       App.pushAiHtml(
-        '<p class="sc-reply-lead">已按当前方案 <strong>' +
-          App.escapeHtml(scheme.id) +
+        '<p class="sc-reply-lead">已按方案 <strong>' +
+          App.escapeHtml(picked.id) +
           '</strong> 生成报价单' +
           (schemeBootstrapped ? '（已按客户推荐品生成方案）' : '') +
           (rate < 1 ? '（已应用折扣）' : '') +
@@ -657,7 +988,7 @@ window.Skills = (function () {
         {
           customerId: c.id,
           sourceType: 'scheme',
-          schemeId: scheme.id,
+          schemeId: picked.id,
           lines: lines,
           saveAsScheme: false
         },
@@ -715,32 +1046,43 @@ window.Skills = (function () {
     return true;
   }
 
-  function isOrderDemandText(text) {
-    const t = text || '';
-    return /下单|生成订单|确认下单/.test(t) || /下(?:单|[\u4e00-\u9fa5]{2,})/.test(t);
-  }
-
   /** 一句话下单：按报价单或直选配品填价 */
   function tryGenerateOrderFromDemand(text) {
     const t = (text || '').trim();
     if (!t || !isOrderDemandText(t)) return false;
-    const c = activeCustomer() || requireCustomer();
+    let c = null;
+    if (DemoData.tryParseCustomerDemandUtterance) {
+      const parsed = DemoData.tryParseCustomerDemandUtterance(t, customersInEnterprise());
+      if (parsed && parsed.customer) {
+        c = parsed.customer;
+        const cur = activeCustomer();
+        if (!cur || cur.id !== c.id) {
+          App.state.customerId = c.id;
+          App.state.selectedFollowUpId = c.id;
+          App.saveState();
+          App.refreshHeader();
+        }
+      }
+    }
+    if (!c) c = activeCustomer() || requireCustomer('order');
     if (!c) return false;
 
-    if (ctx().quote && ctx().quote.customerId === c.id && /按报价单|用报价单|根据报价单|这份报价/.test(t)) {
+    if (/按报价单|用报价单|根据报价单|这份报价|按这份报价/.test(t)) {
+      const list = quotesForCustomer(c.id);
+      if (!list.length) return false;
+      if (list.length > 1) {
+        pushQuotePickForOrder(c);
+        return true;
+      }
+      const quote = quoteForActiveCustomer(list[0].id);
+      if (!quote) return false;
       enterSkill('order');
       App.pushAiHtml(
         '<p class="sc-reply-lead">已按报价单 <strong>' +
-          App.escapeHtml(ctx().quote.id) +
+          App.escapeHtml(quote.id) +
           '</strong> 打开下单确认。</p>'
       );
-      setOrderPending(ctx().quote.lines || [], {
-        customerId: c.id,
-        sourceType: 'quote',
-        quoteId: ctx().quote.id,
-        total: ctx().quote.total
-      });
-      showOrderConfirm();
+      applyOrderFromQuote(quote);
       return true;
     }
 
@@ -811,7 +1153,7 @@ window.Skills = (function () {
       const inp = document.getElementById('plan-filter-input');
       if (inp) inp.value = plan.filter;
       refreshLastPlanPickCard();
-      App.pushAiHtml('<p class="sc-card__meta">已按「' + App.escapeHtml(plan.filter || '全部') + '」筛选产品列表。</p>');
+      pushAiMeta('<p class="sc-card__meta">已按「' + App.escapeHtml(plan.filter || '全部') + '」筛选产品列表。</p>');
       return true;
     }
 
@@ -820,16 +1162,16 @@ window.Skills = (function () {
       if (m && m[1]) {
         const p = findProductByKeyword(m[1]);
         if (!p) {
-          App.pushAiHtml('<p class="sc-card__meta">未找到与「' + App.escapeHtml(m[1].trim()) + '」匹配的产品，请换关键词或点选列表。</p>');
+          pushAiMeta('<p class="sc-card__meta">未找到与「' + App.escapeHtml(m[1].trim()) + '」匹配的产品，请换关键词或点选列表。</p>');
           return true;
         }
         planSelectProduct(p.id, true);
         refreshLastPlanPickCard();
-        App.pushAiHtml('<p class="sc-card__meta">已选品：<strong>' + App.escapeHtml(p.name) + '</strong>，可调整规格后说「加购」。</p>');
+        pushAiMeta('<p class="sc-card__meta">已选品：<strong>' + App.escapeHtml(p.name) + '</strong>，可调整规格后说「加购」。</p>');
         return true;
       }
       refreshLastPlanPickCard();
-      App.pushAiHtml('<p class="sc-card__meta">请在选品卡中点选产品，或说「选品 伺服电机」。</p>');
+      pushAiMeta('<p class="sc-card__meta">请在选品卡中点选产品，或说「选品 伺服电机」。</p>');
       return true;
     }
 
@@ -840,7 +1182,7 @@ window.Skills = (function () {
       }
       syncPlanFilterFromDom();
       App.pushAiHtml(renderPlanCartCardFixed());
-      App.pushAiHtml('<p class="sc-card__meta">已加入购物车，可修改 SKU 与数量后说「生成方案」。</p>');
+      pushAiMeta('<p class="sc-card__meta">已加入购物车，可修改 SKU 与数量后说「生成方案」。</p>');
       return true;
     }
 
@@ -934,7 +1276,7 @@ window.Skills = (function () {
         const inp = document.getElementById('quote-filter-input');
         if (inp) inp.value = draft.filter;
         refreshLastQuotePickCard();
-        App.pushAiHtml('<p class="sc-card__meta">已按「' + App.escapeHtml(draft.filter || '全部') + '」筛选。</p>');
+        pushAiMeta('<p class="sc-card__meta">已按「' + App.escapeHtml(draft.filter || '全部') + '」筛选。</p>');
         return true;
       }
       if (/选品|选择产品|选中/.test(text)) {
@@ -942,16 +1284,16 @@ window.Skills = (function () {
         if (m && m[1]) {
           const p = findProductByKeyword(m[1]);
           if (!p) {
-            App.pushAiHtml('<p class="sc-card__meta">未找到与「' + App.escapeHtml(m[1].trim()) + '」匹配的产品。</p>');
+            pushAiMeta('<p class="sc-card__meta">未找到与「' + App.escapeHtml(m[1].trim()) + '」匹配的产品。</p>');
             return true;
           }
           quoteSelectProduct(p.id, true);
           refreshLastQuotePickCard();
-          App.pushAiHtml('<p class="sc-card__meta">已选品：<strong>' + App.escapeHtml(p.name) + '</strong>。</p>');
+          pushAiMeta('<p class="sc-card__meta">已选品：<strong>' + App.escapeHtml(p.name) + '</strong>。</p>');
           return true;
         }
         refreshLastQuotePickCard();
-        App.pushAiHtml('<p class="sc-card__meta">请点选列表或说「选品 伺服电机」。</p>');
+        pushAiMeta('<p class="sc-card__meta">请点选列表或说「选品 伺服电机」。</p>');
         return true;
       }
       if (/加购|逐项报价|下一步|确认选品/.test(text)) {
@@ -968,7 +1310,7 @@ window.Skills = (function () {
         const inp = document.getElementById('order-filter-input');
         if (inp) inp.value = orderDraft.filter;
         refreshLastOrderPickCard();
-        App.pushAiHtml('<p class="sc-card__meta">已按「' + App.escapeHtml(orderDraft.filter || '全部') + '」筛选。</p>');
+        pushAiMeta('<p class="sc-card__meta">已按「' + App.escapeHtml(orderDraft.filter || '全部') + '」筛选。</p>');
         return true;
       }
       if (/选品|选择产品|选中/.test(text)) {
@@ -976,16 +1318,16 @@ window.Skills = (function () {
         if (m && m[1]) {
           const p = findProductByKeyword(m[1]);
           if (!p) {
-            App.pushAiHtml('<p class="sc-card__meta">未找到与「' + App.escapeHtml(m[1].trim()) + '」匹配的产品。</p>');
+            pushAiMeta('<p class="sc-card__meta">未找到与「' + App.escapeHtml(m[1].trim()) + '」匹配的产品。</p>');
             return true;
           }
           orderSelectProduct(p.id, true);
           refreshLastOrderPickCard();
-          App.pushAiHtml('<p class="sc-card__meta">已选品：<strong>' + App.escapeHtml(p.name) + '</strong>。</p>');
+          pushAiMeta('<p class="sc-card__meta">已选品：<strong>' + App.escapeHtml(p.name) + '</strong>。</p>');
           return true;
         }
         refreshLastOrderPickCard();
-        App.pushAiHtml('<p class="sc-card__meta">请点选列表或说「选品 伺服电机」。</p>');
+        pushAiMeta('<p class="sc-card__meta">请点选列表或说「选品 伺服电机」。</p>');
         return true;
       }
       if (/逐项报价|下一步|确认选品|生成订单/.test(text)) {
@@ -1382,8 +1724,18 @@ window.Skills = (function () {
   }
 
   function renderQuoteSourceCard() {
-    const scheme = schemeForActiveCustomer();
-    const has = !!scheme;
+    const c = activeCustomer();
+    const list = c ? schemesForCustomer(c.id) : [];
+    const has = list.length > 0;
+    let meta = '<p class="sc-card__meta">暂无本客户方案，请先完成<strong>方案速配</strong>或使用直接选品。</p>';
+    if (list.length === 1) {
+      meta = '<p class="sc-card__meta">当前方案 ' + App.escapeHtml(list[0].id) + '</p>';
+    } else if (list.length > 1) {
+      meta =
+        '<p class="sc-card__meta">本客户共有 <strong>' +
+        list.length +
+        '</strong> 个方案，按方案报价时需先选择。</p>';
+    }
     return (
       '<div class="sc-card sc-card--compact" data-spec-id="card-quote-source"><div class="sc-card__head sc-card__head--compact">产品报价 · 选择来源</div>' +
       '<div class="sc-card__actions-inline">' +
@@ -1391,9 +1743,7 @@ window.Skills = (function () {
       (has ? '' : ' disabled aria-disabled="true"') +
       '>按方案报价</button>' +
       '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="quote-direct-start">直接选品报价</button></div>' +
-      (has
-        ? '<p class="sc-card__meta">当前方案 ' + App.escapeHtml(scheme.id) + '</p>'
-        : '<p class="sc-card__meta">暂无本客户方案，请先完成<strong>方案速配</strong>或使用直接选品。</p>') +
+      meta +
       '</div>'
     );
   }
@@ -1452,6 +1802,12 @@ window.Skills = (function () {
       '<div class="sc-card__actions-inline"><button type="button" class="sc-btn sc-btn--ghost-primary" data-action="quote-to-cart">下一步：逐项报价</button></div>' +
       '<p class="sc-card__meta sc-plan-voice-hint">可说：选品 伺服电机、逐项报价</p></div>'
     );
+  }
+
+  function refreshLastQuotePickCard() {
+    const cards = document.querySelectorAll('[data-spec-id="card-quote-pick"]');
+    const card = cards[cards.length - 1];
+    if (card) card.outerHTML = renderQuotePickCard();
   }
 
   function renderQuoteCartCard() {
@@ -1529,9 +1885,8 @@ window.Skills = (function () {
 
   function saveSchemeFromPending(pending) {
     const c = App.getCustomer(pending.customerId);
-    const schemeId = 'PL' + Date.now().toString().slice(-8);
-    ctx().scheme = {
-      id: schemeId,
+    const scheme = persistScheme({
+      id: 'PL' + Date.now().toString().slice(-8),
       customerId: c.id,
       templateName: '由报价保存',
       lines: pending.lines.map((l) => ({
@@ -1541,9 +1896,10 @@ window.Skills = (function () {
         skuLabel: l.skuLabel,
         qty: l.qty
       })),
-      total: 0
-    };
-    return schemeId;
+      total: 0,
+      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
+    });
+    return scheme.id;
   }
 
   function runQuote() {
@@ -1556,14 +1912,53 @@ window.Skills = (function () {
     );
   }
 
-  function quoteFromScheme() {
-    const c = requireCustomer();
+  function publishQuoteFromSchemeDemand(scheme, demandText) {
+    const c = App.getCustomer(scheme.customerId);
     if (!c) return;
-    const scheme = schemeForActiveCustomer();
-    if (!scheme) {
-      App.pushAiHtml('<p class="sc-card__meta">请先为 <strong>' + App.escapeHtml(c.name) + '</strong> 完成方案速配并保存方案，再使用按方案报价。</p>');
+    let lines = linesFromScheme(scheme);
+    if (!lines.length) {
+      App.toast('方案明细为空');
       return;
     }
+    const rate = applyDiscountToQuoteLines(lines, demandText || '');
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">已按方案 <strong>' +
+        App.escapeHtml(scheme.id) +
+        '</strong> 生成报价单' +
+        (rate < 1 ? '（已应用折扣）' : '') +
+        '。</p>'
+    );
+    publishQuoteCard(
+      {
+        customerId: c.id,
+        sourceType: 'scheme',
+        schemeId: scheme.id,
+        lines: lines,
+        saveAsScheme: false
+      },
+      'qt-standard'
+    );
+  }
+
+  function quoteFromScheme(schemeId) {
+    const c = requireCustomer();
+    if (!c) return;
+    const list = schemesForCustomer(c.id);
+    if (!list.length) {
+      pushAiMeta('<p class="sc-card__meta">请先为 <strong>' + App.escapeHtml(c.name) + '</strong> 完成方案速配并保存方案，再使用按方案报价。</p>');
+      return;
+    }
+    const sid = schemeId || null;
+    if (!sid && list.length > 1) {
+      pushSchemePickForQuote(c);
+      return;
+    }
+    const scheme = schemeForActiveCustomer(sid || list[0].id);
+    if (!scheme) {
+      App.toast('未找到所选方案');
+      return;
+    }
+    persistScheme(scheme);
     enterSkill('quote');
     const lines = linesFromScheme(scheme);
     if (!lines.length) {
@@ -1650,12 +2045,6 @@ window.Skills = (function () {
     submitQuote();
   }
 
-
-    function refreshLastQuotePickCard() {
-    const cards = document.querySelectorAll('[data-spec-id="card-quote-pick"]');
-    const card = cards[cards.length - 1];
-    if (card) card.outerHTML = renderQuotePickCard();
-  }
   function runDelivery() {
     const c = requireCustomer();
     if (!c) return;
@@ -1779,13 +2168,23 @@ window.Skills = (function () {
 
   function renderOrderSourceCard() {
     const c = activeCustomer();
-    const hasQuote = c && ctx().quote && ctx().quote.customerId === c.id;
+    const list = c ? quotesForCustomer(c.id) : [];
+    const hasQuote = list.length > 0;
+    let meta = '<p class="sc-card__meta">暂无本客户报价单，请先完成<strong>报价</strong>或使用直接选品。</p>';
+    if (list.length === 1) {
+      meta = '<p class="sc-card__meta">当前报价单 ' + App.escapeHtml(list[0].id) + ' · ' + fmtMoney(list[0].total) + '</p>';
+    } else if (list.length > 1) {
+      meta =
+        '<p class="sc-card__meta">本客户共有 <strong>' +
+        list.length +
+        '</strong> 个报价单，按报价单下单时需先选择。</p>';
+    }
     return (
       '<div class="sc-card sc-card--compact" data-spec-id="card-order-source"><div class="sc-card__head sc-card__head--compact">确认下单 · 选择来源</div>' +
       '<div class="sc-card__actions-inline">' +
       '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="order-from-quote"' + (hasQuote ? '' : ' disabled') + '>按报价单</button>' +
       '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="order-direct-start">直接选品</button></div>' +
-      (hasQuote ? '<p class="sc-card__meta">报价单 ' + App.escapeHtml(ctx().quote.id) + '</p>' : '') +
+      meta +
       '</div>'
     );
   }
@@ -1835,6 +2234,46 @@ window.Skills = (function () {
     return order;
   }
 
+  function formatOrderLineSpec(line) {
+    const parts = [];
+    if (line.inventorySpec) parts.push(line.inventorySpec);
+    if (line.skuLabel && line.skuLabel !== line.inventorySpec) parts.push(line.skuLabel);
+    return parts.length ? parts.join(' · ') : '—';
+  }
+
+  function renderOrderSuccessCard(order, customerName, total) {
+    const lineHtml = (order.lines || [])
+      .map(function (line) {
+        const unit = line.salesUnit || '件';
+        return (
+          '<p class="sc-card__meta sc-order-success-line"><strong>' +
+          App.escapeHtml(line.inventoryName || '—') +
+          '</strong> · ' +
+          App.escapeHtml(formatOrderLineSpec(line)) +
+          ' · ' +
+          line.qty +
+          ' ' +
+          App.escapeHtml(unit) +
+          '</p>'
+        );
+      })
+      .join('');
+    return (
+      '<div class="sc-card" data-spec-id="card-order-success"><div class="sc-card__head sc-card__head--compact">订单提交成功</div><div class="sc-card__row sc-card__row--compact">' +
+      '<p class="sc-card__meta">订单号：<strong>' +
+      App.escapeHtml(order.no) +
+      '</strong></p><p class="sc-card__meta">客户：' +
+      App.escapeHtml(customerName) +
+      '</p><p class="sc-card__meta">状态：' +
+      App.escapeHtml(order.status) +
+      '</p>' +
+      (lineHtml ? '<p class="sc-card__meta sc-order-success-lines-title">订单明细</p>' + lineHtml : '') +
+      '<p class="sc-card__meta">金额：<strong>' +
+      fmtMoney(total) +
+      '</strong></p></div></div>'
+    );
+  }
+
   function refreshLastOrderPickCard() {
     const cards = document.querySelectorAll('[data-spec-id="card-order-pick"]');
     const card = cards[cards.length - 1];
@@ -1865,12 +2304,37 @@ window.Skills = (function () {
     );
   }
 
-  function orderFromQuote() {
-    const c = requireCustomer();
-    if (!c || !ctx().quote || ctx().quote.customerId !== c.id) { App.pushAiHtml('请先完成报价或使用直接选品。'); return; }
-    enterSkill('order');
-    setOrderPending(ctx().quote.lines || [], { customerId: c.id, sourceType: 'quote', quoteId: ctx().quote.id, total: ctx().quote.total });
+  function applyOrderFromQuote(quote) {
+    persistQuote(quote);
+    setOrderPending(quote.lines || [], {
+      customerId: quote.customerId,
+      sourceType: 'quote',
+      quoteId: quote.id,
+      total: quote.total
+    });
     showOrderConfirm();
+  }
+
+  function orderFromQuote(quoteId) {
+    const c = requireCustomer();
+    if (!c) return;
+    const list = quotesForCustomer(c.id);
+    if (!list.length) {
+      App.pushAiHtml('请先完成报价或使用直接选品。');
+      return;
+    }
+    const qid = quoteId || null;
+    if (!qid && list.length > 1) {
+      pushQuotePickForOrder(c);
+      return;
+    }
+    const quote = quoteForActiveCustomer(qid || list[0].id);
+    if (!quote) {
+      App.toast('未找到所选报价单');
+      return;
+    }
+    enterSkill('order');
+    applyOrderFromQuote(quote);
   }
 
   function orderDirectStart() {
@@ -1891,7 +2355,7 @@ window.Skills = (function () {
     const order = createOrderFromPending(pending, c);
     App.closeOverlays();
     ctx().orderPending = null;
-    App.pushAiHtml('<div class="sc-card" data-spec-id="card-order-success"><div class="sc-card__head sc-card__head--compact">订单提交成功</div><div class="sc-card__row sc-card__row--compact"><p class="sc-card__meta">订单号：<strong>' + App.escapeHtml(order.no) + '</strong></p><p class="sc-card__meta">客户：' + App.escapeHtml(c.name) + '</p><p class="sc-card__meta">状态：' + App.escapeHtml(order.status) + '</p><p class="sc-card__meta">金额：' + fmtMoney(pending.total) + '</p></div></div>');
+    App.pushAiHtml(renderOrderSuccessCard(order, c.name, pending.total));
   }
 
   function renderOrderPickCard(list, action) {
@@ -2203,8 +2667,15 @@ window.Skills = (function () {
 
   function tryIntent(t) {
     syncCustomerFromDemandUtterance(t);
+    if (tryGenerateOrderFromDemand(t)) return true;
+    if (/方案|配个方案|做方案|方案速配/.test(t) && !isNaturalDemandText(t)) {
+      enterSkill('plan');
+      startPlan();
+      return true;
+    }
     if (ctx().plan && ctx().plan.customerId && tryPlanCommand(t)) return true;
     if (
+      !isOrderDemandText(t) &&
       (ctx().quotePending ||
         (ctx().quoteDraft && ctx().quoteDraft.customerId) ||
         (ctx().orderDraft && ctx().orderDraft.customerId) ||
@@ -2214,14 +2685,17 @@ window.Skills = (function () {
     ) {
       return true;
     }
-    if (tryGenerateQuoteFromDemand(t)) return true;
-    if (tryGenerateOrderFromDemand(t)) return true;
-    if (tryGenerateSchemeFromDemand(t)) return true;
-    if (/方案|配个方案|做方案/.test(t)) {
-      enterSkill('plan');
-      startPlan();
+    if (isQuoteEntryPhrase(t)) {
+      enterSkill('quote');
+      const c = activeCustomer() || requireCustomer('quote');
+      if (!c) return true;
+      const list = schemesForCustomer(c.id);
+      if (list.length) quoteFromScheme();
+      else runQuote();
       return true;
     }
+    if (tryGenerateQuoteFromDemand(t)) return true;
+    if (tryGenerateSchemeFromDemand(t)) return true;
     if (/^选品|^加购|^筛选|^过滤|^生成方案|^保存方案/.test(t)) {
       enterSkill('plan');
       if (!ctx().plan || !ctx().plan.customerId) {
@@ -2232,7 +2706,7 @@ window.Skills = (function () {
       }
       if (tryPlanCommand(t)) return true;
     }
-    if (/报价/.test(t)) {
+    if (/报价/.test(t) && !isQuoteEntryPhrase(t)) {
       enterSkill('quote');
       runQuote();
       return true;
@@ -2357,7 +2831,25 @@ window.Skills = (function () {
           );
         return true;
       }
-      quoteFromScheme();
+      quoteFromScheme(btn.getAttribute('data-scheme-id'));
+      return true;
+    }
+    if (action === 'quote-pick-scheme') {
+      const sid = btn.getAttribute('data-scheme-id');
+      const demand = ctx().pendingSchemeQuoteDemand;
+      delete ctx().pendingSchemeQuoteDemand;
+      const scheme = schemeForActiveCustomer(sid);
+      if (!scheme) {
+        App.toast('未找到所选方案');
+        return true;
+      }
+      persistScheme(scheme);
+      if (demand) {
+        enterSkill('quote');
+        publishQuoteFromSchemeDemand(scheme, demand);
+      } else {
+        quoteFromScheme(sid);
+      }
       return true;
     }
     if (action === 'quote-direct-start') {
@@ -2395,7 +2887,8 @@ window.Skills = (function () {
     if (action === 'skill-quote') {
       enterSkill('quote');
       const c = App.getCustomer(App.state.customerId);
-      if (ctx().scheme && c && ctx().scheme.customerId === c.id) quoteFromScheme();
+      const list = c ? schemesForCustomer(c.id) : [];
+      if (list.length) quoteFromScheme();
       else runQuote();
       return true;
     }
@@ -2410,7 +2903,23 @@ window.Skills = (function () {
       return true;
     }
     if (action === 'order-from-quote') {
-      orderFromQuote();
+      orderFromQuote(btn.getAttribute('data-quote-id'));
+      return true;
+    }
+    if (action === 'order-pick-quote') {
+      const qid = btn.getAttribute('data-quote-id');
+      const quote = quoteForActiveCustomer(qid);
+      if (!quote) {
+        App.toast('未找到所选报价单');
+        return true;
+      }
+      enterSkill('order');
+      App.pushAiHtml(
+        '<p class="sc-reply-lead">已按报价单 <strong>' +
+          App.escapeHtml(quote.id) +
+          '</strong> 打开下单确认。</p>'
+      );
+      applyOrderFromQuote(quote);
       return true;
     }
     if (action === 'order-direct-start') {

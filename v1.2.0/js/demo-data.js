@@ -182,6 +182,7 @@ window.DemoData = {
       id: 'p1',
       name: '精密轴承组件 A 型',
       spec: 'Φ120mm 合金钢',
+      productType: '机械传动',
       inventoryDesc: '合金钢精密轴承 120mm 机械传动 制造业',
       inventoryCode: 'INV-CHC-A120',
       salesUnit: '套',
@@ -197,6 +198,7 @@ window.DemoData = {
       id: 'p2',
       name: '传动齿轮箱 M3',
       spec: '三级减速 1:30',
+      productType: '工业传动',
       inventoryDesc: '三级减速齿轮箱 工业传动 产线',
       inventoryCode: 'INV-GBX-M3',
       salesUnit: '台',
@@ -212,6 +214,7 @@ window.DemoData = {
       id: 'p3',
       name: '伺服电机 750W',
       spec: '220V 额定扭矩 2.4N·m',
+      productType: '自动化',
       inventoryDesc: '伺服电机 750W 自动化产线 220V',
       inventoryCode: 'INV-SRV-750',
       salesUnit: '台',
@@ -227,6 +230,7 @@ window.DemoData = {
       id: 'p4',
       name: '工业密封件套装',
       spec: '耐温 200℃ 20 件/套',
+      productType: '气动',
       inventoryDesc: '密封件套装 耐温200 工业密封',
       inventoryCode: 'INV-SEL-200',
       salesUnit: '套',
@@ -239,6 +243,7 @@ window.DemoData = {
       id: 'p5',
       name: 'PLC 控制模块',
       spec: '32 点 IO',
+      productType: '电控',
       inventoryDesc: 'PLC 控制 自动化 产线电控',
       inventoryCode: 'INV-PLC-32',
       salesUnit: '块',
@@ -251,6 +256,7 @@ window.DemoData = {
       id: 'p6',
       name: '直线导轨副',
       spec: '行程 800mm',
+      productType: '自动化',
       inventoryDesc: '直线导轨 精密机械 自动化',
       inventoryCode: 'INV-RAIL-800',
       salesUnit: '套',
@@ -263,6 +269,7 @@ window.DemoData = {
       id: 'p7',
       name: '液压泵站 H 系列',
       spec: '7.5MPa 油箱 80L',
+      productType: '工业传动',
       inventoryDesc: '液压泵站 工业传动 产线',
       inventoryCode: 'INV-HYD-H75',
       salesUnit: '台',
@@ -275,6 +282,7 @@ window.DemoData = {
       id: 'p8',
       name: '变频器 15kW',
       spec: '三相 380V',
+      productType: '自动化',
       inventoryDesc: '变频器 电控 自动化产线',
       inventoryCode: 'INV-VFD-15',
       salesUnit: '台',
@@ -287,6 +295,7 @@ window.DemoData = {
       id: 'p9',
       name: '工业触摸屏 10寸',
       spec: '电容屏 以太网',
+      productType: '电控',
       inventoryDesc: '触摸屏 HMI 自动化 电控',
       inventoryCode: 'INV-HMI-10',
       salesUnit: '台',
@@ -299,6 +308,7 @@ window.DemoData = {
       id: 'p10',
       name: '联轴器弹性套',
       spec: '孔径 24/28',
+      productType: '配件',
       inventoryDesc: '联轴器 机械传动 配件',
       inventoryCode: 'INV-CPL-2428',
       salesUnit: '只',
@@ -311,6 +321,7 @@ window.DemoData = {
       id: 'p11',
       name: '深沟球轴承 6205',
       spec: 'P5 级',
+      productType: '机械传动',
       inventoryDesc: '轴承 6205 机械传动',
       inventoryCode: 'INV-BRG-6205',
       salesUnit: '只',
@@ -323,6 +334,7 @@ window.DemoData = {
       id: 'p12',
       name: '同步齿形带',
       spec: 'HTD 5M-15m',
+      productType: '自动化',
       inventoryDesc: '同步带 传动 自动化',
       inventoryCode: 'INV-BELT-5M',
       salesUnit: '条',
@@ -335,6 +347,7 @@ window.DemoData = {
       id: 'p13',
       name: '气缸 SC63×200',
       spec: '双作用',
+      productType: '气动',
       inventoryDesc: '气缸 气动 自动化产线',
       inventoryCode: 'INV-CYL-SC63',
       salesUnit: '只',
@@ -347,6 +360,7 @@ window.DemoData = {
       id: 'p14',
       name: '电磁阀组 5 联',
       spec: '24VDC',
+      productType: '气动',
       inventoryDesc: '电磁阀 气动 电控',
       inventoryCode: 'INV-SV-5',
       salesUnit: '组',
@@ -359,6 +373,7 @@ window.DemoData = {
       id: 'p15',
       name: '冷却液集中过滤站',
       spec: '流量 120L/min',
+      productType: '机加工',
       inventoryDesc: '过滤站 冷却 机加工 产线',
       inventoryCode: 'INV-FIL-120',
       salesUnit: '台',
@@ -371,6 +386,7 @@ window.DemoData = {
       id: 'p16',
       name: '刀库 BT40-21T',
       spec: '圆盘式',
+      productType: '配件',
       inventoryDesc: '刀库 BT40 数控机床 配件',
       inventoryCode: 'INV-ATC-BT40',
       salesUnit: '套',
@@ -464,7 +480,7 @@ window.DemoData = {
   skillCustomerExampleUtterances: {
     plan: '给深圳创源配伺服电机和传动齿轮箱各2台',
     quote: '给深圳创源按方案报价',
-    order: '给华东精密下伺服电机10台单价2100'
+    order: '给华东精密下单，配伺服电机10台单价2100'
   },
   /** 选客户引导卡：仅一句话直达类技能展示补充说明（缺客户时） */
   skillCustomerOneLineHints: {
@@ -473,7 +489,7 @@ window.DemoData = {
     quote:
       '可一句话生成报价单（话术含按方案或选品、规格、数量、本单单价）。示例：给深圳创源按方案报价',
     order:
-      '可一句话生成订单（话术含按报价单或直选品名、数量与单价）。示例：给华东精密下伺服电机10台单价2100'
+      '可一句话生成订单（话术含按报价单或直选品名、数量与单价）。示例：给华东精密下单，配伺服电机10台单价2100'
   },
   skillUtterances: {
     followup: '今日待跟进',
@@ -547,9 +563,48 @@ window.DemoData = {
     return Math.floor((b - a) / 86400000);
   },
 
+  /** 本企业下是否曾有订单（演示订单库） */
+  customerHasOrders(customerId) {
+    return DemoData.orders.some((o) => o.customerId === customerId);
+  },
+
+  /**
+   * 老客户（业务定义）：有过订单，且责任人=当前业务员
+   * @param {object} customer
+   * @param {string} [currentUser] 默认演示业务员
+   */
+  isOldCustomer(customer, currentUser) {
+    if (!customer) return false;
+    const user = currentUser || DemoData.demoSalesUser;
+    const mgr =
+      customer.accountManager != null && String(customer.accountManager).trim() !== ''
+        ? customer.accountManager
+        : null;
+    if (!mgr || mgr !== user) return false;
+    return DemoData.customerHasOrders(customer.id);
+  },
+
+  /**
+   * 新客户（业务定义）：跟进状态=待跟进，且无责任人
+   */
+  isNewCustomer(customer) {
+    if (!customer) return false;
+    if (customer.accountManager != null && String(customer.accountManager).trim() !== '') {
+      return false;
+    }
+    return (customer.latestFollowStatus || 'pending') === 'pending';
+  },
+
+  /** 方案选品等：老客户规则优先，否则新客户，否则回退档案 customerType */
+  planCustomerKind(customer, currentUser) {
+    if (DemoData.isOldCustomer(customer, currentUser)) return 'old';
+    if (DemoData.isNewCustomer(customer)) return 'new';
+    return customer.customerType === 'new' ? 'new' : 'old';
+  },
+
   /** 老客户待跟进：分管=当前用户 且 超销售提醒天数未下单 */
   isOldCustomerFollowUp(customer, currentUser, todayYmd, getReminderDate) {
-    if (!customer || customer.customerType !== 'old') return false;
+    if (!customer || !DemoData.isOldCustomer(customer, currentUser)) return false;
     if (!DemoData.isDueForFollowUpPush(customer, todayYmd, getReminderDate)) return false;
     const mgr =
       customer.accountManager != null && customer.accountManager !== ''
@@ -560,12 +615,11 @@ window.DemoData = {
     return DemoData.daysSinceOrder(customer.lastOrderAt, todayYmd) > days;
   },
 
-  /** 新客户待跟进：无分管 且 最新跟进状态=待跟进 */
+  /** 新客户待跟进：无责任人 且 状态=待跟进（与 isNewCustomer 一致，另校验提醒日） */
   isNewCustomerFollowUp(customer, todayYmd, getReminderDate) {
-    if (!customer || customer.customerType !== 'new') return false;
+    if (!customer || !DemoData.isNewCustomer(customer)) return false;
     if (!DemoData.isDueForFollowUpPush(customer, todayYmd, getReminderDate)) return false;
-    if (customer.accountManager) return false;
-    return (customer.latestFollowStatus || 'pending') === 'pending';
+    return true;
   },
 
   /** 今日待跟进 = 老客户 ∪ 新客户（每家仅一类） */
@@ -587,10 +641,33 @@ window.DemoData = {
     return list;
   },
 
-  /** 新客户方案选品：推荐区匹配阈值（仅存货描述字段） */
+  /** 新客户方案选品：推荐区匹配阈值（第二步：需求关键词 × 存货描述） */
   PLAN_RECOMMEND_SCORE_NEW: 0.8,
-  /** 新客户「更多产品」：与 demandHint×inventoryDesc 弱匹配下限（不含推荐区已展示的 >0.8） */
+  /** 新客户「更多产品」：第二步弱匹配下限 */
   PLAN_MORE_MIN_SCORE_NEW: 0.2,
+
+  /**
+   * 第一步：客户档案「客户性质」与产品「产品类型」可售范围（演示主数据）
+   * 客户字段 customers[].category；产品字段 products[].productType
+   */
+  categoryProductTypes: {
+    终端客户: ['机械传动', '自动化', '工业传动', '气动', '电控'],
+    经销商: ['机械传动', '配件', '自动化', '气动', '电控'],
+    战略客户: ['机械传动', '工业传动', '自动化', '机加工', '配件']
+  },
+
+  /** 第一步：产品类型是否与客户性质匹配 */
+  productMatchesCustomerCategory(product, customer) {
+    if (!product || !customer) return false;
+    const allowed = DemoData.categoryProductTypes[customer.category];
+    if (!allowed || !allowed.length) return true;
+    return allowed.indexOf(product.productType) >= 0;
+  },
+
+  /** 新客户选品候选池（先过客户性质 × 产品类型） */
+  newCustomerProductPool(customer) {
+    return DemoData.products.filter((p) => DemoData.productMatchesCustomerCategory(p, customer));
+  },
 
   /** 存货描述与需求文本匹配分（0–1），演示用；仅比较 demand 关键词与 inventoryDesc 字段 */
   matchInventoryScore(demandText, inventoryDesc) {
@@ -607,15 +684,16 @@ window.DemoData = {
 
   /**
    * 方案选品 · 推荐区
-   * - 老客户：历史订单 productIds，订单日期倒序，最多 10 条（不看存货描述）
-   * - 新客户：客户.demandHint 与 product.inventoryDesc（存货描述）匹配，分 >0.8，Top10
+   * - 老客户（有过订单且责任人=当前用户）：历史订单 productIds，倒序最多 10 条
+   * - 新客户：先客户性质×产品类型 → 再 demandHint×存货描述，分 >0.8，Top10
    * filterText 同时过滤品名/规格/存货描述
    */
-  recommendProducts(customer, filterText) {
+  recommendProducts(customer, filterText, currentUser) {
     const all = DemoData.products;
     let rows = [];
+    const kind = DemoData.planCustomerKind(customer, currentUser);
 
-    if (customer.customerType === 'old') {
+    if (kind === 'old') {
       const orders = DemoData.orders
         .filter((o) => o.customerId === customer.id)
         .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -632,7 +710,8 @@ window.DemoData = {
     } else {
       const demand = customer.demandHint || '';
       const th = DemoData.PLAN_RECOMMEND_SCORE_NEW;
-      rows = all
+      const pool = DemoData.newCustomerProductPool(customer);
+      rows = pool
         .map((p) => ({
           product: p,
           score: DemoData.matchInventoryScore(demand, p.inventoryDesc),
@@ -671,15 +750,16 @@ window.DemoData = {
    * - 老客户：全库余量；筛选词匹配品名/规格/存货描述；按品名排序
    * - 新客户：demandHint×inventoryDesc 弱匹配 (0.2, 0.8]；或有筛选词且命中三字段之一；按匹配分降序
    */
-  planMoreProducts(customer, recIds, filterText) {
+  planMoreProducts(customer, recIds, filterText, currentUser) {
     const exclude = recIds instanceof Set ? recIds : new Set(recIds || []);
     const f = (filterText || '').trim();
+    const kind = customer ? DemoData.planCustomerKind(customer, currentUser) : 'new';
 
-    if (customer && customer.customerType === 'new') {
+    if (customer && kind === 'new') {
       const demand = customer.demandHint || '';
       const hi = DemoData.PLAN_RECOMMEND_SCORE_NEW;
       const lo = DemoData.PLAN_MORE_MIN_SCORE_NEW;
-      return DemoData.products
+      return DemoData.newCustomerProductPool(customer)
         .filter((p) => !exclude.has(p.id))
         .map((p) => ({
           product: p,
@@ -777,7 +857,7 @@ window.DemoData = {
     return null;
   },
 
-  /** 从需求句解析行单价（「伺服电机 报价 4200」「…10台单价2100」） */
+  /** 从需求句解析行单价（「伺服电机 报价 4200」「…10台单价2100」「下单…配…单价2100」） */
   parseLinePriceFromText(text, product) {
     const t = text || '';
     if (DemoData.productMentionedInText(product, t)) {
@@ -824,7 +904,11 @@ window.DemoData = {
     const t = (demandText || '').trim();
     if (!t) return [];
     const hint = customer && customer.demandHint ? customer.demandHint + ' ' + t : t;
-    let rows = DemoData.products
+    const pool =
+      customer && DemoData.isNewCustomer(customer)
+        ? DemoData.newCustomerProductPool(customer)
+        : DemoData.products;
+    let rows = pool
       .map((p) => {
         let score = DemoData.matchInventoryScore(t, p.inventoryDesc);
         score = Math.max(score, DemoData.matchInventoryScore(t, p.name));

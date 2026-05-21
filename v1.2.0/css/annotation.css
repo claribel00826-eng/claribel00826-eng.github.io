@@ -256,6 +256,61 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
   color: #18181b;
 }
 
+.sc-spec-kicker {
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.sc-spec-panel__ul.sc-spec-detail {
+  margin: 0 0 10px;
+  padding-left: 0;
+  list-style: none;
+}
+
+.sc-spec-block {
+  margin-bottom: 10px;
+}
+
+.sc-spec-block:last-child {
+  margin-bottom: 0;
+}
+
+.sc-spec-block__head {
+  margin: 0 0 4px;
+  line-height: 1.55;
+  color: #18181b;
+}
+
+.sc-spec-panel__subul {
+  margin: 2px 0 0;
+  padding-left: 1.1em;
+  list-style: none;
+  border-left: 2px solid #e4e4e7;
+}
+
+.sc-spec-panel__subul li {
+  margin: 0 0 4px;
+  padding-left: 8px;
+  line-height: 1.5;
+  color: #3f3f46;
+  font-size: 11.5px;
+}
+
+.sc-spec-panel__subul li:last-child {
+  margin-bottom: 0;
+}
+
+.sc-spec-sub-kicker {
+  font-weight: 600;
+  color: #52525b;
+}
+
+.sc-spec-global {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e4e4e7;
+}
+
 .sc-spec-panel__ul,
 .sc-spec-panel__ol {
   margin: 0 0 8px;
@@ -265,6 +320,10 @@ body.sc-spec-on [data-spec-id].sc-spec-target {
 .sc-spec-panel__ul li,
 .sc-spec-panel__ol li {
   margin-bottom: 4px;
+}
+
+.sc-spec-panel__ul.sc-spec-detail > .sc-spec-block {
+  margin-bottom: 10px;
 }
 
 .sc-spec-panel__sub {

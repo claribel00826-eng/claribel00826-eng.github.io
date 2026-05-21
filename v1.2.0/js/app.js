@@ -2,12 +2,10 @@
   const TOKEN_KEY = 'sc_token';
   const STATE_KEY = 'sc_state';
   const DAILY_HOME_KEY = 'sc_daily_home';
+  const CHAT_HISTORY_KEY = 'sc_chat_history';
   const CHAT_HISTORY_MAX = 200;
-  const API_BASE = (typeof window !== 'undefined' && window.SC_API_BASE) || 'http://127.0.0.1:8000';
 
   let chatPersistSuspended = false;
-  let chatSaveTimer = null;
-  let chatSavePending = null;
 
   let state = {
     enterpriseId: 'ent-east',
@@ -114,11 +112,17 @@
   }
 
   function customerTypeLabel(c) {
-    return c.customerType === 'new' ? '新客户' : '老客户';
+    if (!c || !window.DemoData) return '客户';
+    if (DemoData.isOldCustomer(c, DemoData.demoSalesUser)) return '老客户';
+    if (DemoData.isNewCustomer(c)) return '新客户';
+    return '客户';
   }
 
   function customerTypeBadgeClass(c) {
-    return c.customerType === 'new' ? 'sc-badge--new' : 'sc-badge--old';
+    if (!c || !window.DemoData) return 'sc-badge--old';
+    if (DemoData.isNewCustomer(c)) return 'sc-badge--new';
+    if (DemoData.isOldCustomer(c, DemoData.demoSalesUser)) return 'sc-badge--old';
+    return 'sc-badge--old';
   }
 
   function nowDatetimeLocal() {
@@ -380,7 +384,7 @@
       if (state.pendingFollowFormSlots) delete state.pendingFollowFormSlots;
       openFollowSheet(c, prefill);
       if (hadVoiceContent) {
-        pushAiHtml('已根据语音填入跟进信息，请核对联系人、时间与内容后提交。');
+        pushAiHtml('已根据语音填入跟进信息，请核对联系人、时间与内容后提交。', { samePage: true });
         scrollMessages();
         persistChatHistory();
       }
@@ -602,10 +606,8 @@
       .forEach((row) => disableFlowControlsInRow(row));
   }
 
-  /** 用户每发一条新消息，失效当前步上所有对话内按钮 */
-  function onUserMessageForFlow(text) {
-    const t = (text || '').trim();
-    if (!t) return;
+  /** 弹出新助手页时：失效当前页，页序号加一（首屏合包、同页补充说明不调用） */
+  function advanceFlowPage() {
     const stepToInvalidate = state.flowStepId || 1;
     invalidateFlowStep(String(stepToInvalidate));
     state.flowStepId = stepToInvalidate + 1;
@@ -684,59 +686,16 @@
     return node.dataset.customerId || null;
   }
 
-  function chatHistoryUrl(enterpriseId, suffix) {
-    const base = API_BASE.replace(/\/$/, '') + '/api/v1/chat-history';
-    if (suffix === '_all') return base + '/_all';
-    return base + '/' + encodeURIComponent(enterpriseId);
-  }
-
-  async function apiFetchChatHistory(enterpriseId) {
-    const res = await fetch(chatHistoryUrl(enterpriseId), {
-      method: 'GET',
-      headers: { Accept: 'application/json' }
-    });
-    if (!res.ok) throw new Error('load chat history ' + res.status);
-    const data = await res.json();
-    return data.items || [];
-  }
-
-  async function apiSaveChatHistory(enterpriseId, items) {
-    const res = await fetch(chatHistoryUrl(enterpriseId), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ items: items })
-    });
-    if (!res.ok) throw new Error('save chat history ' + res.status);
-    return res.json();
-  }
-
-  async function apiDeleteChatHistory(enterpriseId) {
-    const res = await fetch(chatHistoryUrl(enterpriseId), { method: 'DELETE' });
-    if (!res.ok) throw new Error('delete chat history ' + res.status);
-  }
-
-  async function apiDeleteAllChatHistory() {
-    const res = await fetch(chatHistoryUrl('', '_all'), { method: 'DELETE' });
-    if (!res.ok) throw new Error('delete all chat history ' + res.status);
-  }
-
-  function scheduleChatHistorySave(enterpriseId, items) {
-    chatSavePending = { enterpriseId: enterpriseId, items: items };
-    clearTimeout(chatSaveTimer);
-    chatSaveTimer = setTimeout(function () {
-      flushChatHistorySave();
-    }, 400);
-  }
-
-  async function flushChatHistorySave() {
-    if (!chatSavePending) return;
-    const job = chatSavePending;
-    chatSavePending = null;
+  function getChatHistoryStore() {
     try {
-      await apiSaveChatHistory(job.enterpriseId, job.items);
-    } catch (err) {
-      console.warn('[chat-history] save failed', err);
+      return JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '{}');
+    } catch (_) {
+      return {};
     }
+  }
+
+  function saveChatHistoryStore(store) {
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(store));
   }
 
   function serializeChatMessages() {
@@ -767,7 +726,9 @@
         items.push({
           type: 'ai',
           html: bubble ? bubble.innerHTML : '',
-          customerId: readCustomerScopeFromNode(node)
+          customerId: readCustomerScopeFromNode(node),
+          flowStep: node.dataset.flowStep || '',
+          homeScreen: node.dataset.homeScreen === '1'
         });
       }
     });
@@ -778,57 +739,43 @@
     if (chatPersistSuspended) return;
     const entId = enterpriseId || state.enterpriseId;
     if (!entId) return;
-    scheduleChatHistorySave(entId, serializeChatMessages());
+    const store = getChatHistoryStore();
+    store[entId] = serializeChatMessages();
+    saveChatHistoryStore(store);
   }
 
-  async function clearAllChatHistory() {
-    try {
-      await apiDeleteAllChatHistory();
-    } catch (err) {
-      console.warn('[chat-history] clear all failed', err);
-    }
+  function clearAllChatHistory() {
+    localStorage.removeItem(CHAT_HISTORY_KEY);
   }
 
-  async function clearChatHistoryAll() {
+  function clearChatHistoryAll() {
     if (!getCustomer()) return;
     if (
       !window.confirm(
-        '确定清空全部对话记录？\n将删除欢迎区、待跟进摘要、最近访问及本会话内所有消息（数据库中的记录）。'
+        '确定清空全部对话记录？\n将删除欢迎区、待跟进摘要、最近访问及本会话内所有消息（含本地缓存）。'
       )
     ) {
       return;
     }
     const box = $('#messages');
     if (!box) return;
-    try {
-      await flushChatHistorySave();
-      await apiDeleteChatHistory(state.enterpriseId);
-    } catch (err) {
-      toast('清空失败，请确认后端服务已启动');
-      console.warn(err);
-      return;
-    }
     chatPersistSuspended = true;
     box.innerHTML = '';
     delete box.dataset.inited;
     resetFlowState();
     chatPersistSuspended = false;
+    const store = getChatHistoryStore();
+    store[state.enterpriseId] = [];
+    saveChatHistoryStore(store);
     scrollMessages();
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
     toast('已清空全部对话记录');
   }
 
-  async function restoreChatHistory() {
+  function restoreChatHistory() {
     const box = $('#messages');
     if (!box) return false;
-    let items;
-    try {
-      items = await apiFetchChatHistory(state.enterpriseId);
-    } catch (err) {
-      console.warn('[chat-history] load failed', err);
-      toast('聊天记录加载失败，请确认后端已启动（' + API_BASE + '）');
-      return false;
-    }
+    const items = getChatHistoryStore()[state.enterpriseId];
     if (!items || !items.length) return false;
 
     chatPersistSuspended = true;
@@ -852,7 +799,8 @@
       } else if (item.type === 'ai') {
         const row = document.createElement('div');
         row.className = 'sc-msg';
-        row.dataset.flowStep = '0';
+        if (item.flowStep) row.dataset.flowStep = item.flowStep;
+        if (item.homeScreen) row.dataset.homeScreen = '1';
         if (item.customerId) row.dataset.customerId = item.customerId;
         row.innerHTML =
           '<div class="sc-bubble sc-bubble--ai">' +
@@ -862,10 +810,16 @@
       }
     });
     chatPersistSuspended = false;
-    document.querySelectorAll('#messages .sc-msg[data-flow-step="0"]').forEach((row) => {
-      disableFlowControlsInRow(row);
+    let maxStep = 1;
+    document.querySelectorAll('#messages .sc-msg[data-flow-step]').forEach((row) => {
+      const n = parseInt(row.dataset.flowStep, 10);
+      if (!isNaN(n) && n > maxStep) maxStep = n;
     });
-    resetFlowState();
+    document.querySelectorAll('#messages .sc-msg[data-flow-step]').forEach((row) => {
+      const n = parseInt(row.dataset.flowStep, 10);
+      if (!isNaN(n) && n < maxStep) disableFlowControlsInRow(row);
+    });
+    state.flowStepId = maxStep + 1;
     bindRecentHandlers();
     scrollMessages();
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
@@ -883,7 +837,6 @@
   }
 
   function pushUserMsg(text) {
-    onUserMessageForFlow(text);
     const wrap = document.createElement('div');
     wrap.className = 'sc-msg sc-msg--user';
     wrap.innerHTML =
@@ -896,7 +849,9 @@
     persistChatHistory();
   }
 
-  function pushAiHtml(html) {
+  function pushAiHtml(html, opts) {
+    opts = opts || {};
+    if (!opts.samePage) advanceFlowPage();
     const row = document.createElement('div');
     row.className = 'sc-msg';
     row.innerHTML =
@@ -1155,7 +1110,7 @@
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     if (btn.disabled || btn.classList.contains('is-flow-stale')) {
-      toast('已有新消息，请使用最新对话中的操作');
+      toast('该页面已过期，请使用最新页面中的操作');
       return;
     }
     const action = btn.getAttribute('data-action');
@@ -1192,7 +1147,7 @@
         switchActiveSkill('plan', { skipSkillAnnounce: true });
         Skills.startPlan(c);
       } else if (step === 'later') {
-        pushAiHtml('好的，需要时随时说客户名称或点待跟进继续。');
+        pushAiHtml('好的，需要时随时说客户名称或点待跟进继续。', { samePage: true });
       }
       return;
     }
@@ -1206,7 +1161,6 @@
     opts = opts || {};
     const t = text.trim();
     if (!t) return;
-    if (opts.skipUserMsg) onUserMessageForFlow(t);
     if (!opts.skipUserMsg) pushUserMsg(t);
     if (state.pendingSkillRun) {
       const pendingSkill = state.pendingSkillRun;
@@ -1319,9 +1273,7 @@
           closeOverlays();
           return;
         }
-        flushChatHistorySave().then(function () {
-          persistChatHistory(prevEnt);
-        });
+        persistChatHistory(prevEnt);
         state.enterpriseId = e.id;
         const c = getCustomer();
         if (c && c.enterpriseId !== e.id) {
@@ -1333,15 +1285,9 @@
         closeOverlays();
         const box = $('#messages');
         delete box.dataset.sessionReady;
-        loadChatForEnterprise()
-          .then(function () {
-            syncExternalTemplatePanel();
-            box.dataset.sessionReady = '1';
-          })
-          .catch(function (err) {
-            console.warn(err);
-            box.dataset.sessionReady = '1';
-          });
+        loadChatForEnterprise();
+        syncExternalTemplatePanel();
+        box.dataset.sessionReady = '1';
         pushSystem('已切换企业：' + e.name + '。请重新选择客户。');
       };
       list.appendChild(btn);
@@ -1448,12 +1394,12 @@
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
   }
 
-  async function loadChatForEnterprise() {
+  function loadChatForEnterprise() {
     const box = $('#messages');
     box.innerHTML = '';
     delete box.dataset.inited;
     resetFlowState();
-    const hadHistory = await restoreChatHistory();
+    const hadHistory = restoreChatHistory();
     if (needsDailyHomeScreen()) {
       if (hadHistory) {
         prependDailyHomeScreen(box);
@@ -1472,26 +1418,21 @@
     const box = $('#messages');
     if (box.dataset.sessionReady === '1') return;
     box.dataset.sessionReady = '1';
-    loadChatForEnterprise()
-      .then(function () {
-        syncExternalTemplatePanel();
-      })
-      .catch(function (err) {
-        console.warn(err);
-      });
+    loadChatForEnterprise();
+    syncExternalTemplatePanel();
   }
 
   function initWelcome() {
     ensureChatSession();
   }
 
-  async function resetChat() {
-    await clearAllChatHistory();
+  function resetChat() {
+    clearAllChatHistory();
     clearDailyHomeMarker();
     const box = $('#messages');
     delete box.dataset.inited;
     delete box.dataset.sessionReady;
-    await loadChatForEnterprise();
+    loadChatForEnterprise();
     box.dataset.sessionReady = '1';
     syncExternalTemplatePanel();
   }
@@ -1522,9 +1463,7 @@
     localStorage.setItem(TOKEN_KEY, '1');
     location.hash = '#chat';
     route();
-    resetChat().catch(function (err) {
-      console.warn(err);
-    });
+    resetChat();
     refreshHeader();
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
     toast('已恢复为初始状态');
@@ -1680,7 +1619,7 @@
       const c = getCustomer(state._followCustomerId || state.customerId);
       if (c) {
         setCustomerReminderDate(c.id, reminderDate);
-        if (c.customerType === 'new') {
+        if (DemoData.isNewCustomer(c)) {
           c.latestFollowStatus = status.value === 'done' ? 'done' : 'ongoing';
         }
       }
@@ -1866,7 +1805,7 @@
       if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
     });
     window.addEventListener('pagehide', () => {
-      flushChatHistorySave();
+      persistChatHistory();
     });
     route();
     bootChatSession();
