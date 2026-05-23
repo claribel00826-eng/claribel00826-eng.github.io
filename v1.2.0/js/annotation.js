@@ -44,19 +44,30 @@ window.Annotation = (function () {
     return d.innerHTML;
   }
 
-  /** 合并 content + query + interaction（无【】的交互行自动加【操作】）；行首【标题】高亮 */
+  /** 标注正文：先转义再还原允许的 strong/em，供 annotation-spec-data 行内强调 */
+  function formatSpecInline(s) {
+    return esc(s || '')
+      .replace(/&lt;strong&gt;/gi, '<strong>')
+      .replace(/&lt;\/strong&gt;/gi, '</strong>')
+      .replace(/&lt;em&gt;/gi, '<em>')
+      .replace(/&lt;\/em&gt;/gi, '</em>');
+  }
+
+  /** 业务说明：与 test.md 一致 — 内容 → 查询逻辑 → 交互逻辑 */
   function specDetailLines(spec) {
     if (!spec) return [];
     const lines = [];
-    if (spec.content && spec.content.length) lines.push.apply(lines, spec.content);
-    if (spec.query && spec.query.length) lines.push.apply(lines, spec.query);
-    if (spec.interaction && spec.interaction.length) {
-      spec.interaction.forEach(function (line) {
+    function pushSection(label, arr) {
+      if (!arr || !arr.length) return;
+      lines.push(label);
+      arr.forEach(function (line) {
         const t = (line || '').trim();
-        if (!t) return;
-        lines.push(/^【/.test(t) ? t : '【操作】' + t);
+        if (t) lines.push(t);
       });
     }
+    pushSection('【内容】', spec.content);
+    pushSection('【查询逻辑】', spec.query);
+    pushSection('【交互逻辑】', spec.interaction);
     return lines;
   }
 
@@ -83,10 +94,10 @@ window.Annotation = (function () {
         '<span class="sc-spec-sub-kicker">' +
         esc(m[1] + m[2]) +
         '</span>' +
-        esc(m[3])
+        formatSpecInline(m[3])
       );
     }
-    return esc(t);
+    return formatSpecInline(t);
   }
 
   /** 【标题】后正文整段同级展示；分号仅作句内停顿，不拆缩进子列表。真子级用无【】的独立数组行。 */
@@ -142,10 +153,10 @@ window.Annotation = (function () {
           '<p class="sc-spec-block__head"><strong class="sc-spec-kicker">' +
           esc(g.kicker) +
           '</strong>';
-        if (g.lead) html += esc(g.lead);
+        if (g.lead) html += formatSpecInline(g.lead);
         html += '</p>';
       } else if (g.lead) {
-        html += '<p class="sc-spec-block__head">' + esc(g.lead) + '</p>';
+        html += '<p class="sc-spec-block__head">' + formatSpecInline(g.lead) + '</p>';
       }
       if (g.subs && g.subs.length) {
         html += '<ul class="sc-spec-panel__subul">';
@@ -356,7 +367,13 @@ window.Annotation = (function () {
     let html = '<p class="sc-spec-panel__title">' + esc(spec.name) + '</p>';
     html += '<p class="sc-spec-panel__meta">文档章节 ' + esc(spec.module) + ' · 本版验收模块</p>';
     html += renderGlobalNotesHtml();
-    html = appendDetailListHtml(html, specDetailLines(spec));
+    const detailLines = specDetailLines(spec);
+    if (detailLines.length) {
+      html = appendDetailListHtml(html, detailLines, '业务说明');
+    } else {
+      html +=
+        '<p class="sc-spec-panel__sub">本模块标注数据为空。请强制刷新页面（Ctrl+F5）并确认已加载最新 <code>annotation-spec-data.js</code>。</p>';
+    }
     if (id === 'chat-messages' && isInScope('data-rules-chat-flow') && getSpec('data-rules-chat-flow')) {
       const dr = getSpec('data-rules-chat-flow');
       const drLines = specDetailLines(dr);

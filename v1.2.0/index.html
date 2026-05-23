@@ -138,7 +138,6 @@
         </select>
         <label class="sc-field-label">提醒日期</label>
         <input class="sc-input sc-input--field" id="follow-reminder-date" type="date" />
-        <p class="sc-field-hint">不填：每个工作日推送待跟进；填写后：自该日期起按提醒推送（此前不推送）</p>
       </div>
       <button type="button" class="sc-btn sc-btn--primary" id="follow-submit">提交</button>
     </div>
@@ -183,13 +182,13 @@
   </div>
 
   <div id="overlay-order" class="sc-overlay sc-hidden">
-    <div class="sc-sheet" data-spec-id="sheet-order" onclick="event.stopPropagation()">
+    <div class="sc-sheet sc-sheet--order" data-spec-id="sheet-order" onclick="event.stopPropagation()">
       <div class="sc-sheet__head">
         <span>订单确认</span>
         <button type="button" class="sc-sheet__close" id="order-close" aria-label="关闭">×</button>
       </div>
-      <div id="order-confirm-body" class="sc-card__meta"></div>
-      <button type="button" class="sc-btn sc-btn--primary" id="order-submit">确认下单</button>
+      <div id="order-confirm-body" class="sc-order-confirm-body"></div>
+      <button type="button" class="sc-btn sc-btn--primary sc-sheet--order__submit" id="order-submit">确认下单</button>
     </div>
   </div>
 
@@ -225,15 +224,8 @@
         <span>选择方案模板</span>
         <button type="button" class="sc-sheet__close" id="plan-template-close">×</button>
       </div>
-      <p class="sc-card__meta sc-plan-tpl-voice-hint">可说：第1个、选第二个、标准技术方案；说「保存方案」确认</p>
       <div id="plan-template-list" class="sc-plan-tpl-list"></div>
       <button type="button" class="sc-btn sc-btn--primary" id="plan-template-submit">保存方案</button>
-      <div class="sc-quote-setup-voice sc-quote-setup-voice--dock" data-spec-id="plan-template-voice" id="plan-template-voice-bar">
-        <button type="button" class="sc-voice sc-voice--sheet" id="plan-template-voice-btn">按住 说话</button>
-        <input type="text" class="sc-input sc-input--field sc-quote-setup-voice-input" id="plan-template-text-input" placeholder="如：第1个 / 标准技术方案" autocomplete="off" />
-        <button type="button" class="sc-sheet-voice-mode" id="plan-template-mode-toggle" aria-label="切换键盘">键盘</button>
-        <button type="button" class="sc-send sc-send--sheet" id="plan-template-send-btn" aria-label="发送">➤</button>
-      </div>
     </div>
   </div>
 
@@ -243,19 +235,11 @@
         <span id="quote-setup-title">逐项报价</span>
         <button type="button" class="sc-sheet__close" id="quote-setup-close">×</button>
       </div>
-      <p class="sc-card__meta sc-sheet--quote-setup__desc" id="quote-setup-desc">逐项配置规格、数量与本单报价；参考最新/最低售价。</p>
       <div class="sc-sheet--quote-setup__body">
-        <p class="sc-card__meta sc-plan-voice-hint" id="quote-setup-voice-hint">可说：第一项报价 3680、齿轮箱 数量 2、选择模板</p>
         <div id="quote-setup-lines" class="sc-quote-setup-lines"></div>
         <p class="sc-quote-setup-total" id="quote-setup-total-wrap"><span id="quote-setup-total-label">报价合计</span>：<strong id="quote-setup-total">¥0</strong></p>
         <label class="sc-plan-save-scheme sc-hidden" id="quote-save-scheme-row"><input type="checkbox" id="quote-save-scheme-sheet" /> 保存为方案</label>
         <button type="button" class="sc-btn sc-btn--primary sc-sheet--quote-setup__submit" id="quote-setup-next">下一步：选择模板</button>
-      </div>
-      <div class="sc-quote-setup-voice sc-quote-setup-voice--dock" data-spec-id="quote-setup-voice" id="quote-setup-voice-bar">
-        <button type="button" class="sc-voice sc-voice--sheet" id="quote-setup-voice-btn">按住 说话</button>
-        <input type="text" class="sc-input sc-input--field sc-quote-setup-voice-input" id="quote-setup-text-input" placeholder="如：第一项报价 3680" autocomplete="off" />
-        <button type="button" class="sc-sheet-voice-mode" id="quote-setup-mode-toggle" aria-label="切换键盘">键盘</button>
-        <button type="button" class="sc-send sc-send--sheet" id="quote-setup-send-btn" aria-label="发送">➤</button>
       </div>
     </div>
   </div>
@@ -265,14 +249,19 @@
         <span>选择报价单模板</span>
         <button type="button" class="sc-sheet__close" id="quote-template-close">×</button>
       </div>
-      <p class="sc-card__meta sc-plan-tpl-voice-hint">可说：第1个、标准报价单（即选中并生成报价单）；也可单独说「生成报价单」</p>
       <div id="quote-template-list" class="sc-plan-tpl-list"></div>
       <button type="button" class="sc-btn sc-btn--primary" id="quote-template-submit">生成报价单</button>
-      <div class="sc-quote-setup-voice sc-quote-setup-voice--dock" data-spec-id="quote-template-voice" id="quote-template-voice-bar">
-        <button type="button" class="sc-voice sc-voice--sheet" id="quote-template-voice-btn">按住 说话</button>
-        <input type="text" class="sc-input sc-input--field sc-quote-setup-voice-input" id="quote-template-text-input" placeholder="如：第1个 / 标准报价单" autocomplete="off" />
-        <button type="button" class="sc-sheet-voice-mode" id="quote-template-mode-toggle" aria-label="切换键盘">键盘</button>
-        <button type="button" class="sc-send sc-send--sheet" id="quote-template-send-btn" aria-label="发送">➤</button>
+    </div>
+  </div>
+
+  <!-- 跨功能切换确认 -->
+  <div id="overlay-cross-skill" class="sc-overlay sc-overlay--dialog sc-hidden" aria-modal="true" role="dialog" aria-labelledby="cross-skill-title">
+    <div class="sc-dialog sc-dialog--cross-skill" data-spec-id="modal-cross-skill" onclick="event.stopPropagation()">
+      <div class="sc-dialog__head" id="cross-skill-title">切换功能</div>
+      <p class="sc-dialog__prompt">是否仍使用当前客户进行操作？</p>
+      <div class="sc-dialog__actions">
+        <button type="button" class="sc-btn sc-btn--primary" id="cross-skill-yes">是</button>
+        <button type="button" class="sc-btn sc-btn--ghost" id="cross-skill-no">否</button>
       </div>
     </div>
   </div>
@@ -311,10 +300,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
   <script src="js/demo-data.js"></script>
   <script src="js/pdf-export.js"></script>
-  <script src="js/annotation-spec-data.js"></script>
-  <script src="js/annotation-spec-scope.js"></script>
+  <script src="js/annotation-spec-data.js?v=20260527"></script>
+  <script src="js/annotation-spec-scope.js?v=20260527"></script>
   <script src="js/skills.js"></script>
-  <script src="js/annotation.js"></script>
+  <script src="js/annotation.js?v=20260527"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

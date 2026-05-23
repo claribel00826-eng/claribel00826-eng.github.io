@@ -18,12 +18,12 @@
   };
 
   const CUSTOMER_PARTNER_TABS = [
+    { id: 'both', label: '供应商/客户' },
     { id: 'customer', label: '客户' },
-    { id: 'supplier', label: '供应商' },
-    { id: 'both', label: '供应商/客户' }
+    { id: 'supplier', label: '供应商' }
   ];
 
-  let customerPickerTab = 'customer';
+  let customerPickerTab = 'both';
 
   const $ = (sel) => document.querySelector(sel);
 
@@ -62,6 +62,26 @@
 
   function customersForEnterprise() {
     return DemoData.customers.filter((c) => c.enterpriseId === state.enterpriseId);
+  }
+
+  /** 选客户抽屉：当前业务员老客户 + 本企业公海新客户（非企业全部档案） */
+  function customersForPicker() {
+    const user = DemoData.demoSalesUser || DemoData.salesperson;
+    const pool = customersForEnterprise();
+    if (DemoData.customersVisibleToSalesUser) {
+      return DemoData.customersVisibleToSalesUser(pool, user);
+    }
+    return pool.filter(
+      (c) => DemoData.isOldCustomer(c, user) || DemoData.isNewCustomer(c)
+    );
+  }
+
+  function partnerTypeMatchesPickerTab(c, tab) {
+    const pt = c.partnerType || 'customer';
+    if (tab === 'customer') return pt === 'customer' || pt === 'both';
+    if (tab === 'supplier') return pt === 'supplier' || pt === 'both';
+    if (tab === 'both') return pt === 'both';
+    return pt === tab;
   }
 
   function todayYmd() {
@@ -322,7 +342,11 @@
   function tryMatchCustomerByName(text) {
     const q = (text || '').trim();
     if (!q) return null;
-    const items = customersForEnterprise();
+    const items = customersForPicker();
+    if (window.DemoData && DemoData.findCustomersByQuery) {
+      const hits = DemoData.findCustomersByQuery(q, items);
+      return hits.length === 1 ? hits[0] : null;
+    }
     if (window.DemoData && DemoData.findCustomerByQuery) {
       return DemoData.findCustomerByQuery(q, items);
     }
@@ -482,6 +506,13 @@
       return;
     }
     if (getCustomer(state.selectedFollowUpId || state.customerId)) {
+      if (
+        window.Skills &&
+        Skills.tryCrossSkillEntry &&
+        Skills.tryCrossSkillEntry(skillId, { simulateUserMsg: true })
+      ) {
+        return;
+      }
       executeSkillAction(skillId);
       return;
     }
@@ -534,8 +565,8 @@
     const tab = customerPickerTab;
     const matchFn = window.DemoData && DemoData.customerMatchesQuery;
     const scoreFn = window.DemoData && DemoData.customerSearchScore;
-    const items = customersForEnterprise().filter((c) => {
-      if ((c.partnerType || 'customer') !== tab) return false;
+    const items = customersForPicker().filter((c) => {
+      if (!partnerTypeMatchesPickerTab(c, tab)) return false;
       if (!q) return true;
       if (matchFn) return DemoData.customerMatchesQuery(c, q);
       const lower = q.toLowerCase();
@@ -576,10 +607,10 @@
     const items = filteredCustomersForPicker();
     list.innerHTML = '';
     if (!items.length) {
-      empty.classList.remove('sc-hidden');
+      if (empty) empty.classList.remove('sc-hidden');
       return;
     }
-    empty.classList.add('sc-hidden');
+    if (empty) empty.classList.add('sc-hidden');
     items.forEach((c) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -646,7 +677,7 @@
       .forEach((row) => disableFlowControlsInRow(row));
   }
 
-  /** 弹出新助手页时：失效当前页，页序号加一（首屏合包、同页补充说明不调用） */
+  /** 弹出新消息卡片时：失效当前消息卡片，消息卡片序号加一（首屏合包、同卡片内补充说明不调用） */
   function advanceFlowPage() {
     const stepToInvalidate = state.flowStepId || 1;
     invalidateFlowStep(String(stepToInvalidate));
@@ -1108,6 +1139,7 @@
   function selectFollowUpTarget(cid) {
     const c = getCustomer(cid);
     if (!c) return;
+    pushUserMsg('选择客户 ' + c.name);
     switchCustomer(cid, { showDetail: true });
   }
 
@@ -1150,7 +1182,7 @@
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     if (btn.disabled || btn.classList.contains('is-flow-stale')) {
-      toast('该页面已过期，请使用最新页面中的操作');
+      toast('该消息卡片已过期，请使用最新消息卡片中的操作');
       return;
     }
     const action = btn.getAttribute('data-action');
@@ -1181,9 +1213,15 @@
       const c = getCustomer(cid);
       if (!c) return;
       if (step === 'follow') {
+        pushUserMsg(
+          (DemoData.skillUtterances && DemoData.skillUtterances['write-follow']) || '写跟进'
+        );
         switchActiveSkill('followup', { skipSkillAnnounce: true });
         openFollowSheet(c);
       } else if (step === 'plan') {
+        pushUserMsg(
+          (DemoData.skillUtterances && DemoData.skillUtterances.plan) || '配个方案'
+        );
         switchActiveSkill('plan', { skipSkillAnnounce: true });
         Skills.startPlan(c);
       } else if (step === 'later') {
@@ -1204,19 +1242,39 @@
     if (!opts.skipUserMsg) pushUserMsg(t);
     if (state.pendingSkillRun) {
       const pendingSkill = state.pendingSkillRun;
-      const parsed =
-        DemoData.tryParseCustomerDemandUtterance &&
-        DemoData.tryParseCustomerDemandUtterance(t, customersForEnterprise());
-      const matched = (parsed && parsed.customer) || tryMatchCustomerByName(t);
+      const pool = customersForPicker();
+      const resolved =
+        DemoData.resolveCustomerUtterance &&
+        DemoData.resolveCustomerUtterance(t, pool);
+      if (resolved && resolved.status === 'ambiguous') {
+        setTimeout(() => {
+          openCustomerSheet(resolved.query);
+          pushAiHtml(
+            '<p class="sc-card__meta">「' +
+              escapeHtml(resolved.query) +
+              '」匹配到多家客户，请在列表中确认。</p>'
+          );
+          scrollMessages();
+          persistChatHistory();
+          if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
+        }, 300);
+        return;
+      }
+      const matched =
+        resolved && resolved.status === 'unique'
+          ? resolved.customer
+          : tryMatchCustomerByName(t);
       if (matched) {
         delete state.pendingSkillRun;
         switchCustomer(matched.id, {
           fromPicker: false,
-          skipCustomerAnnounce: !!parsed
+          skipCustomerAnnounce: !!(resolved && resolved.status === 'unique')
         });
         const demand =
-          parsed && parsed.demandText && parsed.demandText.trim().length >= 6
-            ? parsed.demandText.trim()
+          resolved &&
+          resolved.demandText &&
+          resolved.demandText.trim().length >= 6
+            ? resolved.demandText.trim()
             : '';
         if (demand && window.Skills && Skills.tryIntent(demand)) {
           return;
@@ -1288,12 +1346,16 @@
 
   function closeOverlays() {
     document.querySelectorAll('.sc-overlay').forEach((o) => o.classList.add('sc-hidden'));
+    const pdf = $('#pdf-modal');
+    if (pdf) pdf.classList.add('sc-hidden');
+    document.body.classList.remove('sc-pdf-open');
   }
 
-  function openCustomerSheet() {
-    customerPickerTab = 'customer';
+  function openCustomerSheet(prefillQuery) {
+    closeOverlays();
+    customerPickerTab = 'both';
     const search = $('#customer-search');
-    if (search) search.value = '';
+    if (search) search.value = prefillQuery != null ? String(prefillQuery) : '';
     renderCustomerCategoryFilters();
     renderCustomerPickerList();
     $('#overlay-customer').classList.remove('sc-hidden');
@@ -1561,138 +1623,6 @@
       btn.addEventListener('mouseup', endVoice);
     }
 
-    function dispatchQuoteSetupUtterance(t) {
-      state._quoteSetupVoice = true;
-      try {
-        if (window.Skills && Skills.tryIntent(t)) return;
-        handleIntent(t, { skipUserMsg: true });
-      } finally {
-        state._quoteSetupVoice = false;
-      }
-    }
-
-    let quoteVoiceIdx = 0;
-    const quoteVoiceBar = $('#quote-setup-voice-bar');
-    const quoteVoiceBtn = $('#quote-setup-voice-btn');
-    const quoteSetupMode = $('#quote-setup-mode-toggle');
-    const quoteSetupInput = $('#quote-setup-text-input');
-    const quoteSetupSend = $('#quote-setup-send-btn');
-
-    bindVoiceHoldButton(
-      quoteVoiceBtn,
-      () => {
-        const samples = DemoData.quoteVoiceSamples || [];
-        return samples[quoteVoiceIdx++ % Math.max(samples.length, 1)] || '';
-      },
-      dispatchQuoteSetupUtterance
-    );
-
-    if (quoteSetupMode && quoteVoiceBar) {
-      quoteSetupMode.onclick = () => {
-        quoteVoiceBar.classList.toggle('is-text');
-        quoteSetupMode.textContent = quoteVoiceBar.classList.contains('is-text') ? '语音' : '键盘';
-      };
-    }
-    if (quoteSetupSend && quoteSetupInput) {
-      quoteSetupSend.onclick = () => {
-        const t = (quoteSetupInput.value || '').trim();
-        if (!t) return;
-        quoteSetupInput.value = '';
-        dispatchQuoteSetupUtterance(t);
-      };
-      quoteSetupInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') quoteSetupSend.click();
-      });
-    }
-
-    function dispatchPlanTemplateUtterance(t) {
-      state._planTemplateVoice = true;
-      try {
-        if (window.Skills && Skills.tryIntent(t)) return;
-        handleIntent(t, { skipUserMsg: true });
-      } finally {
-        state._planTemplateVoice = false;
-      }
-    }
-
-    let planTplVoiceIdx = 0;
-    const planTplVoiceBar = $('#plan-template-voice-bar');
-    const planTplVoiceBtn = $('#plan-template-voice-btn');
-    const planTplMode = $('#plan-template-mode-toggle');
-    const planTplInput = $('#plan-template-text-input');
-    const planTplSend = $('#plan-template-send-btn');
-
-    bindVoiceHoldButton(
-      planTplVoiceBtn,
-      () => {
-        const samples = DemoData.planTemplateVoiceSamples || DemoData.voiceSamples || [];
-        return samples[planTplVoiceIdx++ % Math.max(samples.length, 1)] || '';
-      },
-      dispatchPlanTemplateUtterance
-    );
-
-    if (planTplMode && planTplVoiceBar) {
-      planTplMode.onclick = () => {
-        planTplVoiceBar.classList.toggle('is-text');
-        planTplMode.textContent = planTplVoiceBar.classList.contains('is-text') ? '语音' : '键盘';
-      };
-    }
-    if (planTplSend && planTplInput) {
-      planTplSend.onclick = () => {
-        const t = (planTplInput.value || '').trim();
-        if (!t) return;
-        planTplInput.value = '';
-        dispatchPlanTemplateUtterance(t);
-      };
-      planTplInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') planTplSend.click();
-      });
-    }
-
-    function dispatchQuoteTemplateUtterance(t) {
-      state._quoteTemplateVoice = true;
-      try {
-        if (window.Skills && Skills.tryIntent(t)) return;
-        handleIntent(t, { skipUserMsg: true });
-      } finally {
-        state._quoteTemplateVoice = false;
-      }
-    }
-
-    let quoteTplVoiceIdx = 0;
-    const quoteTplVoiceBar = $('#quote-template-voice-bar');
-    const quoteTplVoiceBtn = $('#quote-template-voice-btn');
-    const quoteTplMode = $('#quote-template-mode-toggle');
-    const quoteTplInput = $('#quote-template-text-input');
-    const quoteTplSend = $('#quote-template-send-btn');
-
-    bindVoiceHoldButton(
-      quoteTplVoiceBtn,
-      () => {
-        const samples = DemoData.quoteTemplateVoiceSamples || DemoData.voiceSamples || [];
-        return samples[quoteTplVoiceIdx++ % Math.max(samples.length, 1)] || '';
-      },
-      dispatchQuoteTemplateUtterance
-    );
-
-    if (quoteTplMode && quoteTplVoiceBar) {
-      quoteTplMode.onclick = () => {
-        quoteTplVoiceBar.classList.toggle('is-text');
-        quoteTplMode.textContent = quoteTplVoiceBar.classList.contains('is-text') ? '语音' : '键盘';
-      };
-    }
-    if (quoteTplSend && quoteTplInput) {
-      quoteTplSend.onclick = () => {
-        const t = (quoteTplInput.value || '').trim();
-        if (!t) return;
-        quoteTplInput.value = '';
-        dispatchQuoteTemplateUtterance(t);
-      };
-      quoteTplInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') quoteTplSend.click();
-      });
-    }
-
     const voice = $('#voice-btn');
     bindVoiceHoldButton(
       voice,
@@ -1923,6 +1853,17 @@
       if (e.target.id === 'overlay-service') closeOverlays();
     };
     $('#service-submit').onclick = () => Skills.submitService();
+
+    const crossSkillYes = $('#cross-skill-yes');
+    if (crossSkillYes) crossSkillYes.onclick = () => Skills.confirmCrossSkillYes();
+    const crossSkillNo = $('#cross-skill-no');
+    if (crossSkillNo) crossSkillNo.onclick = () => Skills.confirmCrossSkillNo();
+    const crossSkillOverlay = $('#overlay-cross-skill');
+    if (crossSkillOverlay) {
+      crossSkillOverlay.onclick = (e) => {
+        if (e.target.id === 'overlay-cross-skill') Skills.dismissCrossSkillModal();
+      };
+    }
 
     Skills.init({
       state,
