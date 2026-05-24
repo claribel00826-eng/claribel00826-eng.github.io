@@ -44,30 +44,122 @@ window.Annotation = (function () {
     return d.innerHTML;
   }
 
-  /** 标注正文：先转义再还原允许的 strong/em，供 annotation-spec-data 行内强调 */
-  function formatSpecInline(s) {
-    return esc(s || '')
-      .replace(/&lt;strong&gt;/gi, '<strong>')
-      .replace(/&lt;\/strong&gt;/gi, '</strong>')
-      .replace(/&lt;em&gt;/gi, '<em>')
-      .replace(/&lt;\/em&gt;/gi, '</em>');
+  /** 行内 **粗体**（表格单元格与正文共用） */
+  function renderInlineMarkdown(s) {
+    const text = String(s == null ? '' : s);
+    const re = /\*\*([^*]+)\*\*/g;
+    let html = '';
+    let last = 0;
+    let m;
+    while ((m = re.exec(text))) {
+      if (m.index > last) html += esc(text.slice(last, m.index));
+      html += '<strong>' + esc(m[1]) + '</strong>';
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) html += esc(text.slice(last));
+    return html;
   }
 
-  /** 业务说明：与 test.md 一致 — 内容 → 查询逻辑 → 交互逻辑 */
+  function isMarkdownTableRow(line) {
+    const t = (line || '').trim();
+    return t.charAt(0) === '|' && t.lastIndexOf('|') > 0;
+  }
+
+  function isMarkdownTableSeparator(line) {
+    const t = (line || '').trim().replace(/\s+/g, '');
+    if (!t.includes('|')) return false;
+    return t
+      .split('|')
+      .filter(Boolean)
+      .every(function (cell) {
+        return /^:?-{3,}:?$/.test(cell);
+      });
+  }
+
+  function parseMarkdownTableCells(line) {
+    return (line || '')
+      .trim()
+      .replace(/^\|/, '')
+      .replace(/\|$/, '')
+      .split('|')
+      .map(function (c) {
+        return c.trim();
+      });
+  }
+
+  function renderMarkdownTableHtml(headerLine, bodyLines) {
+    const headers = parseMarkdownTableCells(headerLine);
+    let html = '<div class="sc-spec-table-wrap"><table class="sc-spec-table"><thead><tr>';
+    headers.forEach(function (h) {
+      html += '<th>' + renderInlineMarkdown(h) + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    bodyLines.forEach(function (rowLine) {
+      const cells = parseMarkdownTableCells(rowLine);
+      html += '<tr>';
+      cells.forEach(function (c) {
+        html += '<td>' + renderInlineMarkdown(c) + '</td>';
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function tryExtractMarkdownTable(lines, start) {
+    if (!isMarkdownTableRow(lines[start])) return null;
+    if (start + 1 >= lines.length || !isMarkdownTableSeparator(lines[start + 1])) return null;
+    const header = lines[start];
+    const body = [];
+    let i = start + 2;
+    while (i < lines.length && isMarkdownTableRow(lines[i]) && !isMarkdownTableSeparator(lines[i])) {
+      body.push(lines[i]);
+      i++;
+    }
+    if (!body.length) return null;
+    return { html: renderMarkdownTableHtml(header, body), end: i };
+  }
+
+  /** 正文段落 + Markdown 表格混排 */
+  function renderSpecDetailLines(lines) {
+    let html = '';
+    const textBuffer = [];
+
+    function flushText() {
+      if (!textBuffer.length) return;
+      html += renderSpecDetailGroups(buildSpecDetailGroups(textBuffer.slice()));
+      textBuffer.length = 0;
+    }
+
+    let i = 0;
+    while (i < lines.length) {
+      const table = tryExtractMarkdownTable(lines, i);
+      if (table) {
+        flushText();
+        html += table.html;
+        i = table.end;
+      } else {
+        textBuffer.push(lines[i]);
+        i++;
+      }
+    }
+    flushText();
+    return html;
+  }
+
+  /** 合并 content + query + interaction（无【】的交互行自动加【操作】）；行首【标题】高亮 */
   function specDetailLines(spec) {
     if (!spec) return [];
     const lines = [];
-    function pushSection(label, arr) {
-      if (!arr || !arr.length) return;
-      lines.push(label);
-      arr.forEach(function (line) {
+    if (spec.content && spec.content.length) lines.push.apply(lines, spec.content);
+    if (spec.query && spec.query.length) lines.push.apply(lines, spec.query);
+    if (spec.interaction && spec.interaction.length) {
+      spec.interaction.forEach(function (line) {
         const t = (line || '').trim();
-        if (t) lines.push(t);
+        if (!t) return;
+        lines.push(/^【/.test(t) ? t : '【操作】' + t);
       });
     }
-    pushSection('【内容】', spec.content);
-    pushSection('【查询逻辑】', spec.query);
-    pushSection('【交互逻辑】', spec.interaction);
     return lines;
   }
 
@@ -94,10 +186,10 @@ window.Annotation = (function () {
         '<span class="sc-spec-sub-kicker">' +
         esc(m[1] + m[2]) +
         '</span>' +
-        formatSpecInline(m[3])
+        renderInlineMarkdown(m[3])
       );
     }
-    return formatSpecInline(t);
+    return renderInlineMarkdown(t);
   }
 
   /** 【标题】后正文整段同级展示；分号仅作句内停顿，不拆缩进子列表。真子级用无【】的独立数组行。 */
@@ -153,10 +245,10 @@ window.Annotation = (function () {
           '<p class="sc-spec-block__head"><strong class="sc-spec-kicker">' +
           esc(g.kicker) +
           '</strong>';
-        if (g.lead) html += formatSpecInline(g.lead);
+        if (g.lead) html += renderInlineMarkdown(g.lead);
         html += '</p>';
       } else if (g.lead) {
-        html += '<p class="sc-spec-block__head">' + formatSpecInline(g.lead) + '</p>';
+        html += '<p class="sc-spec-block__head">' + renderInlineMarkdown(g.lead) + '</p>';
       }
       if (g.subs && g.subs.length) {
         html += '<ul class="sc-spec-panel__subul">';
@@ -187,7 +279,7 @@ window.Annotation = (function () {
       '<p class="sc-spec-panel__label">' +
       esc(label || '业务说明') +
       '</p>' +
-      renderSpecDetailGroups(buildSpecDetailGroups(lines));
+      renderSpecDetailLines(lines);
     return html;
   }
 
@@ -367,13 +459,7 @@ window.Annotation = (function () {
     let html = '<p class="sc-spec-panel__title">' + esc(spec.name) + '</p>';
     html += '<p class="sc-spec-panel__meta">文档章节 ' + esc(spec.module) + ' · 本版验收模块</p>';
     html += renderGlobalNotesHtml();
-    const detailLines = specDetailLines(spec);
-    if (detailLines.length) {
-      html = appendDetailListHtml(html, detailLines, '业务说明');
-    } else {
-      html +=
-        '<p class="sc-spec-panel__sub">本模块标注数据为空。请强制刷新页面（Ctrl+F5）并确认已加载最新 <code>annotation-spec-data.js</code>。</p>';
-    }
+    html = appendDetailListHtml(html, specDetailLines(spec));
     if (id === 'chat-messages' && isInScope('data-rules-chat-flow') && getSpec('data-rules-chat-flow')) {
       const dr = getSpec('data-rules-chat-flow');
       const drLines = specDetailLines(dr);
