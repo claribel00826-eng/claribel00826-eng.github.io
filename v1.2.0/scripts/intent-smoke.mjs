@@ -142,17 +142,13 @@ if (spec.includes('方案速配') && spec.includes('2. 缺槽引导') && !spec.i
   ok('意图钉：分功能缺槽表、无「必填」列');
 else fail('意图钉结构');
 
-if (spec.includes('方案预览卡') && spec.includes('预览方案')) ok('方案预览缺槽字段文案');
-else fail('方案预览缺槽字段');
+if (spec.includes('购买数量、规格（加购后在此调整）')) ok('购物车缺槽字段文案');
+else fail('购物车缺槽字段');
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-if (
-  !html.includes('plan-template-voice-bar') &&
-  !html.includes('quote-template-voice-bar') &&
-  !html.includes('quote-setup-voice-bar')
-)
-  ok('index.html 抽屉无底部输入条');
-else fail('index.html 仍含抽屉语音条');
+if (html.includes('plan-template-voice-bar') && html.includes('quote-template-voice-bar'))
+  ok('index.html 双模板语音条');
+else fail('index.html 模板语音条');
 
 console.log('\n=== 结果 ===');
 console.log('通过 ' + passed + '，失败 ' + failed + '\n');
