@@ -775,35 +775,22 @@ window.DemoData = {
     const k = DemoData.normalizeSearchText(token);
     if (!k || k.length < 2) return false;
     return DemoData.productMatchTexts(product).some(function (text) {
-      const t = DemoData.normalizeSearchText(text);
-      if (t.indexOf(k) >= 0) return true;
-      return DemoData.searchTextScore(token, text) >= 80;
+      return DemoData.normalizeSearchText(text).indexOf(k) >= 0;
     });
   },
 
-  /** 需求与产品：模糊匹配名称 + 描述 + 规格 + 自由项 + 自定义项 */
+  /** 需求与产品：拆词命中率（命中词数 ÷ 拆词总数） */
   planMatchScoreForProduct(demandText, product) {
     if (!product || !demandText) return 0;
     const t = String(demandText).trim();
     if (!t) return 0;
-    const blob = DemoData.productMatchBlob(product);
-    const fullScore = DemoData.searchTextScore(t, blob);
-    if (fullScore >= 0) {
-      return Math.min(1, 0.72 + fullScore / 2500);
-    }
-    if (DemoData.productMentionedInText(product, t)) {
-      return 0.88;
-    }
-    const tokens = DemoData.demandTokens(t);
-    if (!tokens.length) {
-      return DemoData.demandTokenHitsProduct(t, product) ? 0.7 : 0;
-    }
+    let tokens = DemoData.demandTokens(t);
+    if (!tokens.length) tokens = [t];
     let hit = 0;
     tokens.forEach(function (tok) {
       if (DemoData.demandTokenHitsProduct(tok, product)) hit++;
     });
-    if (!hit) return 0;
-    return Math.min(1, 0.45 + 0.55 * (hit / tokens.length));
+    return hit / tokens.length;
   },
 
   /** @deprecated 使用 demandTokenHitsProduct(token, product) */

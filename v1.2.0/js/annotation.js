@@ -44,19 +44,178 @@ window.Annotation = (function () {
     return d.innerHTML;
   }
 
-  /** 行内 **粗体**（表格单元格与正文共用） */
+  /** 行内 **粗体** 与 `code`（表格单元格与正文共用） */
   function renderInlineMarkdown(s) {
     const text = String(s == null ? '' : s);
-    const re = /\*\*([^*]+)\*\*/g;
     let html = '';
-    let last = 0;
-    let m;
-    while ((m = re.exec(text))) {
-      if (m.index > last) html += esc(text.slice(last, m.index));
-      html += '<strong>' + esc(m[1]) + '</strong>';
-      last = m.index + m[0].length;
+    let i = 0;
+    while (i < text.length) {
+      const bold = text.indexOf('**', i);
+      const code = text.indexOf('`', i);
+      let next = -1;
+      let kind = null;
+      if (bold >= 0 && (code < 0 || bold <= code)) {
+        next = bold;
+        kind = 'bold';
+      } else if (code >= 0) {
+        next = code;
+        kind = 'code';
+      }
+      if (next < 0) {
+        html += esc(text.slice(i));
+        break;
+      }
+      if (next > i) html += esc(text.slice(i, next));
+      if (kind === 'bold') {
+        const end = text.indexOf('**', next + 2);
+        if (end < 0) {
+          html += esc(text.slice(next));
+          break;
+        }
+        html += '<strong>' + esc(text.slice(next + 2, end)) + '</strong>';
+        i = end + 2;
+      } else {
+        const end = text.indexOf('`', next + 1);
+        if (end < 0) {
+          html += esc(text.slice(next));
+          break;
+        }
+        html += '<code>' + esc(text.slice(next + 1, end)) + '</code>';
+        i = end + 1;
+      }
     }
-    if (last < text.length) html += esc(text.slice(last));
+    return html;
+  }
+
+  function getListLineInfo(line) {
+    const raw = line == null ? '' : String(line);
+    const ul = /^(\s*)-\s+(.*)$/.exec(raw);
+    if (ul) return { indent: ul[1].length, type: 'ul', content: ul[2].trim() };
+    const ol = /^(\s*)\d+\.\s+(.*)$/.exec(raw);
+    if (ol) return { indent: ol[1].length, type: 'ol', content: ol[2].trim() };
+    return null;
+  }
+
+  function isListLine(line) {
+    return !!getListLineInfo(line);
+  }
+
+  /** 段落 / 列表项：优先识别行首 **标题** */
+  function formatMarkdownLine(raw) {
+    const t = (raw || '').trim();
+    if (!t) return '';
+    const boldHead = /^\*\*([^*]+)\*\*(.*)$/.exec(t);
+    if (boldHead) {
+      return '<strong>' + esc(boldHead[1]) + '</strong>' + renderInlineMarkdown(boldHead[2]);
+    }
+    const m = /^([^：\n]{2,20})(：)([\s\S]*)$/.exec(t);
+    if (m) {
+      return (
+        '<span class="sc-spec-sub-kicker">' +
+        esc(m[1] + m[2]) +
+        '</span>' +
+        renderInlineMarkdown(m[3])
+      );
+    }
+    return renderInlineMarkdown(t);
+  }
+
+  function renderMarkdownListBlock(lines, start) {
+    const first = getListLineInfo(lines[start]);
+    if (!first) return null;
+    const baseIndent = first.indent;
+    let html = '<' + first.type + ' class="sc-spec-panel__' + first.type + ' sc-spec-md-list">';
+    let i = start;
+
+    while (i < lines.length) {
+      const info = getListLineInfo(lines[i]);
+      if (!info || info.indent < baseIndent) break;
+      if (info.indent > baseIndent) break;
+      if (info.type !== first.type && info.indent === baseIndent) break;
+
+      html += '<li>' + formatMarkdownLine(info.content);
+      i++;
+      const nested = getListLineInfo(lines[i]);
+      if (nested && nested.indent > baseIndent) {
+        const sub = renderMarkdownListBlock(lines, i);
+        if (sub) {
+          html += sub.html;
+          i = sub.end;
+        }
+      }
+      html += '</li>';
+    }
+    html += '</' + first.type + '>';
+    return { html: html, end: i };
+  }
+
+  function renderKickerBlock(blockLines) {
+    const first = (blockLines[0] || '').trim();
+    const km = /^【[^】]+】/.exec(first);
+    if (!km) return '';
+    const chunk = splitKickerLead(first);
+    const parentKicker = chunk.kicker;
+    const subs = normalizeSpecSubs(
+      blockLines.slice(1).map(function (ln) {
+        return (ln || '').trim();
+      }),
+      parentKicker
+    );
+    return renderSpecDetailGroups([
+      {
+        kicker: chunk.kicker,
+        lead: chunk.lead,
+        subs: subs
+      }
+    ]);
+  }
+
+  /** 正文段落 + Markdown 表格 / 列表 / 【区块】混排 */
+  function renderSpecDetailLines(lines) {
+    let html = '';
+    let i = 0;
+    while (i < lines.length) {
+      const t = (lines[i] || '').trim();
+      if (!t) {
+        i++;
+        continue;
+      }
+
+      const table = tryExtractMarkdownTable(lines, i);
+      if (table) {
+        html += table.html;
+        i = table.end;
+        continue;
+      }
+
+      if (/^【[^】]+】/.test(t)) {
+        const blockLines = [lines[i]];
+        i++;
+        while (i < lines.length) {
+          const ln = (lines[i] || '').trim();
+          if (!ln) {
+            i++;
+            continue;
+          }
+          if (/^【[^】]+】/.test(ln)) break;
+          if (isMarkdownTableRow(ln) || isListLine(lines[i])) break;
+          blockLines.push(lines[i]);
+          i++;
+        }
+        html += renderKickerBlock(blockLines);
+        continue;
+      }
+
+      const listBlock = renderMarkdownListBlock(lines, i);
+      if (listBlock) {
+        html += listBlock.html;
+        i = listBlock.end;
+        continue;
+      }
+
+      html += '<p class="sc-spec-block__para">' + formatMarkdownLine(t) + '</p>';
+      i++;
+    }
     return html;
   }
 
@@ -118,33 +277,6 @@ window.Annotation = (function () {
     }
     if (!body.length) return null;
     return { html: renderMarkdownTableHtml(header, body), end: i };
-  }
-
-  /** 正文段落 + Markdown 表格混排 */
-  function renderSpecDetailLines(lines) {
-    let html = '';
-    const textBuffer = [];
-
-    function flushText() {
-      if (!textBuffer.length) return;
-      html += renderSpecDetailGroups(buildSpecDetailGroups(textBuffer.slice()));
-      textBuffer.length = 0;
-    }
-
-    let i = 0;
-    while (i < lines.length) {
-      const table = tryExtractMarkdownTable(lines, i);
-      if (table) {
-        flushText();
-        html += table.html;
-        i = table.end;
-      } else {
-        textBuffer.push(lines[i]);
-        i++;
-      }
-    }
-    flushText();
-    return html;
   }
 
   /** 合并 content + query + interaction（无【】的交互行自动加【操作】）；行首【标题】高亮 */
@@ -226,7 +358,7 @@ window.Annotation = (function () {
         });
         return;
       }
-      if (groups.length && isSpecDetailSubLine(t)) {
+      if (groups.length && groups[groups.length - 1].kicker && isSpecDetailSubLine(t)) {
         const parent = groups[groups.length - 1].kicker;
         groups[groups.length - 1].subs.push(normalizeSpecSubLine(t, parent));
         return;

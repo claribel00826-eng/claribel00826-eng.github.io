@@ -1,7 +1,7 @@
 window.Skills = (function () {
   let App;
   const PLAN_MORE_PAGE_SIZE = 5;
-  let planMoreObserver = null;
+  let pickMoreObserver = null;
 
   function init(app) {
     App = app;
@@ -135,7 +135,7 @@ window.Skills = (function () {
     },
     planDemand: {
       message: '请描述采购需求',
-      hint: '例：伺服电机和传动齿轮箱各 2 台；老客户可说「跳过」',
+      hint: '例：伺服电机和传动齿轮箱各 2 台',
       specId: 'card-plan-demand',
       ensureCard: function () {
         enterSkill('plan');
@@ -167,7 +167,8 @@ window.Skills = (function () {
           ensureQuoteDraft(c);
           const d = ctx().quoteDraft;
           if (d) d.awaitingDemand = true;
-          App.pushAiHtml(renderDemandPromptCard(c, { specId: 'card-quote-demand' }));
+          const isOld = DemoData.isOldCustomer(c, DemoData.demoSalesUser);
+          App.pushAiHtml(renderDemandPromptCard(c, { specId: 'card-quote-demand', allowSkip: isOld }));
         }
       }
     },
@@ -1942,7 +1943,7 @@ window.Skills = (function () {
   }
 
   function resetPlanMoreVisible(plan) {
-    if (plan) plan.moreVisible = PLAN_MORE_PAGE_SIZE;
+    resetPickMoreVisible(plan);
   }
 
   function getLastPlanPickCard() {
@@ -2085,6 +2086,11 @@ window.Skills = (function () {
     draft.sku = {};
     draft.qty = {};
     draft.filter = '';
+    resetPickMoreVisible(draft);
+  }
+
+  function resetPickMoreVisible(draft) {
+    if (draft) draft.moreVisible = PLAN_MORE_PAGE_SIZE;
   }
 
   function initialQuoteDemandText(c) {
@@ -2105,7 +2111,8 @@ window.Skills = (function () {
       sku: {},
       qty: {},
       quotePrice: {},
-      saveAsScheme: false
+      saveAsScheme: false,
+      moreVisible: PLAN_MORE_PAGE_SIZE
     };
   }
 
@@ -2142,25 +2149,51 @@ window.Skills = (function () {
     } else {
       App.pushAiHtml(lead);
     }
+    scheduleQuotePickLazyBind();
     if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
     return true;
   }
 
-  /** 新客户选品报价：修改需求 → 重出选品报价卡 */
+  /** 老客户直选报价/下单：跳过需求录入，按最近订单进选品 */
+  function skipQuoteDemandToPick(opts) {
+    opts = opts || {};
+    const draft = ctx().quoteDraft;
+    if (!draft || !draft.customerId) return false;
+    const c = App.getCustomer(draft.customerId);
+    if (!c) return false;
+    if (!DemoData.isOldCustomer(c, DemoData.demoSalesUser)) {
+      App.toast('新客户须先描述采购需求');
+      return true;
+    }
+    draft.awaitingDemand = false;
+    const lead =
+      '<p class="sc-reply-lead">已跳过需求录入，为 <strong>' +
+      App.escapeHtml(c.name) +
+      '</strong> 按最近订单推荐选品。</p>' +
+      renderQuotePickCard();
+    if (opts.simulateUserMsg) {
+      pushNextAiCard(lead, '跳过');
+    } else {
+      App.pushAiHtml(lead);
+    }
+    scheduleQuotePickLazyBind();
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
+    return true;
+  }
+
+  /** 修改/补充需求（选品报价卡内） */
   function openQuoteDemandEdit(opts) {
     opts = opts || {};
     const c = activeCustomer() || (opts.customerId && App.getCustomer(opts.customerId));
-    if (!c || !DemoData.isNewCustomer(c)) {
-      App.toast('仅新客户可在选品报价前修改需求描述');
-      return;
-    }
+    if (!c) return;
     ensureQuoteDraft(c);
     const draft = ctx().quoteDraft;
-    draft.awaitingDemand = true;
+    const isNew = DemoData.isNewCustomer(c);
+    draft.awaitingDemand = isNew;
     enterSkill('quote');
     pushNextAiCard(
-      renderQuoteDemandPromptCard(c, { edit: true }),
-      opts.simulateUserMsg ? '修改需求' : null
+      renderQuoteDemandPromptCard(c, { edit: !!opts.edit, optional: !isNew }),
+      opts.simulateUserMsg ? (isNew ? '修改需求' : '补充需求') : null
     );
     if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
   }
@@ -2170,7 +2203,7 @@ window.Skills = (function () {
     const draft = ctx().quoteDraft;
     if (!draft || !draft.customerId) return false;
     const c = App.getCustomer(draft.customerId);
-    if (!c || !DemoData.isNewCustomer(c)) return false;
+    if (!c) return false;
     const body = parseDemandEditUtterance(text);
     if (body === null) return false;
     if (body.length >= 2) {
@@ -2192,36 +2225,41 @@ window.Skills = (function () {
     opts = opts || {};
     const draft = ensureQuoteDraft(c);
     if (!draft) return false;
-    if (!DemoData.isNewCustomer(c) || (draft.demandText && draft.demandText.trim())) {
+    if (draft.demandText && draft.demandText.trim()) {
       draft.awaitingDemand = false;
       return false;
     }
     const lastUser = getLatestUserChatText();
-    if (lastUser && isNaturalDemandText(lastUser) && !isPlainSkillPhrase(lastUser)) {
+    if (
+      lastUser &&
+      isNaturalDemandText(lastUser) &&
+      !isPlainSkillPhrase(lastUser) &&
+      !isPlanDemandSkipPhrase(lastUser)
+    ) {
       if (submitQuoteDemand(lastUser, { revise: false })) return true;
     }
     draft.awaitingDemand = true;
     if (opts.leadHtml) App.pushAiHtml(opts.leadHtml);
-    App.pushAiHtml(renderQuoteDemandPromptCard(c));
+    const isOld = DemoData.isOldCustomer(c, DemoData.demoSalesUser);
+    App.pushAiHtml(renderQuoteDemandPromptCard(c, { allowSkip: isOld }));
     rescanAnnotationPins();
     return true;
   }
 
-  function planMoreProductList(plan, recIds) {
-    const c = App.getCustomer(plan.customerId);
-    return DemoData.planMoreProducts(c, recIds, plan.filter || '', undefined, planDemandForMatch());
+  function pickMoreProductList(draft, recIds, demandText) {
+    const c = App.getCustomer(draft.customerId);
+    return DemoData.planMoreProducts(c, recIds, draft.filter || '', undefined, demandText);
   }
 
-  function renderPlanMoreSection(plan, recIds) {
-    const all = planMoreProductList(plan, recIds);
+  function renderPickMoreSection(draft, recIds, demandText, renderRowFn) {
+    const all = pickMoreProductList(draft, recIds, demandText);
     if (!all.length) return '';
-    if (plan.moreVisible == null) plan.moreVisible = PLAN_MORE_PAGE_SIZE;
-    const visible = Math.min(plan.moreVisible, all.length);
+    if (draft.moreVisible == null) draft.moreVisible = PLAN_MORE_PAGE_SIZE;
+    const visible = Math.min(draft.moreVisible, all.length);
+    const moreBadge = '<span class="sc-plan-rec-badge sc-plan-rec-badge--more">全部</span>';
     const rows = all
       .slice(0, visible)
-      .map((p) =>
-        planPickRow(p, '<span class="sc-plan-rec-badge sc-plan-rec-badge--more">全部</span>')
-      )
+      .map((p) => renderRowFn(p, moreBadge))
       .join('');
     const hasMore = visible < all.length;
     const footer = hasMore
@@ -2243,7 +2281,11 @@ window.Skills = (function () {
     );
   }
 
-  function updatePlanMoreFooter(card, total, visible) {
+  function renderPlanMoreSection(plan, recIds) {
+    return renderPickMoreSection(plan, recIds, planDemandForMatch(), planPickRow);
+  }
+
+  function updatePickMoreFooter(card, total, visible) {
     const status = card.querySelector('[data-plan-more-status]');
     const sentinel = card.querySelector('[data-plan-more-sentinel]');
     if (visible >= total) {
@@ -2252,7 +2294,7 @@ window.Skills = (function () {
         status.textContent = '已加载全部 ' + total + ' 条';
       }
       if (sentinel) {
-        if (planMoreObserver) planMoreObserver.unobserve(sentinel);
+        if (pickMoreObserver) pickMoreObserver.unobserve(sentinel);
         sentinel.remove();
       }
     } else if (status) {
@@ -2261,53 +2303,111 @@ window.Skills = (function () {
     }
   }
 
-  function appendMorePlanProducts(card) {
-    const plan = ctx().plan;
-    if (!plan || !card) return false;
-    const c = App.getCustomer(plan.customerId);
+  function pickCardScopeConfig(scope) {
+    if (scope === 'plan') {
+      return {
+        specId: 'card-plan-pick',
+        getDraft: function () {
+          return ctx().plan;
+        },
+        getDemand: planDemandForMatch,
+        renderRow: planPickRow
+      };
+    }
+    if (scope === 'quote') {
+      return {
+        specId: 'card-quote-pick',
+        getDraft: function () {
+          return ctx().quoteDraft;
+        },
+        getDemand: quoteDemandForMatch,
+        renderRow: quotePickRow
+      };
+    }
+    return {
+      specId: 'card-order-pick',
+      getDraft: function () {
+        return ctx().orderDraft;
+      },
+      getDemand: orderDemandForMatch,
+      renderRow: orderPickRow
+    };
+  }
+
+  function appendMorePickProducts(card, scope) {
+    const cfg = pickCardScopeConfig(scope);
+    const draft = cfg.getDraft();
+    if (!draft || !card) return false;
+    const c = App.getCustomer(draft.customerId);
     if (!c) return false;
-    const recs = DemoData.recommendProducts(c, plan.filter, undefined, planDemandForMatch());
+    const demand = cfg.getDemand();
+    const recs = DemoData.recommendProducts(c, draft.filter, undefined, demand);
     const recIds = new Set(recs.map((r) => r.product.id));
-    const all = planMoreProductList(plan, recIds);
-    const prev = plan.moreVisible != null ? plan.moreVisible : PLAN_MORE_PAGE_SIZE;
+    const all = pickMoreProductList(draft, recIds, demand);
+    const prev = draft.moreVisible != null ? draft.moreVisible : PLAN_MORE_PAGE_SIZE;
     if (prev >= all.length) return false;
     const next = Math.min(prev + PLAN_MORE_PAGE_SIZE, all.length);
     const listEl = card.querySelector('[data-plan-more-list]');
     if (!listEl) return false;
+    const moreBadge = '<span class="sc-plan-rec-badge sc-plan-rec-badge--more">全部</span>';
     const chunk = all
       .slice(prev, next)
-      .map((p) =>
-        planPickRow(p, '<span class="sc-plan-rec-badge sc-plan-rec-badge--more">全部</span>')
-      )
+      .map((p) => cfg.renderRow(p, moreBadge))
       .join('');
     listEl.insertAdjacentHTML('beforeend', chunk);
-    plan.moreVisible = next;
-    updatePlanMoreFooter(card, all.length, next);
+    draft.moreVisible = next;
+    updatePickMoreFooter(card, all.length, next);
     return true;
   }
 
-  function bindPlanPickLazyLoad(card) {
-    if (planMoreObserver) {
-      planMoreObserver.disconnect();
-      planMoreObserver = null;
+  function appendMorePlanProducts(card) {
+    return appendMorePickProducts(card, 'plan');
+  }
+
+  function getLastPickCard(specId) {
+    const cards = document.querySelectorAll('[data-spec-id="' + specId + '"]');
+    return cards.length ? cards[cards.length - 1] : null;
+  }
+
+  function bindPickLazyLoad(card, scope) {
+    if (pickMoreObserver) {
+      pickMoreObserver.disconnect();
+      pickMoreObserver = null;
     }
     if (!card) return;
     const scrollRoot = card.querySelector('.sc-plan-pick-list');
     const sentinel = card.querySelector('[data-plan-more-sentinel]');
     if (!scrollRoot || !sentinel) return;
-    planMoreObserver = new IntersectionObserver(
+    pickMoreObserver = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) appendMorePlanProducts(card);
+        if (entries.some((e) => e.isIntersecting)) appendMorePickProducts(card, scope);
       },
       { root: scrollRoot, rootMargin: '56px 0px', threshold: 0 }
     );
-    planMoreObserver.observe(sentinel);
+    pickMoreObserver.observe(sentinel);
+  }
+
+  function bindPlanPickLazyLoad(card) {
+    bindPickLazyLoad(card, 'plan');
+  }
+
+  function schedulePickLazyBind(scope) {
+    const cfg = pickCardScopeConfig(scope);
+    setTimeout(function () {
+      bindPickLazyLoad(getLastPickCard(cfg.specId), scope);
+    }, 0);
   }
 
   function schedulePlanPickLazyBind() {
-    setTimeout(function () {
-      bindPlanPickLazyLoad(getLastPlanPickCard());
-    }, 0);
+    schedulePickLazyBind('plan');
+  }
+
+  function scheduleQuotePickLazyBind() {
+    schedulePickLazyBind('quote');
+  }
+
+  function scheduleOrderPickLazyBind() {
+    schedulePickLazyBind('order');
   }
 
   function syncPlanFilterFromDom() {
@@ -2385,6 +2485,95 @@ window.Skills = (function () {
       renderSkuSelect(product, pid) +
       '</div></div>'
     );
+  }
+
+  function ensureQuoteSku(pid, product) {
+    const d = ctx().quoteDraft;
+    if (!d) return;
+    if (!d.sku) d.sku = {};
+    if (!d.sku[pid]) d.sku[pid] = DemoData.defaultSkuId(product);
+  }
+
+  /** 报价/下单选品行：与方案选品一致，规格下拉始终可改 */
+  function quotePickRow(product, tagHtml) {
+    const d = ctx().quoteDraft;
+    const pid = product.id;
+    ensureQuoteSku(pid, product);
+    const on = d.selected && d.selected[pid];
+    return (
+      '<div class="sc-plan-pick-row' +
+      (on ? ' is-selected' : '') +
+      '"><button type="button" class="sc-follow-row sc-follow-row--select' +
+      (on ? ' is-selected' : '') +
+      '" data-action="quote-toggle" data-pid="' +
+      pid +
+      '"><span class="sc-follow-row__name">' +
+      App.escapeHtml(product.name) +
+      '</span><span class="sc-follow-row__meta">' +
+      App.escapeHtml(product.spec) +
+      (tagHtml ? ' ' + tagHtml : '') +
+      '</span></button><div class="sc-plan-sku-row">' +
+      renderQuoteSkuSelect(product, pid) +
+      '</div></div>'
+    );
+  }
+
+  function ensureOrderSku(pid, product) {
+    const d = ctx().orderDraft;
+    if (!d) return;
+    if (!d.sku) d.sku = {};
+    if (!d.sku[pid]) d.sku[pid] = DemoData.defaultSkuId(product);
+  }
+
+  function orderDemandForMatch() {
+    const d = ctx().orderDraft;
+    if (!d) return '';
+    if (d.demandText && d.demandText.trim()) return d.demandText.trim();
+    const q = ctx().quoteDraft;
+    if (q && q.customerId === d.customerId && q.demandText && q.demandText.trim()) {
+      return q.demandText.trim();
+    }
+    const plan = ctx().plan;
+    if (plan && plan.customerId === d.customerId && plan.demandText && plan.demandText.trim()) {
+      return plan.demandText.trim();
+    }
+    return '';
+  }
+
+  /** 订单选品行：与方案选品一致 */
+  function orderPickRow(product, tagHtml) {
+    const d = ctx().orderDraft;
+    const pid = product.id;
+    ensureOrderSku(pid, product);
+    const on = d.selected && d.selected[pid];
+    return (
+      '<div class="sc-plan-pick-row' +
+      (on ? ' is-selected' : '') +
+      '"><button type="button" class="sc-follow-row sc-follow-row--select' +
+      (on ? ' is-selected' : '') +
+      '" data-action="order-toggle" data-pid="' +
+      pid +
+      '"><span class="sc-follow-row__name">' +
+      App.escapeHtml(product.name) +
+      '</span><span class="sc-follow-row__meta">' +
+      App.escapeHtml(product.spec) +
+      (tagHtml ? ' ' + tagHtml : '') +
+      '</span></button><div class="sc-plan-sku-row">' +
+      renderOrderSkuSelect(product, pid) +
+      '</div></div>'
+    );
+  }
+
+  function recommendRecTagHtml(r) {
+    return r.score != null
+      ? '<span class="sc-plan-rec-badge">匹配 ' + Math.round(r.score * 100) + '%</span>'
+      : '<span class="sc-plan-rec-badge sc-plan-rec-badge--order">' + r.tag + '</span>';
+  }
+
+  function pickCardEmptyHint(c) {
+    return DemoData.isNewCustomer(c)
+      ? '<p class="sc-card__meta">暂无匹配推荐，请检查需求描述或调整筛选。</p>'
+      : '<p class="sc-card__meta">暂无推荐，请调整筛选或查看下方全部产品。</p>';
   }
 
   function recommendLeadHtml(c, demandText) {
@@ -2481,9 +2670,12 @@ window.Skills = (function () {
         '</div>'
       );
     }
+    const skipAction = specId === 'card-quote-demand' ? 'quote-skip-demand' : 'plan-skip-demand';
     const skipActions = allowSkip
       ? '<div class="sc-card__actions-inline">' +
-        '<button type="button" class="sc-btn sc-btn--ghost" data-action="plan-skip-demand">跳过，按最近订单推荐</button></div>'
+        '<button type="button" class="sc-btn sc-btn--ghost" data-action="' +
+        skipAction +
+        '">跳过，按最近订单推荐</button></div>'
       : '';
     return (
       '<div class="sc-card sc-card--compact" data-spec-id="' +
@@ -3948,6 +4140,7 @@ window.Skills = (function () {
     }
     if (ctx().quoteDraft.demandText == null) ctx().quoteDraft.demandText = '';
     if (ctx().quoteDraft.awaitingDemand == null) ctx().quoteDraft.awaitingDemand = false;
+    if (ctx().quoteDraft.moreVisible == null) ctx().quoteDraft.moreVisible = PLAN_MORE_PAGE_SIZE;
     if (!ctx().quoteDraft.quotePrice) ctx().quoteDraft.quotePrice = {};
     return c;
   }
@@ -3980,7 +4173,7 @@ window.Skills = (function () {
     const opts = (product.skus || [])
       .map((s) => '<option value="' + s.id + '"' + (s.id === cur ? ' selected' : '') + '>' + App.escapeHtml(s.label) + '</option>')
       .join('');
-    return '<label class="sc-plan-sku-label">规格 <select class="sc-plan-sku-select" data-action="quote-sku" data-pid="' + pid + '">' + opts + '</select></label>';
+    return '<label class="sc-plan-sku-label">规格 <select class="sc-plan-sku-select" data-action="quote-sku" data-pid="' + pid + '" onclick="event.stopPropagation()">' + opts + '</select></label>';
   }
 
   function makeQuoteLine(product, opts) {
@@ -4309,59 +4502,36 @@ window.Skills = (function () {
     const d = ctx().quoteDraft;
     const forOrder = !!ctx().quotePickForOrder;
     const c = App.getCustomer(d.customerId);
-    const recs = DemoData.recommendProducts(c, d.filter, undefined, quoteDemandForMatch());
+    const demandMatch = quoteDemandForMatch();
+    const recs = DemoData.recommendProducts(c, d.filter, undefined, demandMatch);
     const recIds = new Set(recs.map((r) => r.product.id));
-    const sel = d.selected || {};
-    const row = (pr, tag) => {
-      const on = sel[pr.id];
-      const sku = on ? '<div class="sc-plan-sku-row">' + renderQuoteSkuSelect(pr, pr.id) + '</div>' : '';
-      return (
-        '<div class="sc-plan-pick-row' +
-        (on ? ' is-selected' : '') +
-        '"><button type="button" class="sc-follow-row sc-follow-row--select' +
-        (on ? ' is-selected' : '') +
-        '" data-action="quote-toggle" data-pid="' +
-        pr.id +
-        '"><span class="sc-follow-row__name">' +
-        App.escapeHtml(pr.name) +
-        '</span><span class="sc-follow-row__meta">' +
-        App.escapeHtml(pr.spec) +
-        ' ' +
-        tag +
-        '</span></button>' +
-        sku +
-        '</div>'
-      );
-    };
-    const recRows = recs
-      .map((r) =>
-        row(
-          r.product,
-          r.score != null
-            ? '<span class="sc-plan-rec-badge">匹配 ' + Math.round(r.score * 100) + '%</span>'
-            : '<span class="sc-plan-rec-badge sc-plan-rec-badge--order">' + r.tag + '</span>'
-        )
-      )
-      .join('');
-    const more = DemoData.products
-      .filter((pr) => !recIds.has(pr.id))
-      .map((pr) => row(pr, '<span class="sc-plan-rec-badge sc-plan-rec-badge--more">全部</span>'))
-      .join('');
+    const recRows = recs.map((r) => quotePickRow(r.product, recommendRecTagHtml(r))).join('');
+    const moreSection = renderPickMoreSection(d, recIds, demandMatch, quotePickRow);
+    const isOld = DemoData.isOldCustomer(c, DemoData.demoSalesUser);
+    const hasDemand = !!(demandMatch && demandMatch.trim());
+    const addDemandBtn =
+      isOld && !hasDemand
+        ? '<button type="button" class="sc-btn sc-btn--ghost" data-action="quote-add-demand">录入用户需求</button>'
+        : '';
     const nextAction = forOrder ? 'quote-pick-to-order-setup' : 'quote-to-cart';
+    const headTitle = forOrder ? '订单选品' : '选品报价';
     return (
       '<div class="sc-card sc-card--compact" data-spec-id="card-quote-pick"' +
       (forOrder ? ' data-order-via-quote-pick="1"' : '') +
-      '><div class="sc-card__head sc-card__head--compact">选品报价</div>' +
-      recommendLeadHtml(c, quoteDemandForMatch()) +
+      '><div class="sc-card__head sc-card__head--compact">' +
+      headTitle +
+      '</div>' +
+      recommendLeadHtml(c, demandMatch) +
       renderQuoteDemandSummaryHtml(c) +
-      '<div class="sc-plan-filter-row"><input type="search" class="sc-input sc-input--field" id="quote-filter-input" value="' +
+      '<div class="sc-plan-filter-row"><input type="search" class="sc-input sc-input--field" id="quote-filter-input" placeholder="筛选品名/规格/自由项" value="' +
       App.escapeHtml(d.filter || '') +
       '"/><button type="button" class="sc-btn sc-btn--ghost" data-action="quote-filter">筛选</button></div>' +
-      '<div class="sc-follow-list">' +
-      (recRows || '<p class="sc-card__meta">暂无推荐</p>') +
-      (more ? '<p class="sc-plan-section-label">更多</p>' + more : '') +
-      '</div>' +
-      '<div class="sc-card__actions-inline"><button type="button" class="sc-btn sc-btn--ghost-primary" data-action="' +
+      '<div class="sc-follow-list sc-plan-pick-list">' +
+      (recRows || pickCardEmptyHint(c)) +
+      moreSection +
+      '</div><div class="sc-card__actions-inline">' +
+      addDemandBtn +
+      '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="' +
       nextAction +
       '">下一步：逐项报价</button></div></div>'
     );
@@ -4371,6 +4541,7 @@ window.Skills = (function () {
     const cards = document.querySelectorAll('[data-spec-id="card-quote-pick"]');
     const card = cards[cards.length - 1];
     if (card) card.outerHTML = renderQuotePickCard();
+    scheduleQuotePickLazyBind();
     rescanAnnotationPins();
   }
 
@@ -4580,6 +4751,7 @@ window.Skills = (function () {
       simulateUserUtterance(opts.forOrder ? '直接选品下单' : '直接选品报价');
     }
     App.pushAiHtml(renderQuotePickCard());
+    scheduleQuotePickLazyBind();
     rescanAnnotationPins();
   }
 
@@ -4748,8 +4920,9 @@ window.Skills = (function () {
     const c = customer || requireCustomer();
     if (!c) return null;
     if (!ctx().orderDraft || ctx().orderDraft.customerId !== c.id) {
-      ctx().orderDraft = { customerId: c.id, filter: '', selected: {}, sku: {}, qty: {}, saveAsScheme: false };
+      ctx().orderDraft = { customerId: c.id, filter: '', selected: {}, sku: {}, qty: {}, saveAsScheme: false, moreVisible: PLAN_MORE_PAGE_SIZE };
     }
+    if (ctx().orderDraft.moreVisible == null) ctx().orderDraft.moreVisible = PLAN_MORE_PAGE_SIZE;
     return c;
   }
 
@@ -4781,7 +4954,7 @@ window.Skills = (function () {
     const opts = (product.skus || [])
       .map((s) => '<option value="' + s.id + '"' + (s.id === cur ? ' selected' : '') + '>' + App.escapeHtml(s.label) + '</option>')
       .join('');
-    return '<label class="sc-plan-sku-label">SKU <select class="sc-plan-sku-select" data-action="order-sku" data-pid="' + pid + '">' + opts + '</select></label>';
+    return '<label class="sc-plan-sku-label">规格 <select class="sc-plan-sku-select" data-action="order-sku" data-pid="' + pid + '" onclick="event.stopPropagation()">' + opts + '</select></label>';
   }
 
   function linesFromOrderDraft(draft) {
@@ -4851,21 +5024,35 @@ window.Skills = (function () {
   function renderOrderProductPickCard() {
     const d = ctx().orderDraft;
     const c = App.getCustomer(d.customerId);
-    const recs = DemoData.recommendProducts(c, d.filter);
+    const demandMatch = orderDemandForMatch();
+    const recs = DemoData.recommendProducts(c, d.filter, undefined, demandMatch);
     const recIds = new Set(recs.map((r) => r.product.id));
-    const sel = d.selected || {};
-    const row = (pr, tag) => {
-      const on = sel[pr.id];
-      const sku = on ? '<div class="sc-plan-sku-row">' + renderOrderSkuSelect(pr, pr.id) + '</div>' : '';
-      return '<div class="sc-plan-pick-row' + (on ? ' is-selected' : '') + '"><button type="button" class="sc-follow-row sc-follow-row--select' + (on ? ' is-selected' : '') + '" data-action="order-toggle" data-pid="' + pr.id + '"><span class="sc-follow-row__name">' + App.escapeHtml(pr.name) + '</span><span class="sc-follow-row__meta">' + App.escapeHtml(pr.spec) + ' ' + tag + '</span></button>' + sku + '</div>';
-    };
-    const recRows = recs.map((r) => row(r.product, r.score != null ? '<span class="sc-plan-rec-badge">匹配 ' + Math.round(r.score * 100) + '%</span>' : '<span class="sc-plan-rec-badge sc-plan-rec-badge--order">' + r.tag + '</span>')).join('');
-    const more = DemoData.products.filter((pr) => !recIds.has(pr.id)).map((pr) => row(pr, '全部')).join('');
-    return '<div class="sc-card sc-card--compact" data-spec-id="card-order-pick"><div class="sc-card__head sc-card__head--compact">订单选品</div>' + recommendLeadHtml(c) +
-      '<div class="sc-plan-filter-row"><input type="search" class="sc-input sc-input--field" id="order-filter-input" value="' + App.escapeHtml(d.filter || '') + '"/><button type="button" class="sc-btn sc-btn--ghost" data-action="order-filter">筛选</button></div>' +
-      '<div class="sc-follow-list">' + (recRows || '') + (more ? '<p class="sc-plan-section-label">更多</p>' + more : '') + '</div>' +
-      '<label class="sc-plan-save-scheme"><input type="checkbox" id="order-save-scheme"' + (d.saveAsScheme ? ' checked' : '') + '/> 保存为方案</label>' +
-      '<div class="sc-card__actions-inline"><button type="button" class="sc-btn sc-btn--ghost-primary" data-action="order-to-quote-setup">下一步：逐项报价</button></div></div>';
+    const recRows = recs.map((r) => orderPickRow(r.product, recommendRecTagHtml(r))).join('');
+    const moreSection = renderPickMoreSection(d, recIds, demandMatch, orderPickRow);
+    const isOld = DemoData.isOldCustomer(c, DemoData.demoSalesUser);
+    const hasDemand = !!(demandMatch && demandMatch.trim());
+    const addDemandBtn =
+      isOld && !hasDemand
+        ? '<button type="button" class="sc-btn sc-btn--ghost" data-action="quote-add-demand">录入用户需求</button>'
+        : '';
+    return (
+      '<div class="sc-card sc-card--compact" data-spec-id="card-order-pick"><div class="sc-card__head sc-card__head--compact">订单选品</div>' +
+      recommendLeadHtml(c, demandMatch) +
+      renderQuoteDemandSummaryHtml(c) +
+      '<div class="sc-plan-filter-row"><input type="search" class="sc-input sc-input--field" id="order-filter-input" placeholder="筛选品名/规格/自由项" value="' +
+      App.escapeHtml(d.filter || '') +
+      '"/><button type="button" class="sc-btn sc-btn--ghost" data-action="order-filter">筛选</button></div>' +
+      '<div class="sc-follow-list sc-plan-pick-list">' +
+      (recRows || pickCardEmptyHint(c)) +
+      moreSection +
+      '</div>' +
+      '<label class="sc-plan-save-scheme"><input type="checkbox" id="order-save-scheme"' +
+      (d.saveAsScheme ? ' checked' : '') +
+      '/> 保存为方案</label>' +
+      '<div class="sc-card__actions-inline">' +
+      addDemandBtn +
+      '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="order-to-quote-setup">下一步：逐项报价</button></div></div>'
+    );
   }
 
   function renderOrderProductCartCard() {
@@ -5945,6 +6132,7 @@ window.Skills = (function () {
       enterSkill('quote');
       const text = (t || '').trim();
       if (!text) return true;
+      if (isPlanDemandSkipPhrase(text)) return skipQuoteDemandToPick();
       if (handleQuoteDemandEditUtterance(text, { simulateUserMsg: false })) return true;
       return submitQuoteDemand(text, {
         revise: !!(ctx().quoteDraft.demandText && ctx().quoteDraft.demandText.trim()),
@@ -6123,6 +6311,14 @@ window.Skills = (function () {
       skipPlanDemandToPick({ simulateUserMsg: true });
       return true;
     }
+    if (action === 'quote-skip-demand') {
+      skipQuoteDemandToPick({ simulateUserMsg: true });
+      return true;
+    }
+    if (action === 'quote-add-demand') {
+      openQuoteDemandEdit({ edit: true, simulateUserMsg: true });
+      return true;
+    }
     if (action === 'quote-edit-demand') {
       openQuoteDemandEdit({ simulateUserMsg: true });
       return true;
@@ -6171,7 +6367,7 @@ window.Skills = (function () {
     }
     if (action === 'plan-load-more') {
       const card = btn.closest('[data-spec-id="card-plan-pick"]');
-      if (card && appendMorePlanProducts(card)) bindPlanPickLazyLoad(card);
+      if (card && appendMorePickProducts(card, 'plan')) bindPickLazyLoad(card, 'plan');
       return true;
     }
     if (action === 'plan-preview' || action === 'plan-to-cart') {
@@ -6276,6 +6472,7 @@ window.Skills = (function () {
     if (action === 'quote-filter') {
       const inp = document.getElementById('quote-filter-input');
       if (inp) ctx().quoteDraft.filter = inp.value.trim();
+      resetPickMoreVisible(ctx().quoteDraft);
       refreshLastQuotePickCard();
       return true;
     }
@@ -6290,6 +6487,7 @@ window.Skills = (function () {
     if (action === 'quote-back-pick') {
       syncQuoteQtyFromDom();
       pushNextAiCard(renderQuotePickCard(), '返回报价选品');
+      scheduleQuotePickLazyBind();
       return true;
     }
     if (action === 'quote-to-setup') {
@@ -6354,6 +6552,7 @@ window.Skills = (function () {
     if (action === 'order-filter') {
       const inp = document.getElementById('order-filter-input');
       if (inp) ctx().orderDraft.filter = inp.value.trim();
+      resetPickMoreVisible(ctx().orderDraft);
       refreshLastOrderPickCard();
       return true;
     }
@@ -6364,6 +6563,7 @@ window.Skills = (function () {
     if (action === 'order-back-pick') {
       syncOrderQtyFromDom();
       pushNextAiCard(renderOrderProductPickCard(), '返回下单选品');
+      scheduleOrderPickLazyBind();
       return true;
     }
     if (action === 'order-to-confirm') {
