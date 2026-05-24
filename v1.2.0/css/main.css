@@ -1185,6 +1185,60 @@ button.is-flow-stale,
   flex-direction: column;
 }
 
+/* 消息卡片内嵌表单（替代底部抽屉） */
+.sc-card--inline-form {
+  max-width: 100%;
+}
+
+.sc-card--inline-form .sc-form-scroll--card {
+  max-height: none;
+  overflow: visible;
+  margin-bottom: 8px;
+}
+
+.sc-card--inline-form .sc-search,
+.sc-card--inline-form .sc-card__search {
+  width: 100%;
+  margin: 8px 0 6px;
+}
+
+.sc-customer-list--card {
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+
+.sc-card--inline-form .sc-plan-tpl-list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.sc-card--inline-form .sc-quote-setup-lines--card {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.sc-card--order .sc-order-confirm-body {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.sc-card--inline-form .sc-card__actions-inline {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border, #e4e4e7);
+}
+
+.sc-card__empty-hint {
+  margin: 8px 0;
+  text-align: center;
+}
+
+.sc-enterprise-list .sc-list-item {
+  width: 100%;
+  text-align: left;
+}
+
 .sc-form-scroll {
   flex: 1;
   overflow-y: auto;
@@ -1936,7 +1990,14 @@ button.is-flow-stale,
 .sc-plan-cart-row .sc-follow-row__name { flex: 1 1 100%; font-weight: 600; }
 .sc-plan-voice-hint { margin: 8px 0 0; font-size: 11px; color: var(--color-text-muted); }
 
-.sc-plan-demand-input { margin: 8px 0 10px; min-height: 72px; resize: vertical; }
+.sc-plan-demand-input {
+  margin: 8px 0 10px;
+  min-height: 72px;
+  width: 100%;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.sc-card__actions-inline--tail { margin-top: 4px; }
 .sc-plan-demand-summary {
   margin: 0 0 10px;
   padding: 8px 10px;

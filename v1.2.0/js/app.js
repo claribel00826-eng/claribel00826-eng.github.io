@@ -24,6 +24,7 @@
   ];
 
   let customerPickerTab = 'both';
+  let customerPickerQuery = '';
 
   const $ = (sel) => document.querySelector(sel);
 
@@ -561,7 +562,7 @@
   }
 
   function filteredCustomersForPicker() {
-    const q = ($('#customer-search').value || '').trim();
+    const q = (customerPickerQuery || '').trim();
     const tab = customerPickerTab;
     const matchFn = window.DemoData && DemoData.customerMatchesQuery;
     const scoreFn = window.DemoData && DemoData.customerSearchScore;
@@ -577,6 +578,212 @@
     });
     if (!q || !scoreFn) return items;
     return items.slice().sort((a, b) => DemoData.customerSearchScore(b, q) - DemoData.customerSearchScore(a, q));
+  }
+
+  function getLatestFlowCard(specId) {
+    const cards = document.querySelectorAll('#messages [data-spec-id="' + specId + '"]');
+    return cards.length ? cards[cards.length - 1] : null;
+  }
+
+  function isLatestFlowCardActive(specId) {
+    const card = getLatestFlowCard(specId);
+    if (!card) return false;
+    const msg = card.closest('.sc-msg');
+    if (!msg) return true;
+    return msg.dataset.flowStep === String(state.flowStepId);
+  }
+
+  function buildCustomerListHtml(items) {
+    if (!items.length) {
+      return '<p class="sc-card__meta sc-card__empty-hint">无匹配客户，请调整筛选条件</p>';
+    }
+    return items
+      .map(function (c) {
+        return (
+          '<button type="button" class="sc-list-item sc-list-item--customer' +
+          (c.id === state.customerId ? ' sc-list-item--active' : '') +
+          '" data-action="pick-customer" data-cid="' +
+          escapeHtml(c.id) +
+          '"><span class="sc-list-item__main"><span class="sc-list-item__name">' +
+          escapeHtml(c.name) +
+          '</span><span class="sc-list-item__sub">' +
+          escapeHtml(c.code) +
+          ' · ' +
+          escapeHtml(c.category) +
+          '</span></span><span class="sc-badge ' +
+          customerTypeBadgeClass(c) +
+          '">' +
+          customerTypeLabel(c) +
+          '</span></button>'
+        );
+      })
+      .join('');
+  }
+
+  function renderCustomerPickCardHtml() {
+    const tabs = CUSTOMER_PARTNER_TABS.map(function (chip) {
+      return (
+        '<button type="button" class="sc-filter-chip' +
+        (customerPickerTab === chip.id ? ' sc-filter-chip--active' : '') +
+        '" data-action="customer-tab" data-tab="' +
+        escapeHtml(chip.id) +
+        '" role="tab" aria-selected="' +
+        (customerPickerTab === chip.id ? 'true' : 'false') +
+        '">' +
+        escapeHtml(chip.label) +
+        '</button>'
+      );
+    }).join('');
+    const items = filteredCustomersForPicker();
+    return (
+      '<div class="sc-card sc-card--compact sc-card--inline-form" data-spec-id="sheet-customer">' +
+      '<div class="sc-card__head sc-card__head--compact">切换客户</div>' +
+      '<input type="search" class="sc-search sc-card__search" data-action="customer-search" value="' +
+      escapeHtml(customerPickerQuery) +
+      '" placeholder="模糊搜索名称、编码（支持不连续关键字）" autocomplete="off" />' +
+      '<div class="sc-filter-row" role="tablist" aria-label="往来单位类型">' +
+      tabs +
+      '</div>' +
+      '<div class="sc-customer-list sc-customer-list--card">' +
+      buildCustomerListHtml(items) +
+      '</div></div>'
+    );
+  }
+
+  function refreshLastCustomerPickCard() {
+    const cards = document.querySelectorAll('[data-spec-id="sheet-customer"]');
+    const card = cards[cards.length - 1];
+    if (card) card.outerHTML = renderCustomerPickCardHtml();
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
+  }
+
+  function renderFollowFormCardHtml(c, prefill) {
+    prefill = prefill || {};
+    const reminder =
+      prefill.reminderDate != null ? prefill.reminderDate : getCustomerReminderDate(c);
+    const statusDone = prefill.status === 'done';
+    return (
+      '<div class="sc-card sc-card--compact sc-card--inline-form" data-spec-id="sheet-followup" data-follow-cid="' +
+      escapeHtml(c.id) +
+      '">' +
+      '<div class="sc-card__head sc-card__head--compact">写跟进 — ' +
+      escapeHtml(c.name) +
+      '</div>' +
+      '<div class="sc-form-scroll sc-form-scroll--card">' +
+      '<label class="sc-field-label">联系人</label>' +
+      '<input class="sc-input sc-input--field" data-field="follow-contact-name" type="text" value="' +
+      escapeHtml(c.contactName || '') +
+      '" placeholder="联系人姓名" />' +
+      '<label class="sc-field-label">联系方式</label>' +
+      '<input class="sc-input sc-input--field" data-field="follow-contact-phone" type="tel" value="' +
+      escapeHtml(c.contactPhone || '') +
+      '" placeholder="手机或电话" />' +
+      '<label class="sc-field-label">发货地址</label>' +
+      '<input class="sc-input sc-input--field" data-field="follow-ship-address" type="text" value="' +
+      escapeHtml(c.shipAddress || '') +
+      '" placeholder="发货地址" />' +
+      '<label class="sc-field-label">跟进信息</label>' +
+      '<textarea class="sc-textarea" data-field="follow-content" placeholder="请输入跟进内容…">' +
+      escapeHtml(prefill.content || '') +
+      '</textarea>' +
+      '<label class="sc-field-label">跟进时间</label>' +
+      '<input class="sc-input sc-input--field" data-field="follow-time" type="datetime-local" value="' +
+      escapeHtml(nowDatetimeLocal()) +
+      '" />' +
+      '<label class="sc-field-label">跟进状态</label>' +
+      '<select class="sc-input sc-input--field" data-field="follow-status">' +
+      '<option value="ongoing"' +
+      (statusDone ? '' : ' selected') +
+      '>跟进中</option>' +
+      '<option value="done"' +
+      (statusDone ? ' selected' : '') +
+      '>跟进完成</option></select>' +
+      '<label class="sc-field-label">提醒日期</label>' +
+      '<input class="sc-input sc-input--field" data-field="follow-reminder-date" type="date" value="' +
+      escapeHtml(reminder || '') +
+      '" />' +
+      '</div>' +
+      '<div class="sc-card__actions-inline"><button type="button" class="sc-btn sc-btn--primary" data-action="follow-submit">提交</button></div>' +
+      '</div>'
+    );
+  }
+
+  function renderEnterprisePickCardHtml() {
+    const rows = DemoData.enterprises
+      .map(function (e) {
+        return (
+          '<button type="button" class="sc-list-item' +
+          (e.id === state.enterpriseId ? ' sc-list-item--active' : '') +
+          '" data-action="pick-enterprise" data-eid="' +
+          escapeHtml(e.id) +
+          '">' +
+          escapeHtml(e.name) +
+          '</button>'
+        );
+      })
+      .join('');
+    return (
+      '<div class="sc-card sc-card--compact sc-card--inline-form" data-spec-id="sheet-enterprise">' +
+      '<div class="sc-card__head sc-card__head--compact">切换企业</div>' +
+      '<div class="sc-enterprise-list">' +
+      rows +
+      '</div></div>'
+    );
+  }
+
+  function submitFollowFromCard(card) {
+    if (!card) return;
+    const name = (card.querySelector('[data-field="follow-contact-name"]') || {}).value || '';
+    const phone = (card.querySelector('[data-field="follow-contact-phone"]') || {}).value || '';
+    const addr = (card.querySelector('[data-field="follow-ship-address"]') || {}).value || '';
+    const content = (card.querySelector('[data-field="follow-content"]') || {}).value || '';
+    const time = (card.querySelector('[data-field="follow-time"]') || {}).value || '';
+    const reminderDate =
+      (card.querySelector('[data-field="follow-reminder-date"]') || {}).value || '';
+    const statusEl = card.querySelector('[data-field="follow-status"]');
+    const statusLabel = statusEl
+      ? statusEl.options[statusEl.selectedIndex].text
+      : '跟进中';
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedContent = content.trim();
+    if (!trimmedName || !trimmedPhone) {
+      toast('请填写联系人和联系方式');
+      return;
+    }
+    if (!trimmedContent) {
+      toast('请填写跟进信息');
+      return;
+    }
+    if (!time) {
+      toast('请选择跟进时间');
+      return;
+    }
+    const cid = card.getAttribute('data-follow-cid') || state._followCustomerId || state.customerId;
+    const c = getCustomer(cid);
+    if (c) {
+      setCustomerReminderDate(c.id, reminderDate);
+      if (DemoData.isNewCustomer(c)) {
+        c.latestFollowStatus = statusEl && statusEl.value === 'done' ? 'done' : 'ongoing';
+      }
+    }
+    const reminderNote = reminderDate
+      ? '提醒日期：' + reminderDate + '（自该日起推送待跟进）'
+      : '提醒日期：未设置（每个工作日推送待跟进）';
+    pushUserMsg('已提交跟进记录');
+    setTimeout(function () {
+      pushAiHtml(
+        '已为 <strong>' +
+          escapeHtml(c ? c.name : '该企业') +
+          '</strong> 记录跟进（' +
+          escapeHtml(statusLabel) +
+          '）。<br><span style="font-size:12px;color:#71717A">' +
+          escapeHtml(trimmedContent) +
+          '</span><br><span style="font-size:12px;color:#71717A">' +
+          escapeHtml(reminderNote) +
+          '</span>'
+      );
+    }, 200);
   }
 
   function renderCustomerCategoryFilters() {
@@ -1191,6 +1398,44 @@
       openCustomerSheet();
       return;
     }
+    if (action === 'pick-customer') {
+      switchCustomer(btn.getAttribute('data-cid'), { fromPicker: true });
+      return;
+    }
+    if (action === 'customer-tab') {
+      customerPickerTab = btn.getAttribute('data-tab') || 'both';
+      refreshLastCustomerPickCard();
+      return;
+    }
+    if (action === 'pick-enterprise') {
+      const eid = btn.getAttribute('data-eid');
+      const ent = DemoData.enterprises.find(function (e) {
+        return e.id === eid;
+      });
+      if (!ent) return;
+      const prevEnt = state.enterpriseId;
+      if (ent.id === prevEnt) return;
+      persistChatHistory(prevEnt);
+      state.enterpriseId = ent.id;
+      const c = getCustomer();
+      if (c && c.enterpriseId !== ent.id) {
+        state.customerId = null;
+        state.selectedFollowUpId = null;
+      }
+      saveState();
+      refreshHeader();
+      const box = $('#messages');
+      delete box.dataset.sessionReady;
+      loadChatForEnterprise();
+      syncExternalTemplatePanel();
+      box.dataset.sessionReady = '1';
+      pushSystem('已切换企业：' + ent.name + '。请重新选择客户。');
+      return;
+    }
+    if (action === 'follow-submit') {
+      submitFollowFromCard(btn.closest('[data-spec-id="sheet-followup"]'));
+      return;
+    }
     if (action === 'welcome-feature') {
       triggerWelcomeFeature(btn.getAttribute('data-skill-id'));
       return;
@@ -1331,71 +1576,28 @@
 
   function openFollowSheet(c, prefill) {
     prefill = prefill || {};
-    $('#sheet-follow-title').textContent = '写跟进 — ' + c.name;
-    $('#follow-contact-name').value = c.contactName || '';
-    $('#follow-contact-phone').value = c.contactPhone || '';
-    $('#follow-ship-address').value = c.shipAddress || '';
-    $('#follow-content').value = prefill.content || '';
-    $('#follow-time').value = nowDatetimeLocal();
-    $('#follow-status').value = prefill.status === 'done' ? 'done' : 'ongoing';
-    const reminderEl = $('#follow-reminder-date');
-    if (reminderEl) reminderEl.value = prefill.reminderDate != null ? prefill.reminderDate : getCustomerReminderDate(c);
-    $('#overlay-follow').classList.remove('sc-hidden');
     state._followCustomerId = c.id;
+    pushAiHtml(renderFollowFormCardHtml(c, prefill));
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
   }
 
   function closeOverlays() {
-    document.querySelectorAll('.sc-overlay').forEach((o) => o.classList.add('sc-hidden'));
     const pdf = $('#pdf-modal');
     if (pdf) pdf.classList.add('sc-hidden');
     document.body.classList.remove('sc-pdf-open');
   }
 
   function openCustomerSheet(prefillQuery) {
-    closeOverlays();
+    if (prefillQuery != null) customerPickerQuery = String(prefillQuery);
+    else customerPickerQuery = '';
     customerPickerTab = 'both';
-    const search = $('#customer-search');
-    if (search) search.value = prefillQuery != null ? String(prefillQuery) : '';
-    renderCustomerCategoryFilters();
-    renderCustomerPickerList();
-    $('#overlay-customer').classList.remove('sc-hidden');
-    if (search) setTimeout(() => search.focus(), 200);
+    pushAiHtml(renderCustomerPickCardHtml());
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
   }
 
   function openEnterpriseSheet() {
-    const list = $('#enterprise-list');
-    list.innerHTML = '';
-    DemoData.enterprises.forEach((e) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'sc-list-item' + (e.id === state.enterpriseId ? ' sc-list-item--active' : '');
-      btn.textContent = e.name;
-      btn.onclick = () => {
-        const prevEnt = state.enterpriseId;
-        if (e.id === prevEnt) {
-          closeOverlays();
-          return;
-        }
-        persistChatHistory(prevEnt);
-        state.enterpriseId = e.id;
-        const c = getCustomer();
-        if (c && c.enterpriseId !== e.id) {
-          state.customerId = null;
-          state.selectedFollowUpId = null;
-        }
-        saveState();
-        refreshHeader();
-        closeOverlays();
-        const box = $('#messages');
-        delete box.dataset.sessionReady;
-        loadChatForEnterprise();
-        syncExternalTemplatePanel();
-        box.dataset.sessionReady = '1';
-        pushSystem('已切换企业：' + e.name + '。请重新选择客户。');
-      };
-      list.appendChild(btn);
-    });
-    $('#overlay-enterprise').classList.remove('sc-hidden');
+    pushAiHtml(renderEnterprisePickCardHtml());
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
   }
 
   function renderSkills() {
@@ -1662,90 +1864,12 @@
       });
     }
 
-    $('#sheet-follow-close').onclick = closeOverlays;
-    $('#overlay-follow').onclick = (e) => {
-      if (e.target.id === 'overlay-follow') closeOverlays();
-    };
-    $('#follow-submit').onclick = () => {
-      const name = $('#follow-contact-name').value.trim();
-      const phone = $('#follow-contact-phone').value.trim();
-      const addr = $('#follow-ship-address').value.trim();
-      const content = $('#follow-content').value.trim();
-      const time = $('#follow-time').value;
-      const reminderDate = ($('#follow-reminder-date') && $('#follow-reminder-date').value) || '';
-      const status = $('#follow-status');
-      const statusLabel = status.options[status.selectedIndex].text;
-      if (!name || !phone) {
-        toast('请填写联系人和联系方式');
-        return;
-      }
-      if (!content) {
-        toast('请填写跟进信息');
-        return;
-      }
-      if (!time) {
-        toast('请选择跟进时间');
-        return;
-      }
-      const c = getCustomer(state._followCustomerId || state.customerId);
-      if (c) {
-        setCustomerReminderDate(c.id, reminderDate);
-        if (DemoData.isNewCustomer(c)) {
-          c.latestFollowStatus = status.value === 'done' ? 'done' : 'ongoing';
-        }
-      }
-      closeOverlays();
-      const reminderNote = reminderDate
-        ? '提醒日期：' + reminderDate + '（自该日起推送待跟进）'
-        : '提醒日期：未设置（每个工作日推送待跟进）';
-      const summary =
-        '联系人：' +
-        name +
-        '，' +
-        phone +
-        '\n发货地址：' +
-        addr +
-        '\n跟进：' +
-        content +
-        '\n时间：' +
-        time.replace('T', ' ') +
-        '，状态：' +
-        statusLabel +
-        '\n' +
-        reminderNote;
-      pushUserMsg('已提交跟进记录');
-      setTimeout(
-        () =>
-          pushAiHtml(
-            '已为 <strong>' +
-              escapeHtml(c ? c.name : '该企业') +
-              '</strong> 记录跟进（' +
-              escapeHtml(statusLabel) +
-              '）。<br><span style="font-size:12px;color:#71717A">' +
-              escapeHtml(content) +
-              '</span><br><span style="font-size:12px;color:#71717A">' +
-              escapeHtml(reminderNote) +
-              '</span>'
-          ),
-        200
-      );
-    };
-
-    const btnSwitchCustomer = $('#btn-switch-customer');
-    if (btnSwitchCustomer) {
-      btnSwitchCustomer.onclick = () => openCustomerSheet();
-    }
-
-    $('#sheet-customer-close').onclick = closeOverlays;
-    $('#overlay-customer').onclick = (e) => {
-      if (e.target.id === 'overlay-customer') closeOverlays();
-    };
-    $('#customer-search').oninput = () => renderCustomerPickerList();
-
-    $('#sheet-ent-close').onclick = closeOverlays;
-    $('#overlay-enterprise').onclick = (e) => {
-      if (e.target.id === 'overlay-enterprise') closeOverlays();
-    };
+    $('#messages').addEventListener('input', function (e) {
+      const inp = e.target.closest('[data-action="customer-search"]');
+      if (!inp) return;
+      customerPickerQuery = inp.value;
+      refreshLastCustomerPickCard();
+    });
 
     $('#pdf-close').onclick = () => {
       $('#pdf-modal').classList.add('sc-hidden');
@@ -1764,37 +1888,10 @@
       };
     }
 
-    const changeSel = $('#change-reason');
-    if (changeSel && !changeSel.options.length) {
-      DemoData.changeReasons.forEach((r) => {
-        const opt = document.createElement('option');
-        opt.value = r;
-        opt.textContent = r;
-        changeSel.appendChild(opt);
-      });
+    const btnSwitchCustomer = $('#btn-switch-customer');
+    if (btnSwitchCustomer) {
+      btnSwitchCustomer.onclick = () => openCustomerSheet();
     }
-
-    const quoteSetupClose = $('#quote-setup-close');
-    if (quoteSetupClose) quoteSetupClose.onclick = closeOverlays;
-    const quoteSetupOverlay = $('#overlay-quote-setup');
-    if (quoteSetupOverlay) {
-      quoteSetupOverlay.onclick = (e) => {
-        if (e.target.id === 'overlay-quote-setup') closeOverlays();
-      };
-    }
-    const quoteSetupNext = $('#quote-setup-next');
-    if (quoteSetupNext) quoteSetupNext.onclick = () => Skills.quoteSetupNext();
-
-    const quoteTplClose = $('#quote-template-close');
-    if (quoteTplClose) quoteTplClose.onclick = closeOverlays;
-    const quoteTplOverlay = $('#overlay-quote-template');
-    if (quoteTplOverlay) {
-      quoteTplOverlay.onclick = (e) => {
-        if (e.target.id === 'overlay-quote-template') closeOverlays();
-      };
-    }
-    const quoteTplSubmit = $('#quote-template-submit');
-    if (quoteTplSubmit) quoteTplSubmit.onclick = () => Skills.submitQuoteTemplate();
 
     document.addEventListener('change', (e) => {
       const skuSel = e.target.closest('[data-action="quote-sku"]');
@@ -1803,6 +1900,8 @@
       if (quoteLineSku && window.Skills && Skills.onQuoteLineSkuChange) Skills.onQuoteLineSkuChange(quoteLineSku);
       const orderSku = e.target.closest('[data-action="order-sku"]');
       if (orderSku && window.Skills) Skills.handleAction('order-sku', orderSku);
+      const sel = e.target.closest('[data-action="plan-sku"]');
+      if (sel && window.Skills) Skills.handleAction('plan-sku', sel);
     });
 
     document.addEventListener('input', (e) => {
@@ -1813,57 +1912,6 @@
         if (window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
       }
     });
-
-    const planTplClose = $('#plan-template-close');
-    if (planTplClose) planTplClose.onclick = closeOverlays;
-    const planTplOverlay = $('#overlay-plan-template');
-    if (planTplOverlay) {
-      planTplOverlay.onclick = (e) => {
-        if (e.target.id === 'overlay-plan-template') closeOverlays();
-      };
-    }
-    const planTplSubmit = $('#plan-template-submit');
-    if (planTplSubmit) planTplSubmit.onclick = () => Skills.submitPlanTemplate();
-
-    document.addEventListener('change', (e) => {
-      const sel = e.target.closest('[data-action="plan-sku"]');
-      if (sel && window.Skills) Skills.handleAction('plan-sku', sel);
-    });
-
-    $('#delivery-close').onclick = closeOverlays;
-    $('#overlay-delivery').onclick = (e) => {
-      if (e.target.id === 'overlay-delivery') closeOverlays();
-    };
-    $('#delivery-submit').onclick = () => Skills.submitDelivery();
-
-    $('#order-close').onclick = closeOverlays;
-    $('#overlay-order').onclick = (e) => {
-      if (e.target.id === 'overlay-order') closeOverlays();
-    };
-    $('#order-submit').onclick = () => Skills.submitOrder();
-
-    $('#change-close').onclick = closeOverlays;
-    $('#overlay-change').onclick = (e) => {
-      if (e.target.id === 'overlay-change') closeOverlays();
-    };
-    $('#change-submit').onclick = () => Skills.submitChange();
-
-    $('#service-close').onclick = closeOverlays;
-    $('#overlay-service').onclick = (e) => {
-      if (e.target.id === 'overlay-service') closeOverlays();
-    };
-    $('#service-submit').onclick = () => Skills.submitService();
-
-    const crossSkillYes = $('#cross-skill-yes');
-    if (crossSkillYes) crossSkillYes.onclick = () => Skills.confirmCrossSkillYes();
-    const crossSkillNo = $('#cross-skill-no');
-    if (crossSkillNo) crossSkillNo.onclick = () => Skills.confirmCrossSkillNo();
-    const crossSkillOverlay = $('#overlay-cross-skill');
-    if (crossSkillOverlay) {
-      crossSkillOverlay.onclick = (e) => {
-        if (e.target.id === 'overlay-cross-skill') Skills.dismissCrossSkillModal();
-      };
-    }
 
     Skills.init({
       state,
@@ -1880,7 +1928,9 @@
       promptForCustomerSelection,
       skillNeedsCustomer,
       openCustomerSheet,
-      switchActiveSkill
+      switchActiveSkill,
+      isLatestFlowCardActive,
+      getLatestFlowCard
     });
   }
 

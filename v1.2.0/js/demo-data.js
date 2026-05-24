@@ -208,7 +208,8 @@ window.DemoData = {
       skus: [
         { id: 'p2-s1', label: '卧式 M3' },
         { id: 'p2-s2', label: '立式 M3' }
-      ]
+      ],
+      customItems: ['减速比1:30', '产线主传动']
     },
     {
       id: 'p3',
@@ -224,7 +225,8 @@ window.DemoData = {
       skus: [
         { id: 'p3-s1', label: '法兰安装' },
         { id: 'p3-s2', label: '底座安装' }
-      ]
+      ],
+      customItems: ['750W伺服', '自动化产线标配']
     },
     {
       id: 'p4',
@@ -665,8 +667,62 @@ window.DemoData = {
 
   /** 新客户方案选品：推荐区匹配阈值（第二步：需求关键词 × 存货描述） */
   PLAN_RECOMMEND_SCORE_NEW: 0.8,
+  /** 老客户/新客户：需求与产品任一字段模糊命中即入推荐（0 表示由 planMatchScoreForProduct 判定） */
+  PLAN_MATCH_MIN_SCORE: 0.01,
   /** 新客户「更多产品」：第二步弱匹配下限 */
   PLAN_MORE_MIN_SCORE_NEW: 0.2,
+
+  /** 产品可检索字段：名称 + 描述 + 规格 + 自由项(SKU) + 自定义项 */
+  productMatchTexts(product) {
+    if (!product) return [];
+    const parts = [
+      product.name,
+      product.spec,
+      product.inventoryDesc,
+      product.inventoryCode
+    ];
+    (product.skus || []).forEach(function (s) {
+      if (s && s.label) parts.push(s.label);
+    });
+    const custom = product.customItems;
+    if (Array.isArray(custom)) {
+      custom.forEach(function (x) {
+        if (typeof x === 'string') parts.push(x);
+        else if (x && (x.label || x.value)) parts.push(x.label || x.value);
+      });
+    }
+    return parts.filter(Boolean);
+  },
+
+  productMatchBlob(product) {
+    return DemoData.productMatchTexts(product).join(' ');
+  },
+
+  /** 老客户：最近订单倒序去重，最多 limit 个产品 */
+  oldCustomerHistoryProducts(customer, limit) {
+    limit = limit == null ? 10 : limit;
+    const all = DemoData.products;
+    const orders = DemoData.orders
+      .filter(function (o) {
+        return o.customerId === customer.id;
+      })
+      .sort(function (a, b) {
+        return (b.date || '').localeCompare(a.date || '');
+      });
+    const seen = new Set();
+    const rows = [];
+    orders.forEach(function (o) {
+      (o.productIds || []).forEach(function (pid) {
+        if (seen.has(pid) || rows.length >= limit) return;
+        seen.add(pid);
+        const p = all.find(function (x) {
+          return x.id === pid;
+        });
+        if (p) rows.push({ product: p, score: null, tag: '历史订单' });
+      });
+    });
+    return rows;
+  },
 
   /**
    * 第一步：客户档案「客户性质」与产品「产品类型」可售范围（演示主数据）
@@ -686,9 +742,9 @@ window.DemoData = {
     return allowed.indexOf(product.productType) >= 0;
   },
 
-  /** 新客户选品候选池（先过客户性质 × 产品类型） */
-  newCustomerProductPool(customer) {
-    return DemoData.products.filter((p) => DemoData.productMatchesCustomerCategory(p, customer));
+  /** 新客户选品候选池：产品全库（按需求模糊匹配，不按客户性质×产品类型过滤） */
+  newCustomerProductPool(/* customer */) {
+    return DemoData.products;
   },
 
   /**
@@ -714,92 +770,119 @@ window.DemoData = {
     });
   },
 
-  demandTokenHitsProduct(token, inventoryDesc, productName) {
-    const k = (token || '').toLowerCase();
+  demandTokenHitsProduct(token, product) {
+    if (!product) return false;
+    const k = DemoData.normalizeSearchText(token);
     if (!k || k.length < 2) return false;
-    const desc = (inventoryDesc || '').toLowerCase();
-    const name = (productName || '').toLowerCase();
-    return desc.indexOf(k) >= 0 || name.indexOf(k) >= 0;
+    return DemoData.productMatchTexts(product).some(function (text) {
+      const t = DemoData.normalizeSearchText(text);
+      if (t.indexOf(k) >= 0) return true;
+      return DemoData.searchTextScore(token, text) >= 80;
+    });
   },
 
-  /** 存货描述与需求文本匹配分（0–1）；多品句按「本品命中词」计分，避免整句只算 1 个 token */
-  matchInventoryScore(demandText, inventoryDesc, productName) {
-    if (!demandText) return 0;
-    const tokens = DemoData.demandTokens(demandText);
-    if (!tokens.length) return 0;
+  /** 需求与产品：模糊匹配名称 + 描述 + 规格 + 自由项 + 自定义项 */
+  planMatchScoreForProduct(demandText, product) {
+    if (!product || !demandText) return 0;
+    const t = String(demandText).trim();
+    if (!t) return 0;
+    const blob = DemoData.productMatchBlob(product);
+    const fullScore = DemoData.searchTextScore(t, blob);
+    if (fullScore >= 0) {
+      return Math.min(1, 0.72 + fullScore / 2500);
+    }
+    if (DemoData.productMentionedInText(product, t)) {
+      return 0.88;
+    }
+    const tokens = DemoData.demandTokens(t);
+    if (!tokens.length) {
+      return DemoData.demandTokenHitsProduct(t, product) ? 0.7 : 0;
+    }
     let hit = 0;
-    tokens.forEach((tok) => {
-      if (DemoData.demandTokenHitsProduct(tok, inventoryDesc, productName)) hit++;
+    tokens.forEach(function (tok) {
+      if (DemoData.demandTokenHitsProduct(tok, product)) hit++;
     });
     if (!hit) return 0;
-    /* 命中至少一词即视为相关；多词需求时单产品不必覆盖全部词 */
-    return Math.min(1, 0.82 + 0.18 * (hit / tokens.length));
+    return Math.min(1, 0.45 + 0.55 * (hit / tokens.length));
   },
 
-  planMatchScoreForProduct(demandText, product) {
-    if (!product) return 0;
-    let score = DemoData.matchInventoryScore(
-      demandText,
-      product.inventoryDesc,
-      product.name
-    );
-    if (DemoData.productMentionedInText(product, demandText)) {
-      score = Math.max(score, 0.88);
-    }
-    return score;
+  /** @deprecated 使用 demandTokenHitsProduct(token, product) */
+  matchInventoryScore(demandText, inventoryDesc, productName) {
+    const p = { name: productName, inventoryDesc: inventoryDesc, spec: '' };
+    return DemoData.planMatchScoreForProduct(demandText, p);
   },
 
   /**
-   * 方案选品 · 推荐区
-   * - 老客户（有过订单且责任人=当前用户）：历史订单 productIds，倒序最多 10 条
-   * - 新客户：先客户性质×产品类型 → 再 demandHint×存货描述，分 >0.8，Top10
-   * filterText 同时过滤品名/规格/存货描述
+   * 方案选品 · 推荐区（最多 10 条）
+   * - 新客户：须先有需求描述，再按需求模糊匹配（无需求不推荐）
+   * - 老客户：默认最近订单 Top10；有需求时优先需求匹配，其次补足历史订单
    */
   recommendProducts(customer, filterText, currentUser, demandText) {
-    const all = DemoData.products;
     let rows = [];
     const kind = DemoData.planCustomerKind(customer, currentUser);
+    const demand =
+      demandText != null && String(demandText).trim() ? String(demandText).trim() : '';
+    const minScore = DemoData.PLAN_MATCH_MIN_SCORE;
 
     if (kind === 'old') {
-      const orders = DemoData.orders
-        .filter((o) => o.customerId === customer.id)
-        .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-      const seen = new Set();
-      orders.forEach((o) => {
-        (o.productIds || []).forEach((pid) => {
-          if (seen.has(pid)) return;
-          seen.add(pid);
-          const p = all.find((x) => x.id === pid);
-          if (p) rows.push({ product: p, score: null, tag: '历史订单' });
+      const historyRows = DemoData.oldCustomerHistoryProducts(customer, 10);
+      if (!demand) {
+        rows = historyRows;
+      } else {
+        const seen = new Set();
+        DemoData.products
+          .map(function (p) {
+            return {
+              product: p,
+              score: DemoData.planMatchScoreForProduct(demand, p),
+              tag: '需求匹配'
+            };
+          })
+          .filter(function (r) {
+            return r.score >= minScore;
+          })
+          .sort(function (a, b) {
+            return b.score - a.score;
+          })
+          .forEach(function (r) {
+            if (rows.length >= 10 || seen.has(r.product.id)) return;
+            seen.add(r.product.id);
+            rows.push(r);
+          });
+        historyRows.forEach(function (r) {
+          if (rows.length >= 10 || seen.has(r.product.id)) return;
+          seen.add(r.product.id);
+          rows.push(r);
         });
-      });
-      rows = rows.slice(0, 10);
+      }
     } else {
-      const demand =
-        demandText != null && String(demandText).trim()
-          ? String(demandText).trim()
-          : customer.demandHint || '';
-      const th = DemoData.PLAN_RECOMMEND_SCORE_NEW;
-      const pool = DemoData.newCustomerProductPool(customer);
-      rows = pool
-        .map((p) => ({
-          product: p,
-          score: DemoData.planMatchScoreForProduct(demand, p),
-          tag: '需求匹配'
-        }))
-        .filter((r) => r.score > th)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
+      if (!demand) {
+        rows = [];
+      } else {
+        const pool = DemoData.newCustomerProductPool(customer);
+        rows = pool
+          .map(function (p) {
+            return {
+              product: p,
+              score: DemoData.planMatchScoreForProduct(demand, p),
+              tag: '需求匹配'
+            };
+          })
+          .filter(function (r) {
+            return r.score >= minScore;
+          })
+          .sort(function (a, b) {
+            return b.score - a.score;
+          })
+          .slice(0, 10);
+      }
     }
 
     if (filterText && filterText.trim()) {
       const f = filterText.trim().toLowerCase();
-      rows = rows.filter(
-        (r) =>
-          r.product.name.toLowerCase().indexOf(f) >= 0 ||
-          r.product.spec.toLowerCase().indexOf(f) >= 0 ||
-          (r.product.inventoryDesc && r.product.inventoryDesc.toLowerCase().indexOf(f) >= 0)
-      );
+      rows = rows.filter(function (r) {
+        return DemoData.productPassesPlanFilter(r.product, f);
+      });
     }
 
     return rows;
@@ -808,17 +891,15 @@ window.DemoData = {
   productPassesPlanFilter(product, filterText) {
     const f = (filterText || '').trim().toLowerCase();
     if (!f) return true;
-    return (
-      product.name.toLowerCase().indexOf(f) >= 0 ||
-      product.spec.toLowerCase().indexOf(f) >= 0 ||
-      (product.inventoryDesc && product.inventoryDesc.toLowerCase().indexOf(f) >= 0)
-    );
+    return DemoData.productMatchTexts(product).some(function (text) {
+      return String(text).toLowerCase().indexOf(f) >= 0;
+    });
   },
 
   /**
    * 方案选品 · 更多产品（排除推荐区已展示品项）
-   * - 老客户：全库余量；筛选词匹配品名/规格/存货描述；按品名排序
-   * - 新客户：demandHint×inventoryDesc 弱匹配 (0.2, 0.8]；或有筛选词且命中三字段之一；按匹配分降序
+   * - 老客户：全库余量；筛选词匹配；按品名排序
+   * - 新客户：产品全库、排除推荐区已展示；按需求匹配分降序（含弱匹配）
    */
   planMoreProducts(customer, recIds, filterText, currentUser, demandText) {
     const exclude = recIds instanceof Set ? recIds : new Set(recIds || []);
@@ -827,22 +908,15 @@ window.DemoData = {
 
     if (customer && kind === 'new') {
       const demand =
-        demandText != null && String(demandText).trim()
-          ? String(demandText).trim()
-          : customer.demandHint || '';
-      const hi = DemoData.PLAN_RECOMMEND_SCORE_NEW;
-      const lo = DemoData.PLAN_MORE_MIN_SCORE_NEW;
+        demandText != null && String(demandText).trim() ? String(demandText).trim() : '';
+      if (!demand) return [];
       return DemoData.newCustomerProductPool(customer)
         .filter((p) => !exclude.has(p.id))
         .map((p) => ({
           product: p,
           score: DemoData.planMatchScoreForProduct(demand, p)
         }))
-        .filter((r) => {
-          if (r.score > hi) return false;
-          if (f) return DemoData.productPassesPlanFilter(r.product, f);
-          return true;
-        })
+        .filter((r) => (f ? DemoData.productPassesPlanFilter(r.product, f) : true))
         .sort(
           (a, b) =>
             b.score - a.score ||
@@ -1089,22 +1163,18 @@ window.DemoData = {
   matchProductsFromDemandText(customer, demandText) {
     const t = (demandText || '').trim();
     if (!t) return [];
-    const hint = customer && customer.demandHint ? customer.demandHint + ' ' + t : t;
+    if (customer && DemoData.isNewCustomer(customer) && !t) return [];
     const pool =
       customer && DemoData.isNewCustomer(customer)
         ? DemoData.newCustomerProductPool(customer)
         : DemoData.products;
     let rows = pool
-      .map((p) => {
-        let score = DemoData.planMatchScoreForProduct(t, p);
-        score = Math.max(score, DemoData.planMatchScoreForProduct(hint, p));
-        return {
-          product: p,
-          score: score,
-          qty: DemoData.parseProductQtyFromText(t, p)
-        };
-      })
-      .filter((r) => r.score >= 0.32)
+      .map((p) => ({
+        product: p,
+        score: DemoData.planMatchScoreForProduct(t, p),
+        qty: DemoData.parseProductQtyFromText(t, p)
+      }))
+      .filter((r) => r.score >= DemoData.PLAN_MATCH_MIN_SCORE)
       .sort((a, b) => b.score - a.score);
 
     if (!rows.length && customer) {
