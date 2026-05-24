@@ -199,6 +199,114 @@
     return true;
   }
 
+  function normalizeSkillBarId(skillId) {
+    return skillId === 'write-follow' ? 'followup' : skillId;
+  }
+
+  /** 已选客户且切换到不同功能时，须先确认是否保留客户 */
+  function shouldConfirmSkillSwitch(skillId) {
+    if (!skillId || skillId === 'switch-customer') return false;
+    if (!skillNeedsCustomer(skillId)) return false;
+    const c = getCustomer(state.selectedFollowUpId || state.customerId);
+    if (!c) return false;
+    const next = normalizeSkillBarId(skillId);
+    if (state.activeSkill === next) return false;
+    return true;
+  }
+
+  function closeSkillSwitchConfirm() {
+    const modal = $('#skill-switch-modal');
+    if (modal) modal.classList.add('sc-hidden');
+    delete state.pendingSkillSwitch;
+  }
+
+  function openSkillSwitchConfirm(skillId, opts) {
+    opts = opts || {};
+    if (!shouldConfirmSkillSwitch(skillId) && !opts.force) return false;
+    const c = getCustomer(state.selectedFollowUpId || state.customerId);
+    if (!c) return false;
+    const label = getSkillLabel(normalizeSkillBarId(skillId));
+    state.pendingSkillSwitch = {
+      skillId: skillId,
+      utterance: opts.utterance || null,
+      fromHandoff: !!opts.fromHandoff,
+      simulateUserMsg: opts.simulateUserMsg !== false
+    };
+    const promptEl = $('#skill-switch-prompt');
+    if (promptEl) {
+      promptEl.textContent =
+        '是否保留当前客户「' + c.name + '」，进入' + label + '？';
+    }
+    const modal = $('#skill-switch-modal');
+    if (modal) modal.classList.remove('sc-hidden');
+    return true;
+  }
+
+  function confirmSkillSwitchKeep() {
+    const pending = state.pendingSkillSwitch;
+    if (!pending) return;
+    const skillId = pending.skillId;
+    closeSkillSwitchConfirm();
+    const workflowTarget =
+      skillId === 'plan' || skillId === 'quote' || skillId === 'order' ? skillId : null;
+    if (
+      pending.fromHandoff &&
+      workflowTarget &&
+      window.Skills &&
+      Skills.executeCrossHandoffUse
+    ) {
+      if (pending.simulateUserMsg && pending.utterance) {
+        /* 话术切换时用户句已在 handleIntent 中发出 */
+      }
+      Skills.executeCrossHandoffUse(workflowTarget);
+      return;
+    }
+    if (window.Skills && Skills.clearWorkflowDraftsKeepCustomer) {
+      Skills.clearWorkflowDraftsKeepCustomer();
+    }
+    proceedSkillEntryInternal(skillId, {
+      skipConfirm: true,
+      skipUserMsg: pending.fromHandoff ? true : false
+    });
+  }
+
+  function confirmSkillSwitchDiscard() {
+    const pending = state.pendingSkillSwitch;
+    if (!pending) return;
+    const skillId = pending.skillId;
+    closeSkillSwitchConfirm();
+    state.customerId = null;
+    state.selectedFollowUpId = null;
+    if (window.Skills && Skills.clearWorkflowDraftsKeepCustomer) {
+      Skills.clearWorkflowDraftsKeepCustomer();
+    }
+    saveState();
+    refreshHeader();
+    const workflowTarget =
+      skillId === 'plan' || skillId === 'quote' || skillId === 'order' ? skillId : null;
+    if (pending.fromHandoff && workflowTarget && window.Skills && Skills.executeCrossHandoffFresh) {
+      Skills.executeCrossHandoffFresh(workflowTarget, { simulateUserMsg: pending.simulateUserMsg });
+      return;
+    }
+    switchActiveSkill(normalizeSkillBarId(skillId), { skipSkillAnnounce: true });
+    promptForCustomerSelection(skillId, { skipUserMsg: true });
+  }
+
+  function proceedSkillEntryInternal(skillId, opts) {
+    opts = opts || {};
+    const activeSkillId = normalizeSkillBarId(skillId);
+    switchActiveSkill(activeSkillId, { skipSkillAnnounce: true });
+    if (!skillNeedsCustomer(skillId)) {
+      executeSkillAction(skillId, opts);
+      return;
+    }
+    if (getCustomer(state.selectedFollowUpId || state.customerId)) {
+      executeSkillAction(skillId, opts);
+      return;
+    }
+    promptForCustomerSelection(skillId);
+  }
+
   function refreshHeader() {
     const titleEl = $('#header-title');
     if (titleEl && DemoData.agentName) titleEl.textContent = DemoData.agentName;
@@ -490,7 +598,8 @@
     }, delay);
   }
 
-  function runSkillEntry(skillId) {
+  function runSkillEntry(skillId, opts) {
+    opts = opts || {};
     if (!skillId) return;
     closeOverlays();
     if (skillId !== 'write-follow') {
@@ -500,24 +609,10 @@
         return;
       }
     }
-    const activeSkillId = skillId === 'write-follow' ? 'followup' : skillId;
-    switchActiveSkill(activeSkillId, { skipSkillAnnounce: true });
-    if (!skillNeedsCustomer(skillId)) {
-      executeSkillAction(skillId);
+    if (!opts.skipConfirm && openSkillSwitchConfirm(skillId, opts)) {
       return;
     }
-    if (getCustomer(state.selectedFollowUpId || state.customerId)) {
-      if (
-        window.Skills &&
-        Skills.tryCrossSkillEntry &&
-        Skills.tryCrossSkillEntry(skillId, { simulateUserMsg: true })
-      ) {
-        return;
-      }
-      executeSkillAction(skillId);
-      return;
-    }
-    promptForCustomerSelection(skillId);
+    proceedSkillEntryInternal(skillId, opts);
   }
 
   function getLocalDateKey() {
@@ -1893,6 +1988,11 @@
       btnSwitchCustomer.onclick = () => openCustomerSheet();
     }
 
+    const skillSwitchKeep = $('#skill-switch-keep');
+    if (skillSwitchKeep) skillSwitchKeep.onclick = () => confirmSkillSwitchKeep();
+    const skillSwitchDiscard = $('#skill-switch-discard');
+    if (skillSwitchDiscard) skillSwitchDiscard.onclick = () => confirmSkillSwitchDiscard();
+
     document.addEventListener('change', (e) => {
       const skuSel = e.target.closest('[data-action="quote-sku"]');
       if (skuSel && window.Skills) Skills.handleAction('quote-sku', skuSel);
@@ -1929,6 +2029,7 @@
       skillNeedsCustomer,
       openCustomerSheet,
       switchActiveSkill,
+      openSkillSwitchConfirm,
       isLatestFlowCardActive,
       getLatestFlowCard
     });

@@ -40,6 +40,7 @@ window.AnnotationSpecScope = {
     'card-order-cart',
     'sheet-order',
     'card-order-success',
+    'modal-skill-switch',
     'modal-pdf'
   ]
 };

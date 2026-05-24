@@ -6303,6 +6303,13 @@ window.Skills = (function () {
 
   function showCrossFunctionConfirm(targetSkill, utterance, opts) {
     opts = opts || {};
+    if (App.openSkillSwitchConfirm) {
+      return App.openSkillSwitchConfirm(targetSkill, {
+        utterance: utterance || '',
+        fromHandoff: true,
+        simulateUserMsg: opts.simulateUserMsg !== false
+      });
+    }
     const assessment = assessContextForSkill(targetSkill);
     if (!assessment.ready) return false;
     const current = getActiveWorkflowSkill();
@@ -6332,12 +6339,14 @@ window.Skills = (function () {
     });
   }
 
-  function executeCrossHandoffUse(target) {
+  function executeCrossHandoffUse(targetSkill) {
     const pending = ctx().pendingCrossHandoff;
     delete ctx().pendingCrossHandoff;
+    const target = targetSkill || (pending && pending.targetSkill);
+    if (!target) return;
     const c = activeCustomer();
     if (!c) return;
-    /** 选「是」：仅保留顶栏客户，清空方案/报价/下单流程草稿后进入目标功能 */
+    /** 选「保留客户」：仅保留顶栏客户，清空方案/报价/下单流程草稿后进入目标功能 */
     clearWorkflowDraftsKeepCustomer();
 
     if (target === 'quote') {
@@ -6376,9 +6385,12 @@ window.Skills = (function () {
     }
   }
 
-  function executeCrossHandoffFresh(target, opts) {
+  function executeCrossHandoffFresh(targetSkill, opts) {
     opts = opts || {};
+    const pending = ctx().pendingCrossHandoff;
     delete ctx().pendingCrossHandoff;
+    const target = targetSkill || (pending && pending.targetSkill);
+    if (!target) return;
     resetWorkflowForFreshStart();
     if (opts.simulateUserMsg) simulateUserUtterance('否');
     if (App.promptForCustomerSelection) {
@@ -6388,37 +6400,29 @@ window.Skills = (function () {
     }
   }
 
-  /** 技能条/欢迎区：已在另一主流程且已选客户时，先问是否沿用 */
+  /** 技能条/欢迎区：已选客户且切换到不同功能时，先弹窗确认是否保留客户 */
   function tryCrossSkillEntry(skillId, opts) {
     opts = opts || {};
-    const target =
-      skillId === 'plan' || skillId === 'quote' || skillId === 'order' ? skillId : null;
-    if (!target) return false;
-    const current = getActiveWorkflowSkill();
-    if (!current || current === target) return false;
-    if (!activeCustomer()) return false;
-    const utter =
-      opts.utterance != null
-        ? opts.utterance
-        : (DemoData.skillUtterances && DemoData.skillUtterances[skillId]) ||
-          WORKFLOW_SKILL_LABELS[target] ||
-          skillId;
-    return showCrossFunctionConfirm(target, utter, {
-      simulateUserMsg: opts.simulateUserMsg !== false
-    });
+    if (App.openSkillSwitchConfirm) {
+      return App.openSkillSwitchConfirm(skillId, {
+        utterance: opts.utterance,
+        simulateUserMsg: opts.simulateUserMsg
+      });
+    }
+    return false;
   }
 
   /**
-   * 跨功能：已选客户且处于另一主流程时，先询问是否沿用当前数据
+   * 跨功能话术：已选客户且口令指向另一功能时，先询问是否保留客户
    */
   function tryCrossFunctionHandoff(text) {
     const t = (text || '').trim();
     if (!t) return false;
     const target = detectCrossTargetSkill(t);
     if (!target || !activeCustomer()) return false;
-    const current = getActiveWorkflowSkill();
-    if (!current || current === target) return false;
     if (!isCrossFunctionSwitchPhrase(t, target)) return false;
+    const current = App.state.activeSkill;
+    if (current === target) return false;
     return showCrossFunctionConfirm(target, t, { simulateUserMsg: false });
   }
 
@@ -6959,6 +6963,9 @@ window.Skills = (function () {
     tryCrossSkillEntry,
     tryGuideAfterIntentFail,
     guideMissingSlot,
+    clearWorkflowDraftsKeepCustomer,
+    executeCrossHandoffUse,
+    executeCrossHandoffFresh,
     runSchemeQuoteEntry,
     runOrderByQuoteEntry,
     customerHasSchemes,
