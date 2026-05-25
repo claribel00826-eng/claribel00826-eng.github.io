@@ -251,6 +251,21 @@
       white-space: nowrap;
     }
     .md-body tr:nth-child(even) td { background: #fafafa; }
+    .md-body .mermaid {
+      margin: 1rem 0;
+      overflow-x: auto;
+      text-align: center;
+    }
+    .md-body .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .md-body img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0.75rem auto;
+    }
     .loading, .error {
       padding: 48px 24px;
       text-align: center;
@@ -476,20 +491,71 @@
         });
       }
 
+      function promoteMermaidBlocks(container) {
+        container.querySelectorAll('pre code.language-mermaid').forEach(function (code) {
+          var pre = code.parentElement;
+          if (!pre) return;
+          var div = document.createElement('div');
+          div.className = 'mermaid';
+          div.textContent = code.textContent;
+          pre.replaceWith(div);
+        });
+      }
+
+      function renderMermaidDiagrams(container) {
+        var blocks = container.querySelectorAll('.mermaid');
+        if (!blocks.length) return Promise.resolve();
+        if (typeof mermaid === 'undefined') return Promise.resolve();
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: 'neutral',
+          flowchart: { curve: 'basis', htmlLabels: true },
+        });
+        return mermaid.run({ nodes: blocks });
+      }
+
+      function loadMermaid() {
+        return new Promise(function (resolve) {
+          if (typeof mermaid !== 'undefined') {
+            resolve();
+            return;
+          }
+          var s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js';
+          s.onload = function () { resolve(); };
+          s.onerror = function () {
+            var s2 = document.createElement('script');
+            s2.src = 'https://unpkg.com/mermaid@10.9.1/dist/mermaid.min.js';
+            s2.onload = function () { resolve(); };
+            s2.onerror = function () { resolve(); };
+            document.head.appendChild(s2);
+          };
+          document.head.appendChild(s);
+        });
+      }
+
+      function finishRender(md) {
+        var firstLine = (md.match(/^#\s+(.+)$/m) || [])[1];
+        if (firstLine) titleEl.textContent = firstLine.replace(/\s*·.*$/, '').trim();
+        rootEl.innerHTML = marked.parse(md);
+        rewriteMdLinks(rootEl);
+        promoteMermaidBlocks(rootEl);
+        return loadMermaid()
+          .then(function () { return renderMermaidDiagrams(rootEl); })
+          .catch(function () {})
+          .then(function () {
+            var headings = buildHeadingAnchors(rootEl);
+            var tocLinks = buildToc(headings);
+            initScrollSpy(headings, tocLinks);
+          });
+      }
+
       fetch(currentFile, { credentials: 'same-origin' })
         .then(function (res) {
           if (!res.ok) throw new Error('HTTP ' + res.status);
           return res.text();
         })
-        .then(function (md) {
-          var firstLine = (md.match(/^#\s+(.+)$/m) || [])[1];
-          if (firstLine) titleEl.textContent = firstLine.replace(/\s*·.*$/, '').trim();
-          rootEl.innerHTML = marked.parse(md);
-          rewriteMdLinks(rootEl);
-          var headings = buildHeadingAnchors(rootEl);
-          var tocLinks = buildToc(headings);
-          initScrollSpy(headings, tocLinks);
-        })
+        .then(finishRender)
         .catch(function (err) {
           rootEl.innerHTML =
             '<p class="error">无法加载「' +
