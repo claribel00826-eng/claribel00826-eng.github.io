@@ -2879,7 +2879,7 @@ window.Skills = (function () {
           '」模糊匹配（名称·描述·规格·自定义项），其次最近订单产品（最多十条）</p>'
         );
       }
-      return '<p class="sc-card__meta sc-plan-rec-hint">推荐区：本客户最近订单产品（时间倒序，最多十条）</p>';
+      return '<p class="sc-card__meta sc-plan-rec-hint"></p>';
     }
     if (DemoData.isNewCustomer(c)) {
       if (demand) {
