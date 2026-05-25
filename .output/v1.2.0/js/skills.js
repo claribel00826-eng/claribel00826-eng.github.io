@@ -2892,11 +2892,26 @@ window.Skills = (function () {
     );
   }
 
-  /** 方案选品行：仅品名/规格，不含单价；规格下拉始终可改 */
+  function renderPlanQtyInput(pid) {
+    const plan = ctx().plan;
+    if (!plan.qty) plan.qty = {};
+    const qty = plan.qty[pid] || 1;
+    return (
+      '<label class="sc-plan-qty-label sc-qty-inline">数量 <input type="number" min="1" step="1" value="' +
+      qty +
+      '" data-action="plan-qty" data-pid="' +
+      pid +
+      '" class="sc-qty-input" onclick="event.stopPropagation()"/></label>'
+    );
+  }
+
+  /** 方案选品行：品名 + 规格/数量同一行；规格下拉始终可改 */
   function planPickRow(product, tagHtml) {
     const plan = ctx().plan;
     const pid = product.id;
     ensurePlanSku(pid, product);
+    if (!plan.qty) plan.qty = {};
+    if (!plan.qty[pid]) plan.qty[pid] = 1;
     const on = plan.selected && plan.selected[pid];
     return (
       '<div class="sc-plan-pick-row' +
@@ -2910,8 +2925,9 @@ window.Skills = (function () {
       '</span><span class="sc-follow-row__meta">' +
       App.escapeHtml(product.spec) +
       (tagHtml ? ' ' + tagHtml : '') +
-      '</span></button><div class="sc-plan-sku-row">' +
+      '</span></button><div class="sc-plan-sku-row sc-plan-sku-row--inline">' +
       renderSkuSelect(product, pid) +
+      renderPlanQtyInput(pid) +
       '</div></div>'
     );
   }
@@ -3007,30 +3023,10 @@ window.Skills = (function () {
 
   function recommendLeadHtml(c, demandText) {
     const demand = (demandText || '').trim();
-    const isOld = DemoData.isOldCustomer(c, DemoData.demoSalesUser);
-    if (isOld) {
-      if (demand) {
-        const short = demand.length > 28 ? demand.slice(0, 28) + '…' : demand;
-        return (
-          '<p class="sc-card__meta sc-plan-rec-hint">推荐区：优先按需求「' +
-          App.escapeHtml(short) +
-          '」模糊匹配（名称·描述·规格·自定义项），其次最近订单产品（最多十条）</p>'
-        );
-      }
-      return '<p class="sc-card__meta sc-plan-rec-hint"></p>';
-    }
-    if (DemoData.isNewCustomer(c)) {
-      if (demand) {
-        const short = demand.length > 28 ? demand.slice(0, 28) + '…' : demand;
-        return (
-          '<p class="sc-card__meta sc-plan-rec-hint">推荐区：已按需求「' +
-          App.escapeHtml(short) +
-          '」模糊匹配名称、描述、规格与自定义项（最多十条）</p>'
-        );
-      }
+    if (DemoData.isNewCustomer(c) && !demand) {
       return '<p class="sc-card__meta sc-plan-rec-hint sc-plan-rec-hint--warn">请先在上一步发送采购需求，再展示推荐商品</p>';
     }
-    return '<p class="sc-card__meta sc-plan-rec-hint">推荐区：按客户档案类型展示</p>';
+    return '<p class="sc-card__meta sc-plan-rec-hint"></p>';
   }
 
   /** 从对话区最近一条用户消息气泡取文案（无表单输入时用） */
@@ -4036,6 +4032,8 @@ window.Skills = (function () {
   }
 
   function refreshLastPlanPickCard() {
+    syncPlanQtyFromDom();
+    syncPlanSkuFromDom();
     const card = getLastPlanPickCard();
     if (!card) return;
     card.outerHTML = renderProductPickCard();
@@ -6795,6 +6793,8 @@ window.Skills = (function () {
     }
     if (action === 'plan-preview' || action === 'plan-to-cart') {
       syncPlanFilterFromDom();
+      syncPlanQtyFromDom();
+      syncPlanSkuFromDom();
       if (!planSelectedIds().length) {
         App.toast('请至少选择一种产品');
         return true;
@@ -7096,6 +7096,7 @@ window.Skills = (function () {
     openPdf,
     quoteSetupNext,
     syncQuotePendingFromDom,
+    syncPlanQtyFromDom,
     onQuoteLineSkuChange,
     refreshLastQuoteConfirmCard
   };

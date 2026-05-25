@@ -2002,6 +2002,8 @@
       if (orderSku && window.Skills) Skills.handleAction('order-sku', orderSku);
       const sel = e.target.closest('[data-action="plan-sku"]');
       if (sel && window.Skills) Skills.handleAction('plan-sku', sel);
+      const planQty = e.target.closest('[data-action="plan-qty"]');
+      if (planQty && window.Skills && Skills.syncPlanQtyFromDom) Skills.syncPlanQtyFromDom();
     });
 
     document.addEventListener('input', (e) => {
@@ -2010,6 +2012,9 @@
         e.target.closest('[data-action="quote-line-qty"]')
       ) {
         if (window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
+      }
+      if (e.target.closest('[data-action="plan-qty"]') && window.Skills && Skills.syncPlanQtyFromDom) {
+        Skills.syncPlanQtyFromDom();
       }
     });
 
