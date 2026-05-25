@@ -279,37 +279,12 @@ STEP_LABEL: dict[str, dict[str, str]] = {
 # 完整需求：方案/报价/订单三主流程，一次说齐必填槽位直达最终页（写跟进属待跟进子步，见 §二）
 FINAL_TARGETS = frozenset({"方案卡", "报价单卡", "下单确认卡"})
 
-# 各章节导出表：按用户实际主流程排列目标卡片（同目标卡片的多行相邻）
-SECTION_TARGET_ORDER: dict[str, list[str]] = {
-    "global_cap": [
-        "功能切换确认弹窗",
-        "选客户卡",
-        "当前功能·入口卡或对话页",
-    ],
-    "init": [
-        "选客户引导卡",
-        "选客户卡",
-        "对话页",
-        "功能切换确认弹窗",
-        "目标功能·入口卡",
-        "待跟进列表卡",
-        "方案速配·入口卡",
-        "产品报价·入口卡",
-        "确认下单·入口卡",
-        "PDF预览",
-    ],
-    "待跟进": [
-        "选客户引导卡",
-        "对话页",
-        "待跟进列表卡",
-        "待跟进详情卡",
-        "写跟进表单卡",
-        "方案速配·入口卡",
-    ],
-    "方案速配": [
-        *CARD_ORDER["方案速配"],
-        "报价选品确认卡",
-    ],
+# 各章节导出表：按用户实际主流程排列「说话时所处」上下文卡片（cur），同上下文卡片的多行相邻
+SECTION_CONTEXT_ORDER: dict[str, list[str]] = {
+    "global_cap": ["任意业务卡"],
+    "init": list(CARD_ORDER["全局"]),
+    "待跟进": list(CARD_ORDER["待跟进"]),
+    "方案速配": list(CARD_ORDER["方案速配"]),
     "产品报价": list(CARD_ORDER["产品报价"]),
     "确认下单": list(CARD_ORDER["确认下单"]),
 }
@@ -685,26 +660,49 @@ def rows_for_section(rows: list[tuple[str, ...]], section_id: str) -> list[tuple
     return [r for r in rows if row_section_id(r) == section_id]
 
 
-def target_order_index(section_id: str, tgt: str) -> int:
-    order = SECTION_TARGET_ORDER.get(section_id, [])
-    if tgt in order:
-        return order.index(tgt)
+def context_card_order_index(section_id: str, cur: str) -> int:
+    """说话时所处界面（维护用 cur，导出为上下文首段）在主流程中的顺序。"""
+    order = SECTION_CONTEXT_ORDER.get(section_id, [])
+    if cur in order:
+        return order.index(cur)
     for i, name in enumerate(order):
-        if name in tgt or tgt in name:
+        if name in cur or cur in name:
             return i
     return len(order) + 100
 
 
 def sort_section_rows(rows: list[tuple[str, ...]]) -> list[tuple[str, ...]]:
-    """章内：目标卡片主流程顺序 → 同卡内按交互模式 → 用户输入。"""
+    """章内：上下文卡片主流程顺序 → 同卡内相同上下文文案 → 交互模式 → 用户输入。"""
     return sorted(
         rows,
         key=lambda r: (
-            target_order_index(row_section_id(r), r[5]),
+            context_card_order_index(row_section_id(r), r[0]),
+            to_export_row(r)[0],
             MODE_ORDER.get(r[3], 9),
             r[4],
         ),
     )
+
+
+def compress_context_display(prev_full: str, cur_full: str) -> str:
+    """导出 Markdown：若本条上下文延续上一条，则写「同上」+ 差异段。"""
+    if not prev_full:
+        return cur_full
+    if cur_full == prev_full:
+        return "同上"
+    if cur_full.startswith(prev_full):
+        rest = cur_full[len(prev_full) :].lstrip("；").strip()
+        return f"同上；{rest}" if rest else "同上"
+    return cur_full
+
+
+def export_row_cells_for_markdown(
+    row: tuple[str, ...],
+    prev_context_full: str,
+) -> tuple[str, str, str, str, str]:
+    context, utter, mode, parsed, tgt = to_export_row(row)
+    display_ctx = compress_context_display(prev_context_full, context)
+    return (display_ctx, utter, mode, parsed, tgt)
 
 
 def sort_all_export_rows(rows: list[tuple[str, ...]]) -> list[tuple[str, ...]]:
@@ -1038,9 +1036,19 @@ def _append_section_table(
         return
     lines.append(header_row)
     lines.append(sep_row)
+    prev_context_full = ""
+    prev_cur: str | None = None
     for r in sort_section_rows(section_rows):
-        cells = [c.replace("|", "\\|") for c in to_export_row(r)]
-        lines.append("| " + " | ".join(cells) + " |")
+        cur = r[0]
+        if prev_cur is not None and cur != prev_cur:
+            prev_context_full = ""
+        context_full = to_export_row(r)[0]
+        cells = export_row_cells_for_markdown(r, prev_context_full)
+        prev_context_full = context_full
+        prev_cur = cur
+        lines.append(
+            "| " + " | ".join(c.replace("|", "\\|") for c in cells) + " |"
+        )
     lines.append("")
 
 
@@ -1061,7 +1069,7 @@ def write_markdown(path: Path) -> None:
         "",
         "| 列 | 说明 |",
         "|----|------|",
-        "| **上下文** | 当前功能内已填表单、顶栏已选客户、进行中主流程、列表条数、草稿保留等**会话态**；与解析槽位冲突时以解析槽位为准 |",
+        "| **上下文** | 当前功能内已填表单、顶栏已选客户、进行中主流程、列表条数、草稿保留等**会话态**；与解析槽位冲突时以解析槽位为准。章内连续行若延续上一条，写 **同上** + 差异段（如 `同上；推荐=全库匹配`） |",
         "| **用户输入** | 用户**说出口**的口语；多步用 ` -> ` 连接 |",
         "| **交互模式** | `完整需求` / `部分需求` / `表单填充` / `模拟点击`（见下表） |",
         "| **解析槽位** | **仅从用户输入**解析的槽位（`槽位=值` 或 `缺：xxx`）；路由时 **优先于上下文** |",
@@ -1076,7 +1084,7 @@ def write_markdown(path: Path) -> None:
         "| 表单填充 | 在含表单字段的卡片上通过文字填写字段，填充后进入完成或下一步 |",
         "| 模拟点击 | 口语化操作（如「帮我新建一个方案」）或念按钮/列表项（如「第1条」）；多步用 ` -> ` 连接 |",
         "",
-        "> **编排顺序**：`全局能力` → `初始化页面` → `待跟进` → `方案速配` → `方案报价` → `确认订单`；**每章仅一张表**；章内按**目标卡片**主流程顺序排列，同一目标卡片的多条输入相邻。",
+        "> **编排顺序**：`全局能力` → `初始化页面` → `待跟进` → `方案速配` → `方案报价` → `确认订单`；**每章仅一张表**；章内按**上下文卡片**（用户说话时所处步骤）主流程顺序排列，同一上下文卡片的多条输入相邻。",
         "",
         "> **全局能力**：**切换客户**、**跨功能切换**仅在 **§零** 登记；其余章节不重复。",
         "",
@@ -1161,7 +1169,7 @@ def write_xlsx(path: Path) -> None:
     meta["A7"] = "列"
     meta["B7"] = "上下文、用户输入、交互模式、解析槽位、目标卡片"
     meta["A9"] = "排序"
-    meta["B9"] = "全局能力→初始化页面→待跟进→方案速配→方案报价→确认订单；章内按目标卡片主流程顺序分组"
+    meta["B9"] = "全局能力→初始化页面→待跟进→方案速配→方案报价→确认订单；章内按上下文卡片主流程顺序分组"
     path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(path)
 
