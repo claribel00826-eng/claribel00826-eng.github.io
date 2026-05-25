@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>标注文档 · v1.1.0</title>
+  <style>
+    body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; margin: 0; background: #fafafa; color: #18181b; }
+    header { padding: 16px 20px; background: #fff; border-bottom: 1px solid #e4e4e7; }
+    header a { color: #4f46e5; text-decoration: none; font-weight: 600; }
+    main { max-width: 48rem; margin: 0 auto; padding: 20px; }
+    pre { white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.6; background: #fff; border: 1px solid #e4e4e7; border-radius: 8px; padding: 16px; }
+    nav { margin: 12px 0; }
+    nav a { margin-right: 12px; font-size: 14px; }
+    nav a.is-active { font-weight: 600; color: #4f46e5; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="../index.html">← 返回 H5 原型</a>
+    <h1 style="margin:8px 0 0;font-size:18px">标注文档 · v1.1.0</h1>
+    <p style="margin:6px 0 0;font-size:13px;color:#71717a">验收范围：文档 01；不含方案/报价/下单等后续模块钉。</p>
+  </header>
+  <main>
+    <nav id="doc-nav">
+      <a href="?doc=00" data-doc="00">00 · 意图槽位路由</a>
+      <a href="?doc=01" data-doc="01">01 · 首页与待跟进</a>
+    </nav>
+    <pre id="doc-body">加载中…</pre>
+  </main>
+  <script>
+    const DOCS = {
+      '00': '00-意图数据填槽需求.md',
+      '01': '01-首页与待跟进.md'
+    };
+    const params = new URLSearchParams(location.search);
+    const id = params.get('doc') || '01';
+    document.querySelectorAll('#doc-nav a').forEach((a) => {
+      a.classList.toggle('is-active', a.dataset.doc === id);
+    });
+    fetch(DOCS[id] || DOCS['01'])
+      .then((r) => r.text())
+      .then((t) => { document.getElementById('doc-body').textContent = t; })
+      .catch(() => { document.getElementById('doc-body').textContent = '无法加载文档'; });
+  </script>
+</body>
+</html>
