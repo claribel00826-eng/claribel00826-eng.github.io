@@ -299,13 +299,14 @@
   <script>
     (function () {
       var DOCS = [
+        { id: 'rules', label: '意图实现规则', file: '意图识别-技术实现规则-v1.2.0.md' },
         { id: 'intent', label: '意图识别说明', file: '意图识别说明-v1.2.0.md' },
         { id: 'func', label: '功能描述', file: '功能描述-方案报价下单-v1.2.0.md' }
       ];
 
       var params = new URLSearchParams(location.search);
       var fileParam = params.get('file');
-      var docParam = params.get('doc') || 'intent';
+      var docParam = params.get('doc') || 'rules';
       var currentFile = fileParam || (DOCS.find(function (d) { return d.id === docParam; }) || DOCS[0]).file;
 
       var navEl = document.getElementById('doc-nav');
