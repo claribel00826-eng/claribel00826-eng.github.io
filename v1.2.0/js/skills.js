@@ -2754,7 +2754,7 @@ window.Skills = (function () {
     );
   }
 
-  /** 方案选品行：仅品名/存货规格/标签，不含单价；规格下拉始终可改 */
+  /** 方案选品行：仅品名/规格，不含单价；规格下拉始终可改 */
   function planPickRow(product, tagHtml) {
     const plan = ctx().plan;
     const pid = product.id;
@@ -2876,7 +2876,7 @@ window.Skills = (function () {
         return (
           '<p class="sc-card__meta sc-plan-rec-hint">推荐区：优先按需求「' +
           App.escapeHtml(short) +
-          '」模糊匹配（名称·描述·规格·自由项·自定义项），其次最近订单产品（最多十条）</p>'
+          '」模糊匹配（名称·描述·规格·自定义项），其次最近订单产品（最多十条）</p>'
         );
       }
       return '<p class="sc-card__meta sc-plan-rec-hint">推荐区：本客户最近订单产品（时间倒序，最多十条）</p>';
@@ -2887,7 +2887,7 @@ window.Skills = (function () {
         return (
           '<p class="sc-card__meta sc-plan-rec-hint">推荐区：已按需求「' +
           App.escapeHtml(short) +
-          '」模糊匹配名称、描述、规格、自由项与自定义项（最多十条）</p>'
+          '」模糊匹配名称、描述、规格与自定义项（最多十条）</p>'
         );
       }
       return '<p class="sc-card__meta sc-plan-rec-hint sc-plan-rec-hint--warn">请先在上一步发送采购需求，再展示推荐商品</p>';
@@ -3069,7 +3069,7 @@ window.Skills = (function () {
       recommendLeadHtml(c, planDemandForMatch()) +
       renderPlanDemandSummaryHtml(c) +
       '<div class="sc-plan-filter-row">' +
-      '<input type="search" class="sc-input sc-input--field" id="plan-filter-input" placeholder="筛选品名/规格/自由项" value="' +
+      '<input type="search" class="sc-input sc-input--field" id="plan-filter-input" placeholder="筛选品名/规格" value="' +
       App.escapeHtml(plan.filter || '') +
       '"/>' +
       '<button type="button" class="sc-btn sc-btn--ghost" data-action="plan-filter">筛选</button></div>' +
@@ -4822,7 +4822,7 @@ window.Skills = (function () {
       '</div>' +
       recommendLeadHtml(c, demandMatch) +
       renderQuoteDemandSummaryHtml(c) +
-      '<div class="sc-plan-filter-row"><input type="search" class="sc-input sc-input--field" id="quote-filter-input" placeholder="筛选品名/规格/自由项" value="' +
+      '<div class="sc-plan-filter-row"><input type="search" class="sc-input sc-input--field" id="quote-filter-input" placeholder="筛选品名/规格" value="' +
       App.escapeHtml(d.filter || '') +
       '"/><button type="button" class="sc-btn sc-btn--ghost" data-action="quote-filter">筛选</button></div>' +
       '<div class="sc-follow-list sc-plan-pick-list">' +
@@ -5343,7 +5343,7 @@ window.Skills = (function () {
       '<div class="sc-card sc-card--compact" data-spec-id="card-order-pick"><div class="sc-card__head sc-card__head--compact">订单选品</div>' +
       recommendLeadHtml(c, demandMatch) +
       renderQuoteDemandSummaryHtml(c) +
-      '<div class="sc-plan-filter-row"><input type="search" class="sc-input sc-input--field" id="order-filter-input" placeholder="筛选品名/规格/自由项" value="' +
+      '<div class="sc-plan-filter-row"><input type="search" class="sc-input sc-input--field" id="order-filter-input" placeholder="筛选品名/规格" value="' +
       App.escapeHtml(d.filter || '') +
       '"/><button type="button" class="sc-btn sc-btn--ghost" data-action="order-filter">筛选</button></div>' +
       '<div class="sc-follow-list sc-plan-pick-list">' +

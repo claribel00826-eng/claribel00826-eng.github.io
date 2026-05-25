@@ -404,7 +404,7 @@ window.DemoData = {
     { id: 'qt-simple', name: '简版报价单', desc: '仅合计与主要行项目' }
   ],
   planTemplates: [
-    { id: 'tpl-tech', name: '标准技术方案', desc: '规格、SKU、数量（不含价格）' },
+    { id: 'tpl-tech', name: '标准技术方案', desc: '规格、数量（不含价格）' },
     { id: 'tpl-bid', name: '投标方案简版', desc: '一页纸摘要，适合对外投标' },
     { id: 'tpl-delivery', name: '完整交付方案', desc: '含验收节点与交付说明' }
   ],
@@ -672,7 +672,7 @@ window.DemoData = {
   /** 新客户「更多产品」：第二步弱匹配下限 */
   PLAN_MORE_MIN_SCORE_NEW: 0.2,
 
-  /** 产品可检索字段：名称 + 描述 + 规格 + 自由项(SKU) + 自定义项 */
+  /** 产品可检索字段：名称 + 描述 + 规格（含 SKU 标签）+ 自定义项 */
   productMatchTexts(product) {
     if (!product) return [];
     const parts = [
@@ -886,7 +886,7 @@ window.DemoData = {
   /**
    * 方案选品 · 更多产品（排除推荐区已展示品项）
    * - 老客户：全库余量；筛选词匹配；按品名排序
-   * - 新客户：产品全库、排除推荐区已展示；按需求匹配分降序（含弱匹配）
+   * - 新客户：产品全库、排除推荐区已展示；按匹配分降序（含弱匹配）
    */
   planMoreProducts(customer, recIds, filterText, currentUser, demandText) {
     const exclude = recIds instanceof Set ? recIds : new Set(recIds || []);
