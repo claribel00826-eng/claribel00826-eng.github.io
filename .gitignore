@@ -1,6 +1,10 @@
 # OS
 .DS_Store
 Thumbs.db
+.~*
+
+# Excel lock/temp
+~$*.xlsx
 
 # Dependencies
 node_modules/

@@ -1911,13 +1911,15 @@ button.is-flow-stale,
 
 /* 方案速配 */
 .sc-plan-rec-hint { margin: 0 0 8px; font-size: 12px; line-height: 1.5; }
-.sc-plan-filter-row {
+.sc-plan-filter-row,
+.sc-plan-query-row {
   display: flex;
   gap: 8px;
   margin: 0 0 10px;
   align-items: center;
 }
-.sc-plan-filter-row .sc-input { flex: 1; min-width: 0; }
+.sc-plan-filter-row .sc-input,
+.sc-plan-query-row .sc-input { flex: 1; min-width: 0; }
 .sc-plan-rec-badge {
   display: inline-block;
   margin-left: 4px;
