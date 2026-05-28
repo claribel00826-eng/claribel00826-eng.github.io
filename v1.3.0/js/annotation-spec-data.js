@@ -463,8 +463,6 @@ window.AnnotationSpecData = {
       "| 字段 | 说明 |",
       "|------|------|",
       "| 品名 / 存货编码 / 规格 | 产品基础信息（规格含 SKU 标签与行内下拉） |",
-      "| 工艺版本 | 下拉选择；默认按当前规格 SKU 带出，切换规格时同步刷新（未手改前） |",
-      "| 税率（%） | 数字输入；默认取产品主档，可改 |",
       "| 数量 | 购买数量 |",
       "| 最新售价 | 产品最新售价参考 |",
       "| 最低售价 | 产品最低售价参考 |",
@@ -489,8 +487,7 @@ window.AnnotationSpecData = {
       "**出现时机**：",
       "- 按方案报价：载入方案行（默认最新售价作为本单报价初值）",
       "- 直选报价 / 下单直选：载入选品行",
-      "**字段说明**：同 **1.3.3.5** 行级字段（含工艺版本、税率，逐项必填）。",
-      "**校验**：进入下一步 / 生成订单 / 生成报价单前，每行须已选工艺版本且税率有效（≥0）。",
+      "**字段说明**：同 **1.3.3.5** 行级字段。",
       "**交互**：",
       "| 模式 | 主按钮 | 结果 |",
       "|------|--------|------|",
@@ -715,40 +712,17 @@ window.AnnotationSpecData = {
     name: "下单确认卡",
     module: "1.4.7",
     content: [
-      "**表头（订单级）**",
-      "| 字段 | 展示与取值 |",
-      "|------|------------|",
-      "| 客户 | 当前会话客户：名称 + 编码（只读） |",
-      "| 订单来源 | 按报价单编号 / 直选下单 / 按方案（只读） |",
-      "| 结算客户 | 默认带出客户档案中的**结算方名称**，只读供核对开票对象 |",
-      "| 结算方式 | 下拉，默认取客户主档；无则「月结 30 天」 |",
-      "| 结算货币 | 下拉，默认取客户主档；无则「CNY（人民币）」 |",
-      "| 发货日期 | 日期选择，默认当前日 +14 天；提交前必填 |",
-      "| 交期评审 | 若本会话做过交期评审，附加展示评审结论（非必填） |",
-      "**明细行（货品级）**",
-      "| 列 | 说明 |",
-      "|----|------|",
-      "| 品名 / 存货编码 / 规格 | 与报价或选品一致 |",
-      "| 工艺版本 | 逐项报价环节已填写；本页只读展示 |",
-      "| 税率 | 逐项报价环节已填写；本页只读展示 |",
-      "| 数量 / 单价 / 小计 | 与下单前填价一致 |",
-      "**提交接口（页面不展示）**",
-      "确认下单时组装报文，除上表字段外自动写入：",
-      "- **单据类型** = 销售订单",
-      "- **业务类型** = 客户下单",
-      "- **结算客户（主档关联）** = 顶栏**当前客户**（用于 ERP 落单客户主键；与页面上展示的结算方名称分工不同）",
-      "演示环境在浏览器控制台输出完整报文；正式环境对接销售订单创建接口。",
-      "**交互**：「确认下单」→ 校验发货日期 → 写入订单库（状态**待排产**）→ **订单成功卡**。",
+      "**内容**：",
+      "| 区块 | 字段 |",
+      "|------|------|",
+      "| 摘要 | 客户（名称、编码）、订单来源（按报价单 · 编号 / 直选下单 / 按方案） |",
+      "| 交期 | 若有交期评审结果则展示（本版主链路不强制） |",
+      "| 明细表 | 序号、品名、存货编码、规格、数量+单位、单价、小计 |",
+      "| 合计 | 订单总金额 |",
+      "**交互**：「确认下单」→ 写入订单库（状态**待排产**）→ **订单成功卡**。",
     ],
-    query: [
-      "结算方式、结算货币：查询客户主档；无则使用系统缺省选项列表。",
-      "工艺版本、税率：按 productId + skuId 查询产品 / SKU 主档。",
-    ],
-    interaction: [
-      "可改：结算方式、结算货币、发货日期。",
-      "只读：客户、订单来源、结算客户展示名；明细工艺版本与税率（在逐项报价中维护）。",
-      "提交：合并页面值与接口默认字段后创建订单。",
-    ],
+    query: [],
+    interaction: [],
   },
   'card-order-success': {
     name: "订单成功卡",
@@ -788,5 +762,194 @@ window.AnnotationSpecData = {
     content: [],
     query: [],
     interaction: []
+  },
+  'card-delivery-entry': {
+    name: '交期评审 · 入口卡',
+    module: '05',
+    content: [
+      '【位置】Skill「交期评审」、话术「评估交期」等（技能条直达来源卡时可不经本卡）',
+      '【内容】标题「交期评审」、当前客户名称、客户类型标签（新/老客户）',
+      '【前置】顶栏已选当前客户'
+    ],
+    query: ['客户类型规则同方案速配 §1.2.1'],
+    interaction: ['评估交期 delivery-create-new → 来源选择卡 card-delivery-source']
+  },
+  'card-delivery-source': {
+    name: '交期评审 · 选择来源',
+    module: '05',
+    content: [
+      '【标题】交期评审 · 选择来源',
+      '【选项】按报价单 / 按订单 / 自选商品（三选一互斥）',
+      '【按报价单】副文案：共 N 份历史报价单；无单置灰',
+      '【按订单】副文案：共 N 笔未排程订单；无未排程置灰',
+      '【自选商品】始终可用：直选品、规格与数量评审交期',
+      '【meta】仅 1 份报价单 / 1 笔未排程订单时提示将直接进入评审表单'
+    ],
+    query: [
+      '报价单：quotesForCustomer(customerId)',
+      '未排程订单：deliveryOrdersForCustomer → DemoData.isOrderUnscheduled（非待提交、非已完成）'
+    ],
+    interaction: [
+      'delivery-source-quote：1 份或会话当前报价单 → sheet-delivery；多份 → card-delivery-quote-pick',
+      'delivery-source-order：1 笔未排程 → sheet-delivery；多笔 → card-delivery-order-pick',
+      'delivery-source-lines：新客户需求引导 → 交期自选选品 → sheet-delivery'
+    ]
+  },
+  'card-delivery-quote-pick': {
+    name: '交期评审 · 选报价单',
+    module: '05',
+    content: [
+      '【场景】按报价单且本客户报价单 ≥2',
+      '【字段】报价单号、金额合计、报价单模板名称'
+    ],
+    query: ['当前客户全部报价单，按生成时间倒序'],
+    interaction: ['delivery-quote-pick + data-quote-id → 载入报价行 → sheet-delivery']
+  },
+  'card-delivery-order-pick': {
+    name: '交期评审 · 选订单',
+    module: '05',
+    content: [
+      '【场景】按订单且本客户未排程订单 ≥2',
+      '【字段】订单号、五类状态徽章、下单日期 · 金额',
+      '【说明】与复制/变更 card-order-pick 样式相近，action 为 delivery-order-pick'
+    ],
+    query: ['deliveryOrdersForCustomer：未排程订单，按下单日期倒序'],
+    interaction: ['delivery-order-pick + data-oid → 只读订单行明细 → sheet-delivery']
+  },
+  'card-delivery-demand': {
+    name: '交期评审 · 需求引导',
+    module: '05',
+    content: [
+      '【路径】自选商品 · 交期评审',
+      '【内容】采购需求输入框；老客户展示「跳过，按最近订单推荐」',
+      '【规则】同方案/报价直选 §1.2.3.1：新客户须填需求；老客户可跳过'
+    ],
+    query: ['DemoData.isOldCustomer 决定是否展示跳过'],
+    interaction: [
+      'delivery-demand-submit → 交期自选·选品卡（标题「交期评审 · 自选商品」）',
+      'delivery-skip-demand → 按最近订单推荐进选品卡',
+      '对话完整需求句可跳过本卡直达选品'
+    ]
+  },
+  'sheet-delivery': {
+    name: '交期评审 · 表单',
+    module: '05',
+    content: [
+      '【只读】来源摘要：报价单号+金额 / 订单号+状态 / N 项品名',
+      '【期望交期】date，默认=计划结束日',
+      '【工艺版本】明细表每行 select，候选项 processVersionOptions(product, skuId)',
+      '【是否生成采购计划】radio 是/否，默认「是」',
+      '【开始/结束时间】date；结束 ≥ 开始；默认今日+7 / +14'
+    ],
+    query: [
+      '明细来自报价行 / 订单行 / 自选汇总 lines',
+      '齐套演示：期望交期 ≥ 计划结束且采购计划=是 → 按期；否则不齐套+blockers'
+    ],
+    interaction: [
+      'delivery-submit：校验必填与日期 → 写入 ctx.delivery（confirmed:true）→ card-delivery',
+      'delivery-line-process：按行选择工艺版本'
+    ]
+  },
+  'card-delivery': {
+    name: '交期评审 · 结果卡',
+    module: '05',
+    content: [
+      '【结论】徽章按期/不齐套；文案「可以按时交期」/「无法按时交期」',
+      '【摘要】期望交期、计划区间、工艺版本（按货品）、是否生成采购计划',
+      '【不齐套】产线/物料 + 名称 + 原因列表',
+      '【与下单关系】交期与下单并列；本卡「生成订单」为便捷入口，不阻塞报价/复制下单主链路'
+    ],
+    query: ['ctx.delivery 评审结果与 blockers'],
+    interaction: [
+      '来源 quote/lines：delivery-to-order → 预填 orderPending → sheet-order 下单确认',
+      '来源 order：delivery-to-progress + data-oid → card-order-progress-detail',
+      '不齐套：skill-plan 调整方案（线框按钮）'
+    ]
+  },
+  'card-order-pick': {
+    name: '订单选单 / 交期自选·选品',
+    module: '05',
+    content: [
+      '【复用宿主】同一 spec-id，按场景区分：',
+      '1. 交期自选：标题「交期评审 · 自选商品」；推荐区+筛选；主按钮「下一步：确认选品」',
+      '2. 复制订单：列表选单，行展示订单号+五类徽章+日期·金额',
+      '3. 订单变更：同上列表，选单后进变更表单'
+    ],
+    query: [
+      '复制/变更：ordersForCustomer，按日期倒序',
+      '交期自选：推荐规则同 §1.2.3.2 / §1.4.5；deliveryLinesMode=true'
+    ],
+    interaction: [
+      'copy-pick → card-order-copy；无历史订单时仅对话提示',
+      'change-pick → sheet-change；已完成订单 Toast 不可变更',
+      'delivery-lines-confirm / delivery-lines-to-cart → 汇总选品 → sheet-delivery'
+    ]
+  },
+  'card-order-copy': {
+    name: '复制订单 · 明细确认',
+    module: '05',
+    content: [
+      '【标题】复制订单 · 明细确认',
+      '【来源】订单号、五类状态徽章、下单日期；当前客户名',
+      '【提示】点击明细行展开，可改规格、数量、单价',
+      '【明细】手风琴：收起显示序号/品名/小计；展开含规格/数量/工艺/税率/单价',
+      '【合计】data-order-copy-total 随编辑实时更新',
+      '【分工】本卡改明细；sheet-order 负责结算/发货与最终提交'
+    ],
+    query: ['来源订单 lines 写入 orderPending；sourceType:copy，copiedOrderId'],
+    interaction: [
+      'copy-line-toggle：展开/收起行编辑（同时仅一行）',
+      'copy-line-* 字段变更 → 重算行小计与合计',
+      'copy-order-confirm → sheet-order（来源「复制订单 · SOxxx」）→ 提交后状态未审核'
+    ]
+  },
+  'sheet-change': {
+    name: '订单变更 · 表单',
+    module: '05',
+    content: [
+      '【标题】变更订单 — {订单号}',
+      '【变更原因】select，候选项 DemoData.changeReasons',
+      '【变更备注】textarea，必填'
+    ],
+    query: ['data-change-oid 绑定当前变更订单'],
+    interaction: [
+      'change-submit：备注为空 Toast；已审核 → 回退销售审核并更新 statusDetail',
+      '提交成功 → card-change-success'
+    ]
+  },
+  'card-change-success': {
+    name: '订单变更 · 提交成功',
+    module: '05',
+    content: [
+      '【标题】变更已提交',
+      '【只读】订单号、变更原因、变更备注'
+    ],
+    query: [],
+    interaction: ['提交后停留对话页展示本卡，无后续强制跳转']
+  },
+  'card-order-progress-list': {
+    name: '订单进度 · 列表',
+    module: '05',
+    content: [
+      '【字段】订单号、五类状态徽章、statusDetail、品项摘要 · 日期',
+      '【操作】每行「查看详情」链接按钮'
+    ],
+    query: ['当前客户全部订单（含待提交外的五类状态），按下单日期倒序'],
+    interaction: ['progress-detail + data-oid → card-order-progress-detail']
+  },
+  'card-order-progress-detail': {
+    name: '订单进度 · 详情',
+    module: '05',
+    content: [
+      '【标题】订单号 + 五类状态徽章',
+      '【摘要】statusDetail、品项 · 金额',
+      '【时间轴】未审核 → 销售审核 → 已审核 → 已完成',
+      '【异常】对应节点标红 error；已完成全节点打勾'
+    ],
+    query: ['order.timeline 节点 done/current/error/at'],
+    interaction: [
+      '入口：Skill 订单进度 / 交期结果 delivery-to-progress / 话术查进度',
+      '只读详情，无本卡内提交操作'
+    ]
   }
 };

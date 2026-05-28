@@ -414,39 +414,117 @@ window.DemoData = {
     { id: 'tpl-bid', name: '投标方案简版', desc: '一页纸摘要，适合对外投标' },
     { id: 'tpl-delivery', name: '完整交付方案', desc: '含验收节点与交付说明' }
   ],
+  /** v1.3.0 订单类型（列表/进度统一枚举） */
+  orderStatuses: ['未审核', '销售审核', '已审核', '已完成', '异常'],
+  orderStatusMeta: {
+    未审核: { badgeClass: 'sc-badge--muted', hint: '待内勤受理' },
+    销售审核: { badgeClass: 'sc-badge--primary', hint: '销售主管审核中' },
+    已审核: { badgeClass: 'sc-badge--new', hint: '审核通过，可排产履约' },
+    已完成: { badgeClass: 'sc-badge--done', hint: '订单已关闭' },
+    异常: { badgeClass: 'sc-badge--old', hint: '需处理异常后继续' }
+  },
+  /** 交期评审·按订单：未排程订单（非待提交、非已完成；已标记 scheduled:true 的排除） */
+  isOrderUnscheduled: function (order) {
+    if (!order || !order.status) return false;
+    if (order.status === this.orderStatusPendingSubmit) return false;
+    if (order.status === '已完成') return false;
+    if (order.scheduled === true) return false;
+    return true;
+  },
+  /** @deprecated 交期评审已改为按货品行配置，候选项见 processVersionOptions(product, skuId) */
+  deliveryProcessVersions: ['标准版', 'V2024.1', 'V2024.2', 'V2025-A'],
+  /** 交期评审演示 · 产线名称（不齐套时展示） */
+  deliveryReviewLines: ['机加工一线', '装配二线', '仓储发运线'],
+  /** 交期评审 · 是否生成采购计划 */
+  procurementPlanOptions: [
+    { value: 'yes', label: '是', generate: true },
+    { value: 'no', label: '否', generate: false }
+  ],
   orders: [
     {
       id: 'o1',
       customerId: 'c1',
       no: 'SO20260510001',
-      status: '生产中',
-      statusDetail: '机加工已完成，待装配',
+      status: '销售审核',
+      statusDetail: '销售主管待审，预计今日 18:00 前',
       amount: '¥128,600',
       date: '2026-05-10',
       items: '轴承组件×20、齿轮箱×2',
-      productIds: ['p1', 'p1', 'p2']
+      productIds: ['p1', 'p1', 'p2'],
+      timeline: [
+        { label: '未审核', at: '2026-05-10 09:12', done: true },
+        { label: '销售审核', at: '2026-05-10 10:05', done: false, current: true },
+        { label: '已审核', at: '', done: false },
+        { label: '已完成', at: '', done: false }
+      ]
     },
     {
       id: 'o2',
       customerId: 'c1',
       no: 'SO20260402018',
-      status: '已发货',
-      statusDetail: '物流单号 SF1234567890',
+      status: '已完成',
+      statusDetail: '整单已出库签收',
       amount: '¥96,400',
       date: '2026-04-02',
       items: '伺服电机×10、密封件×5',
-      productIds: ['p3', 'p3', 'p4']
+      productIds: ['p3', 'p3', 'p4'],
+      timeline: [
+        { label: '未审核', at: '2026-04-02 08:30', done: true },
+        { label: '销售审核', at: '2026-04-02 11:00', done: true },
+        { label: '已审核', at: '2026-04-03 09:00', done: true },
+        { label: '已完成', at: '2026-04-18 16:20', done: true, current: true }
+      ]
     },
     {
       id: 'o3',
       customerId: 'c2',
       no: 'SO20260514003',
-      status: '待排产',
-      statusDetail: '物料齐套，等待产线',
+      status: '未审核',
+      statusDetail: '刚提交，等待内勤接单',
       amount: '¥86,200',
       date: '2026-05-14',
       items: '齿轮箱×4、密封件×8',
-      productIds: ['p2', 'p4', 'p4']
+      productIds: ['p2', 'p4', 'p4'],
+      timeline: [
+        { label: '未审核', at: '2026-05-14 14:22', done: false, current: true },
+        { label: '销售审核', at: '', done: false },
+        { label: '已审核', at: '', done: false },
+        { label: '已完成', at: '', done: false }
+      ]
+    },
+    {
+      id: 'o4',
+      customerId: 'c1',
+      no: 'SO20260508007',
+      status: '异常',
+      statusDetail: '交期评审不齐套，客户要求提前发货',
+      amount: '¥42,300',
+      date: '2026-05-08',
+      items: '密封件×12',
+      productIds: ['p4', 'p4'],
+      timeline: [
+        { label: '未审核', at: '2026-05-08 10:00', done: true },
+        { label: '销售审核', at: '2026-05-08 15:30', done: true },
+        { label: '已审核', at: '2026-05-09 09:00', done: true },
+        { label: '异常', at: '2026-05-12 11:40', done: false, current: true, error: true }
+      ]
+    },
+    {
+      id: 'o5',
+      customerId: 'c2',
+      no: 'SO20260501002',
+      status: '已审核',
+      statusDetail: '审核通过，等待排产',
+      amount: '¥156,000',
+      date: '2026-05-01',
+      items: '轴承组件×30',
+      productIds: ['p1', 'p1', 'p1'],
+      timeline: [
+        { label: '未审核', at: '2026-05-01 09:00', done: true },
+        { label: '销售审核', at: '2026-05-01 14:00', done: true },
+        { label: '已审核', at: '2026-05-02 10:30', done: true, current: true },
+        { label: '已完成', at: '', done: false }
+      ]
     }
   ],
   recentCustomers: [

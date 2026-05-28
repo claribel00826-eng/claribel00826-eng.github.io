@@ -1998,10 +1998,14 @@
       if (skuSel && window.Skills) Skills.handleAction('quote-sku', skuSel);
       const quoteLineSku = e.target.closest('[data-action="quote-line-sku"]');
       if (quoteLineSku && window.Skills && Skills.onQuoteLineSkuChange) Skills.onQuoteLineSkuChange(quoteLineSku);
-      const quoteLineProcess = e.target.closest('[data-action="quote-line-process"]');
-      if (quoteLineProcess && window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
+      const copyLineSku = e.target.closest('[data-action="copy-line-sku"]');
+      if (copyLineSku && window.Skills && Skills.onCopyLineSkuChange) Skills.onCopyLineSkuChange(copyLineSku);
       const orderSku = e.target.closest('[data-action="order-sku"]');
       if (orderSku && window.Skills) Skills.handleAction('order-sku', orderSku);
+      const quoteLineProcess = e.target.closest('[data-action="quote-line-process"]');
+      if (quoteLineProcess && window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
+      const copyLineProcess = e.target.closest('[data-action="copy-line-process"]');
+      if (copyLineProcess && window.Skills && Skills.syncOrderCopyLinesFromDom) Skills.syncOrderCopyLinesFromDom();
       const sel = e.target.closest('[data-action="plan-sku"]');
       if (sel && window.Skills) Skills.handleAction('plan-sku', sel);
       const planQty = e.target.closest('[data-action="plan-qty"]');
@@ -2019,6 +2023,13 @@
         e.target.closest('[data-action="quote-line-tax"]')
       ) {
         if (window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
+      }
+      if (
+        e.target.closest('[data-action="copy-line-price"]') ||
+        e.target.closest('[data-action="copy-line-qty"]') ||
+        e.target.closest('[data-action="copy-line-tax"]')
+      ) {
+        if (window.Skills && Skills.syncOrderCopyLinesFromDom) Skills.syncOrderCopyLinesFromDom();
       }
       if (e.target.closest('[data-action="plan-qty"]') && window.Skills && Skills.syncPlanQtyFromDom) {
         Skills.syncPlanQtyFromDom();

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>标注文档 · v1.2.0</title>
+  <title>标注文档 · v1.3.0</title>
   <style>
     body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; margin: 0; background: #fafafa; color: #18181b; }
     header { padding: 16px 20px; background: #fff; border-bottom: 1px solid #e4e4e7; }
@@ -19,14 +19,15 @@
 <body>
   <header>
     <a href="../index.html">← 返回 H5 原型</a>
-    <h1 style="margin:8px 0 0;font-size:18px">标注文档 · v1.2.0</h1>
-    <p class="hint">本版标注文档 <strong>02～04</strong>（不含意图路由钉）。话术穷举见工具栏「意图识别说明」；上一版首页、待跟进见 v1.1.0。</p>
+    <h1 style="margin:8px 0 0;font-size:18px">标注文档 · v1.3.0</h1>
+    <p class="hint">本版标注文档 <strong>02～05</strong>（不含意图路由钉）。05 为交期与订单运营，产品源稿见 <a href="../功能描述-交期与订单运营-v1.3.0.md">功能描述</a>；话术见「意图识别说明」。</p>
   </header>
   <main>
     <nav id="doc-nav">
       <a href="?doc=02" data-doc="02">02 · 方案报价下单</a>
       <a href="?doc=03" data-doc="03">03 · 增量验收</a>
       <a href="?doc=04" data-doc="04">04 · 数据填槽需求</a>
+      <a href="?doc=05" data-doc="05">05 · 交期与订单运营</a>
     </nav>
     <pre id="doc-body">加载中…</pre>
   </main>
@@ -35,6 +36,7 @@
       '02': '02-方案报价下单.md',
       '03': '03-v1.2.0-增量验收.md',
       '04': '04-数据填槽需求.md',
+      '05': '05-交期与订单运营.md',
     };
     const params = new URLSearchParams(location.search);
     const id = params.get('doc') || '02';

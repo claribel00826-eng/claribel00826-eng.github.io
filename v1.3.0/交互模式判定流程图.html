@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>交互模式判定流程图 · v1.2.0</title>
+    <style>
+      :root {
+        --bg: #f6f7f9;
+        --panel: #fff;
+        --text: #1a1d26;
+        --muted: #5c6370;
+        --border: #e2e5ec;
+        --accent: #2563eb;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei",
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.55;
+        padding: 1.5rem;
+      }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.35rem;
+        margin: 0 0 0.35rem;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 0 0 1.25rem;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.25rem;
+      }
+      section h2 {
+        font-size: 1rem;
+        margin: 0 0 0.75rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+      }
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 0.5rem 0.65rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: #f8fafc;
+      }
+      .mermaid {
+        overflow-x: auto;
+        text-align: center;
+        min-height: 420px;
+      }
+      .mermaid svg {
+        max-width: 100%;
+        height: auto;
+      }
+      .err {
+        color: #b91c1c;
+        font-size: 0.875rem;
+      }
+      a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>交互模式判定流程图</h1>
+      <p class="sub">
+        v1.2.0 · 判定顺序：页面按钮 → 拥有槽位信息 → 必填槽位完整 → 表单补填 →
+        部分需求 ·
+        <a href="意图识别-技术实现规则-v1.2.0.md">技术实现规则</a>
+      </p>
+
+      <section>
+        <h2>流程图</h2>
+        <div class="mermaid" id="chart">
+flowchart TD
+    Start([收到用户输入]) --> Parse[解析功能意图 + 槽位<br/>结合当前卡片与会话态]
+    Parse --> BtnQ{是否页面按钮？}
+
+    BtnQ -->|是| Click[模拟点击]
+    BtnQ -->|否| SlotQ{拥有槽位信息？}
+
+    SlotQ -->|否| Partial[部分需求]
+    SlotQ -->|是| FullQ{必填槽位完整？}
+
+    FullQ -->|是| Full[完整需求]
+    FullQ -->|否| FormQ{当前卡片有表单<br/>且话术在补字段？}
+
+    FormQ -->|是| Form[表单填充]
+    FormQ -->|否| Partial
+
+    Click --> Route[输出路由<br/>解析槽位 + 目标卡片]
+    Full --> Route
+    Form --> Route
+    Partial --> Route
+
+    classDef mode fill:#e8f4fd,stroke:#2563eb,stroke-width:2px
+    classDef decision fill:#fff7ed,stroke:#ea580c,stroke-width:1px
+    classDef outNode fill:#f0fdf4,stroke:#16a34a,stroke-width:2px
+    class Click,Full,Form,Partial mode
+    class BtnQ,SlotQ,FullQ,FormQ decision
+    class Route outNode
+        </div>
+        <p id="chart-err" class="err" hidden></p>
+      </section>
+
+      <section>
+        <h2>术语</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>问句</th>
+              <th>含义</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>是否页面按钮？</td>
+              <td>
+                等价于点按页面按钮/可操作控件，不携带新业务槽位（含按钮文案、列表序号、多步链
+                A -&gt; B）
+              </td>
+            </tr>
+            <tr>
+              <td>拥有槽位信息？</td>
+              <td>话术 + 档案默认至少解析出一项与本能力相关的槽位</td>
+            </tr>
+            <tr>
+              <td>必填槽位完整？</td>
+              <td>当前能力全部必填槽位均已满足（与目标卡片名称无关）</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>四种模式</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>模式</th>
+              <th>选用条件</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>模拟点击</td>
+              <td>页面按钮</td>
+            </tr>
+            <tr>
+              <td>完整需求</td>
+              <td>拥有槽位信息 且 必填槽位完整</td>
+            </tr>
+            <tr>
+              <td>表单填充</td>
+              <td>有槽位、必填未完整，且在表单卡补字段</td>
+            </tr>
+            <tr>
+              <td>部分需求</td>
+              <td>无槽位信息；或有槽位但未完整且非表单补填</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+    <script>
+      function showErr(msg) {
+        var el = document.getElementById("chart-err");
+        el.hidden = false;
+        el.textContent = msg;
+      }
+      function boot() {
+        if (typeof mermaid === "undefined") {
+          showErr("未能加载 Mermaid，请联网后刷新，或打开 交互模式判定流程图.md。");
+          return;
+        }
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: "neutral",
+          flowchart: { curve: "basis", htmlLabels: true },
+        });
+        mermaid
+          .run({ querySelector: "#chart" })
+          .catch(function (e) {
+            showErr("渲染失败：" + (e && e.message ? e.message : String(e)));
+          });
+      }
+      var s = document.createElement("script");
+      s.src =
+        "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js";
+      s.onload = boot;
+      s.onerror = function () {
+        var s2 = document.createElement("script");
+        s2.src =
+          "https://unpkg.com/mermaid@10.9.1/dist/mermaid.min.js";
+        s2.onload = boot;
+        s2.onerror = function () {
+          showErr("CDN 不可用，请使用 Markdown 或本地 Mermaid CLI 导出 PNG。");
+        };
+        document.head.appendChild(s2);
+      };
+      document.head.appendChild(s);
+    </script>
+  </body>
+</html>
