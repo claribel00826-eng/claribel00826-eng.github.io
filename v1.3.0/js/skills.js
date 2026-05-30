@@ -1048,6 +1048,35 @@ window.Skills = (function () {
     );
   }
 
+  function deliveryReviewOrderNo(meta) {
+    meta = meta || {};
+    if (meta.orderNo) return String(meta.orderNo).replace(/^SO/i, 'XSD');
+    if (meta.quoteId) return String(meta.quoteId).replace(/^QT/i, 'XSD');
+    const d = new Date();
+    const ymd =
+      d.getFullYear() +
+      String(d.getMonth() + 1).padStart(2, '0') +
+      String(d.getDate()).padStart(2, '0');
+    return 'XSD' + ymd + '028';
+  }
+
+  function deliveryBlockerInventoryCode(line, idx) {
+    if (!line) return '000000000002AS-0001';
+    const raw = line.inventoryCode || line.skuId || '';
+    if (/^0+\d/.test(raw)) return raw;
+    const suffix = String((idx != null ? idx : 0) + 1).padStart(4, '0');
+    return '000000000002AS-' + suffix;
+  }
+
+  function buildDeliveryProcessLineReasons(count) {
+    const n = Math.max(1, count || 3);
+    const reasons = [];
+    for (let i = 1; i <= n; i++) {
+      reasons.push('第【' + i + '】道工序产线集没有可用产线');
+    }
+    return reasons;
+  }
+
   function defaultDeliveryPlanDates() {
     const start = new Date();
     start.setDate(start.getDate() + 7);
@@ -1335,7 +1364,6 @@ window.Skills = (function () {
   function renderDeliveryFormCard() {
     const meta = ctx().deliveryPending || {};
     const lines = ensureDeliveryPendingLines(meta);
-    const dates = defaultDeliveryPlanDates();
     const procOpts = (DemoData.procurementPlanOptions || [
       { value: 'yes', label: '是' },
       { value: 'no', label: '否' }
@@ -1359,23 +1387,12 @@ window.Skills = (function () {
       App.escapeHtml(deliverySummaryLabel(meta)) +
       '</p>' +
       '<label class="sc-field-label">期望交期</label>' +
-      '<input class="sc-input sc-input--field" data-field="delivery-expected-date" type="date" value="' +
-      dates.end +
-      '" />' +
+      '<input class="sc-input sc-input--field" data-field="delivery-expected-date" type="date" value="" placeholder="请选择" />' +
       renderDeliveryLinesProcessSection(lines) +
       '<label class="sc-field-label">是否生成采购计划</label>' +
       '<div class="sc-radio-group sc-radio-group--inline">' +
       procOpts +
       '</div>' +
-      '<div class="sc-field-row sc-field-row--2col">' +
-      '<div><label class="sc-field-label">开始时间</label>' +
-      '<input class="sc-input sc-input--field" data-field="delivery-plan-start" type="date" value="' +
-      dates.start +
-      '" /></div>' +
-      '<div><label class="sc-field-label">结束时间</label>' +
-      '<input class="sc-input sc-input--field" data-field="delivery-plan-end" type="date" value="' +
-      dates.end +
-      '" /></div></div>' +
       '<div class="sc-card__actions-inline"><button type="button" class="sc-btn sc-btn--primary" data-action="delivery-submit">提交评审</button></div>' +
       '</div>'
     );
@@ -6189,6 +6206,7 @@ window.Skills = (function () {
     const planEndDate = input.planEndDate || '';
     const generateProcurementPlan = !!input.generateProcurementPlan;
     const lines = input.lines || [];
+    const orderNo = input.orderNo || deliveryReviewOrderNo(input.meta || {});
     const fmt = function (d) {
       return (d || '').replace(/-/g, '/');
     };
@@ -6199,74 +6217,103 @@ window.Skills = (function () {
     let detail = '';
 
     if (onTime) {
-      detail = '预计 ' + fmt(expectedDate) + ' 可整单交付';
-    } else if (!expectOk) {
-      const lineNames = DemoData.deliveryReviewLines || ['机加工一线', '装配二线'];
-      const primaryMat = lines[0] || { inventoryName: '关键物料' };
-      blockers.push({
-        kind: 'material',
-        label: primaryMat.inventoryName || '关键物料',
-        reason: '物料不齐套，预计最早 ' + fmt(planEndDate) + ' 可供货'
-      });
-      if (lines.length > 1) {
+      detail = '预计 ' + fmt(planEndDate) + ' 可整单交付';
+    } else {
+      const targetLines = lines.length ? lines : [{}];
+      targetLines.forEach(function (line, idx) {
         blockers.push({
-          kind: 'material',
-          label: lines[1].inventoryName || '配套物料',
-          reason: '配套件缺口，影响整单齐套'
+          orderNo: orderNo,
+          inventoryCode: deliveryBlockerInventoryCode(line, idx),
+          reasons: buildDeliveryProcessLineReasons(idx === 0 ? 3 : 2)
         });
-      }
-      blockers.push({
-        kind: 'line',
-        label: lineNames[0] || '机加工一线',
-        reason:
-          '产线负荷冲突，计划完工日 ' + fmt(planEndDate) + ' 晚于期望交期 ' + fmt(expectedDate)
       });
       detail = '无法在期望交期 ' + fmt(expectedDate) + ' 前整单交付';
-    } else {
-      blockers.push({
-        kind: 'material',
-        label: (lines[0] && lines[0].inventoryName) || '采购物料',
-        reason: '已勾选生成采购计划，物料到货周期影响齐套'
-      });
-      blockers.push({
-        kind: 'line',
-        label: (DemoData.deliveryReviewLines || ['仓储发运线'])[1] || '装配二线',
-        reason: '需等待采购入库后排产，暂无法按期望交期完工'
-      });
-      detail = '采购计划周期内暂无法保证按期交付';
     }
 
     return {
       onTime: onTime,
-      status: onTime ? '按期' : '不齐套',
-      verdict: onTime ? '可以按时交期' : '无法按时交期',
+      status: onTime ? '按期' : '无法按时交付',
+      verdict: onTime ? '可以按时交付' : '无法按时交付',
       detail: detail,
       blockers: blockers
     };
+  }
+
+  function formatDeliveryBlockerLine(blocker) {
+    blocker = blocker || {};
+    const reasons = blocker.reasons || [];
+    return (
+      '订单号【' +
+      (blocker.orderNo || '') +
+      '】,存货【' +
+      (blocker.inventoryCode || '') +
+      '】' +
+      JSON.stringify(reasons)
+    );
+  }
+
+  function renderDeliveryResultProcessLinesHtml(lines) {
+    if (!lines || !lines.length) return '—';
+    return (
+      '<ul class="sc-delivery-result__process-list">' +
+      lines
+        .map(function (l) {
+          const name = l.inventoryName || '—';
+          const ver = l.processVersion || '—';
+          return (
+            '<li><span class="sc-delivery-result__process-name">' +
+            App.escapeHtml(name) +
+            '</span><span class="sc-delivery-result__process-ver">' +
+            App.escapeHtml(ver) +
+            '</span></li>'
+          );
+        })
+        .join('') +
+      '</ul>'
+    );
+  }
+
+  function renderDeliveryResultSummaryHtml(d, procLabel, fmtDate) {
+    return (
+      '<dl class="sc-delivery-result__summary">' +
+      '<div class="sc-delivery-result__row sc-delivery-result__row--2col">' +
+      '<dt>开始时间</dt><dd>' +
+      fmtDate(d.planStartDate) +
+      '</dd>' +
+      '<dt>结束时间</dt><dd>' +
+      fmtDate(d.planEndDate) +
+      '</dd></div>' +
+      '<div class="sc-delivery-result__row">' +
+      '<dt>期望交期</dt><dd>' +
+      fmtDate(d.expectedDate) +
+      '</dd></div>' +
+      '<div class="sc-delivery-result__row sc-delivery-result__row--stack">' +
+      '<dt>工艺版本</dt><dd>' +
+      renderDeliveryResultProcessLinesHtml(d.lines) +
+      '</dd></div>' +
+      '<div class="sc-delivery-result__row">' +
+      '<dt>采购计划</dt><dd>' +
+      App.escapeHtml(procLabel) +
+      '</dd></div>' +
+      '</dl>'
+    );
   }
 
   function renderDeliveryBlockersHtml(blockers) {
     if (!blockers || !blockers.length) return '';
     const rows = blockers
       .map(function (b) {
-        const kindLabel = b.kind === 'line' ? '产线' : '物料';
+        const text = b.formatted || formatDeliveryBlockerLine(b);
         return (
-          '<li class="sc-delivery-result__blocker">' +
-          '<span class="sc-delivery-result__blocker-kind">' +
-          App.escapeHtml(kindLabel) +
-          '</span>' +
-          '<strong>' +
-          App.escapeHtml(b.label) +
-          '</strong>' +
+          '<li class="sc-delivery-result__blocker sc-delivery-result__blocker--full">' +
           '<span class="sc-delivery-result__blocker-reason">' +
-          App.escapeHtml(b.reason) +
+          App.escapeHtml(text) +
           '</span></li>'
         );
       })
       .join('');
     return (
       '<div class="sc-delivery-result__blockers-wrap">' +
-      '<p class="sc-field-label sc-field-label--compact">不齐套原因</p>' +
       '<ul class="sc-delivery-result__blockers">' +
       rows +
       '</ul></div>'
@@ -6277,12 +6324,11 @@ window.Skills = (function () {
     const el = getActiveFormCard('sheet-delivery');
     const meta = ctx().deliveryPending || {};
     const expectedInp = el && el.querySelector('[data-field="delivery-expected-date"]');
-    const startInp = el && el.querySelector('[data-field="delivery-plan-start"]');
-    const endInp = el && el.querySelector('[data-field="delivery-plan-end"]');
     const procEl = el && el.querySelector('input[name="delivery-procurement"]:checked');
     const expectedDate = expectedInp ? expectedInp.value : '';
-    const planStartDate = startInp ? startInp.value : '';
-    const planEndDate = endInp ? endInp.value : '';
+    const planDates = defaultDeliveryPlanDates();
+    const planStartDate = planDates.start;
+    const planEndDate = planDates.end;
     const generateProcurementPlan = procEl ? procEl.value === 'yes' : false;
     syncDeliveryPendingProcessFromDom(el);
     const reviewLines = enrichOrderLines(meta.lines || deliveryLinesForReview(meta));
@@ -6298,19 +6344,12 @@ window.Skills = (function () {
       App.toast('请选择期望交期');
       return;
     }
-    if (!planStartDate || !planEndDate) {
-      App.toast('请填写计划开始与结束时间');
-      return;
-    }
-    if (planEndDate < planStartDate) {
-      App.toast('结束时间不能早于开始时间');
-      return;
-    }
     const review = evaluateDeliveryReview({
       expectedDate: expectedDate,
       planEndDate: planEndDate,
       generateProcurementPlan: generateProcurementPlan,
-      lines: reviewLines
+      lines: reviewLines,
+      meta: meta
     });
     ctx().delivery = {
       sourceType: meta.sourceType || 'quote',
@@ -6344,12 +6383,15 @@ window.Skills = (function () {
     const byOrder = src === 'order';
     const oidAttr = d.orderId ? ' data-oid="' + App.escapeHtml(d.orderId) + '"' : '';
     const procLabel = d.generateProcurementPlan ? '是' : '否';
-    const verdictCls = ok
-      ? 'sc-delivery-result__verdict sc-delivery-result__verdict--ok'
-      : 'sc-delivery-result__verdict sc-delivery-result__verdict--warn';
-    const lead = byOrder
-      ? '评审完成，可查看该订单进度。'
-      : '评审完成，可以生成订单。';
+    const fmtDate = function (v) {
+      return App.escapeHtml((v || '').replace(/-/g, '/'));
+    };
+    const verdictHtml = ok
+      ? '<p class="sc-delivery-result__verdict sc-delivery-result__verdict--ok"><strong>' +
+        App.escapeHtml(d.verdict || '可以按时交付') +
+        '</strong></p>' +
+        (d.detail ? '<p class="sc-card__meta">' + App.escapeHtml(d.detail) + '</p>' : '')
+      : '';
     const primaryBtn = byOrder
       ? '<button type="button" class="sc-btn sc-btn--primary" data-action="delivery-to-progress"' +
         oidAttr +
@@ -6366,30 +6408,9 @@ window.Skills = (function () {
       App.escapeHtml(d.status || '') +
       '</span></div>' +
       '<div class="sc-card__row sc-card__row--compact">' +
-      '<p class="' +
-      verdictCls +
-      '"><strong>' +
-      App.escapeHtml(d.verdict || (ok ? '可以按时交期' : '无法按时交期')) +
-      '</strong></p>' +
-      '<p class="sc-card__meta">' +
-      App.escapeHtml(d.detail || '') +
-      '</p>' +
+      verdictHtml +
       renderDeliveryBlockersHtml(ok ? [] : d.blockers) +
-      '<p class="sc-card__meta">期望交期 ' +
-      App.escapeHtml((d.expectedDate || '').replace(/-/g, '/')) +
-      ' · 计划 ' +
-      App.escapeHtml((d.planStartDate || '').replace(/-/g, '/')) +
-      '～' +
-      App.escapeHtml((d.planEndDate || '').replace(/-/g, '/')) +
-      '</p>' +
-      '<p class="sc-card__meta">工艺版本（按货品） ' +
-      App.escapeHtml(formatDeliveryLinesProcessSummary(d.lines)) +
-      ' · 生成采购计划 ' +
-      procLabel +
-      '</p>' +
-      '<p class="sc-reply-lead sc-reply-lead--compact">' +
-      App.escapeHtml(lead) +
-      '</p>' +
+      renderDeliveryResultSummaryHtml(d, procLabel, fmtDate) +
       '<div class="sc-card__actions-inline sc-card__actions-inline--wrap">' +
       primaryBtn +
       adjustBtn +
@@ -7301,12 +7322,12 @@ window.Skills = (function () {
           App.escapeHtml(del.detail || '') +
           '</dd></div>' +
           (del.blockers && del.blockers.length
-            ? '<div class="sc-order-confirm__row"><dt>不齐套原因</dt><dd>' +
+            ? '<div class="sc-order-confirm__row"><dt>无法按时交付原因</dt><dd>' +
               del.blockers
                 .map(function (b) {
-                  return (b.kind === 'line' ? '产线' : '物料') + ' ' + b.label;
+                  return App.escapeHtml(b.formatted || formatDeliveryBlockerLine(b));
                 })
-                .join('；') +
+                .join('<br />') +
               '</dd></div>'
             : '') +
           '<div class="sc-order-confirm__row"><dt>期望交期</dt><dd>' +

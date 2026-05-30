@@ -16,7 +16,7 @@
 
 ## 状态色
 
-- 交期按期 / 不齐套：`sc-badge--new` / `sc-badge--old`
+- 交期按期 / 无法按时交付：`sc-badge--new` / `sc-badge--old`
 - **订单类型**（v1.3.0）：
 
 | 类型 | 类名 |

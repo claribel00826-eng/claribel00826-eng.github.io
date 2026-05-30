@@ -433,7 +433,7 @@ window.DemoData = {
   },
   /** @deprecated 交期评审已改为按货品行配置，候选项见 processVersionOptions(product, skuId) */
   deliveryProcessVersions: ['标准版', 'V2024.1', 'V2024.2', 'V2025-A'],
-  /** 交期评审演示 · 产线名称（不齐套时展示） */
+  /** 交期评审演示 · 产线名称（历史演示字段，保留兼容） */
   deliveryReviewLines: ['机加工一线', '装配二线', '仓储发运线'],
   /** 交期评审 · 是否生成采购计划 */
   procurementPlanOptions: [
@@ -497,7 +497,7 @@ window.DemoData = {
       customerId: 'c1',
       no: 'SO20260508007',
       status: '异常',
-      statusDetail: '交期评审不齐套，客户要求提前发货',
+      statusDetail: '交期评审无法按时交付，客户要求提前发货',
       amount: '¥42,300',
       date: '2026-05-08',
       items: '密封件×12',
