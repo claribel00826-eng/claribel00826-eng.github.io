@@ -56,6 +56,8 @@ window.AnnotationSpecScope = {
     'card-order-progress-list',
     'card-order-progress-detail',
     'card-capacity',
-    'card-capacity-block-detail'
+    'card-capacity-block-detail',
+    'card-biz-analysis',
+    'card-biz-analysis-insight'
   ]
 };

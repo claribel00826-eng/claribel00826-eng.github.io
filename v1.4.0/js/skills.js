@@ -8337,7 +8337,7 @@ window.Skills = (function () {
   function renderBizOverviewHtml(data, tab) {
     var text = computeBizInsight(data, tab);
     return (
-      '<div class="sc-biz-overview" data-biz-overview>' +
+      '<div class="sc-biz-overview" data-biz-overview data-spec-id="card-biz-analysis-insight">' +
       '<p class="sc-biz-overview__line">' +
       App.escapeHtml(text) +
       '</p></div>'
