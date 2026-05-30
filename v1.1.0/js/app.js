@@ -132,31 +132,115 @@
     toast._t = setTimeout(() => el.classList.remove('is-show'), 2000);
   }
 
-  function ensureDemoSession() {
-    localStorage.setItem(TOKEN_KEY, '1');
+  function isLoggedIn() {
+    return !!localStorage.getItem(TOKEN_KEY);
+  }
+
+  function showLoginView() {
+    const login = $('#view-login');
+    const chat = $('#view-chat');
+    if (login) login.classList.remove('sc-hidden');
+    if (chat) chat.classList.add('sc-hidden');
+    closeOverlays();
+    const pdf = $('#pdf-modal');
+    if (pdf) pdf.classList.add('sc-hidden');
+    document.body.classList.remove('sc-pdf-open');
   }
 
   function showChatView() {
+    const login = $('#view-login');
     const chat = $('#view-chat');
+    if (login) login.classList.add('sc-hidden');
     if (chat) chat.classList.remove('sc-hidden');
     refreshHeader();
     syncExternalTemplatePanel();
   }
 
+  function closeLogoutConfirm() {
+    const modal = $('#logout-modal');
+    if (modal) modal.classList.add('sc-hidden');
+  }
+
+  function openLogoutConfirm() {
+    const modal = $('#logout-modal');
+    if (modal) modal.classList.remove('sc-hidden');
+  }
+
+  function confirmLogout() {
+    closeLogoutConfirm();
+    localStorage.removeItem(TOKEN_KEY);
+    location.hash = '#login';
+    showLoginView();
+    toast('已退出登录');
+  }
+
+  function initLogoutConfirm() {
+    const modal = $('#logout-modal');
+    const confirmBtn = $('#logout-confirm');
+    const cancelBtn = $('#logout-cancel');
+    if (confirmBtn && !confirmBtn.dataset.bound) {
+      confirmBtn.dataset.bound = '1';
+      confirmBtn.addEventListener('click', confirmLogout);
+    }
+    if (cancelBtn && !cancelBtn.dataset.bound) {
+      cancelBtn.dataset.bound = '1';
+      cancelBtn.addEventListener('click', closeLogoutConfirm);
+    }
+    if (modal && !modal.dataset.bound) {
+      modal.dataset.bound = '1';
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeLogoutConfirm();
+      });
+    }
+  }
+
   function route() {
-    ensureDemoSession();
+    const wantsLogin = location.hash === '#login';
+    if (!isLoggedIn()) {
+      if (!wantsLogin) location.hash = '#login';
+      showLoginView();
+      return;
+    }
+    if (wantsLogin) {
+      showLoginView();
+      return;
+    }
     if (!location.hash || location.hash === '#login') {
       location.hash = '#chat';
     }
     showChatView();
   }
 
-  function bootChatSession() {
-    ensureDemoSession();
-    if (!location.hash || location.hash === '#login') {
-      location.hash = '#chat';
+  function handleLoginSubmit(e) {
+    e.preventDefault();
+    const userEl = $('#login-user');
+    const passEl = $('#login-pass');
+    const user = userEl ? userEl.value.trim() : '';
+    const pass = passEl ? passEl.value.trim() : '';
+    if (!user || !pass) {
+      toast('请输入账号和密码');
+      return;
     }
-    route();
+    if (user !== 'demo' || pass !== '123456') {
+      toast('账号或密码错误');
+      return;
+    }
+    localStorage.setItem(TOKEN_KEY, '1');
+    location.hash = '#chat';
+    showChatView();
+    bootChatSession();
+    toast('登录成功');
+  }
+
+  function initLogin() {
+    const form = $('#login-form');
+    if (!form || form.dataset.bound) return;
+    form.dataset.bound = '1';
+    form.addEventListener('submit', handleLoginSubmit);
+  }
+
+  function bootChatSession() {
+    if (!isLoggedIn() || location.hash === '#login') return;
     initWelcome();
     refreshHeader();
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
@@ -830,7 +914,12 @@
   }
 
   function handleTemplateFollowupFromWx() {
-    ensureDemoSession();
+    if (!isLoggedIn()) {
+      location.hash = '#login';
+      route();
+      toast('请先登录');
+      return;
+    }
     location.hash = '#chat';
     route();
     initWelcome();
@@ -1406,6 +1495,14 @@
         clearChatHistoryAll();
       });
     }
+    const logoutBtn = $('#btn-logout');
+    if (logoutBtn && !logoutBtn.dataset.bound) {
+      logoutBtn.dataset.bound = '1';
+      logoutBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openLogoutConfirm();
+      });
+    }
     $('#messages').addEventListener('click', onMessagesClick);
 
     renderSkills();
@@ -1593,10 +1690,12 @@
   function init() {
     loadState();
     if (!state.ctx) state.ctx = {};
+    initLogin();
+    initLogoutConfirm();
     initChat();
     window.addEventListener('hashchange', () => {
       route();
-      if (location.hash === '#chat') {
+      if (isLoggedIn() && location.hash === '#chat') {
         initWelcome();
         refreshHeader();
         if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
@@ -1604,19 +1703,21 @@
     });
     window.addEventListener('pageshow', (e) => {
       route();
-      if (e.persisted) {
-        const box = $('#messages');
-        if (box) delete box.dataset.sessionReady;
-        initWelcome();
-        refreshHeader();
+      if (isLoggedIn() && location.hash === '#chat') {
+        if (e.persisted) {
+          const box = $('#messages');
+          if (box) delete box.dataset.sessionReady;
+          initWelcome();
+          refreshHeader();
+        }
+        if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
       }
-      if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
     });
     window.addEventListener('pagehide', () => {
       persistChatHistory();
     });
     route();
-    bootChatSession();
+    if (isLoggedIn() && location.hash !== '#login') bootChatSession();
     syncExternalTemplatePanel();
     initWxTemplatePanel();
     initDemoReset();

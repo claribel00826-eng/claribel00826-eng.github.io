@@ -62,10 +62,28 @@
       </div>
     </aside>
     <div class="sc-app">
-    <div id="view-chat" class="sc-chat">
+    <div id="view-login" class="sc-login" data-spec-id="login-brand">
+      <div class="sc-login__brand">
+        <div class="sc-login__logo">销</div>
+        <h1 class="sc-login__title">销售助手</h1>
+        <p class="sc-login__sub">制造业智能销售伙伴</p>
+      </div>
+      <form id="login-form">
+        <div class="sc-field" data-spec-id="login-input">
+          <input class="sc-input" id="login-user" type="text" placeholder="请输入手机号或账号" autocomplete="username" />
+        </div>
+        <div class="sc-field" data-spec-id="login-input">
+          <input class="sc-input" id="login-pass" type="password" placeholder="请输入密码" autocomplete="current-password" />
+        </div>
+        <button type="submit" class="sc-btn sc-btn--primary" data-spec-id="login-btn">登录</button>
+      </form>
+      <p class="sc-login__hint">演示账号：demo / 123456</p>
+    </div>
+    <div id="view-chat" class="sc-chat sc-hidden">
       <header class="sc-header sc-header--with-status">
         <div class="sc-header__top">
           <span class="sc-header__title" id="header-title" data-spec-id="chat-header">销售助手 · Pro</span>
+          <div class="sc-header__actions">
           <button
             type="button"
             class="sc-header__clear"
@@ -75,6 +93,16 @@
           >
             清空记录
           </button>
+          <button
+            type="button"
+            class="sc-header__logout"
+            id="btn-logout"
+            data-spec-id="btn-logout"
+            aria-label="退出登录"
+          >
+            退出
+          </button>
+          </div>
         </div>
         <div class="sc-header__status" data-spec-id="chat-context-bar">
           <div class="sc-status-item" data-spec-id="chat-current-skill">
@@ -135,6 +163,17 @@
       <div class="sc-dialog__actions">
         <button type="button" class="sc-btn sc-btn--primary" id="skill-switch-keep">保留客户</button>
         <button type="button" class="sc-btn sc-btn--ghost" id="skill-switch-discard">重新选客户</button>
+      </div>
+    </div>
+  </div>
+  <!-- 退出登录确认 -->
+  <div id="logout-modal" class="sc-overlay sc-overlay--dialog sc-hidden" data-spec-id="modal-logout" role="dialog" aria-modal="true" aria-labelledby="logout-modal-title">
+    <div class="sc-dialog" onclick="event.stopPropagation()">
+      <div class="sc-dialog__head" id="logout-modal-title">退出登录</div>
+      <p class="sc-dialog__prompt">确定要退出当前账号吗？</p>
+      <div class="sc-dialog__actions">
+        <button type="button" class="sc-btn sc-btn--ghost" id="logout-cancel">取消</button>
+        <button type="button" class="sc-btn sc-btn--primary" id="logout-confirm">退出</button>
       </div>
     </div>
   </div>

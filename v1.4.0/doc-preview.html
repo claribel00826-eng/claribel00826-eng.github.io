@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>文档预览 · v1.3.0</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f4f4f5;
+      --surface: #fff;
+      --border: #e4e4e7;
+      --text: #18181b;
+      --muted: #71717a;
+      --primary: #4f46e5;
+      --code-bg: #f4f4f5;
+      --quote-border: #c7d2fe;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .topbar__inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 12px 20px;
+    }
+    .topbar__row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 16px;
+    }
+    .topbar a.back {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+  .topbar a.back:hover { text-decoration: underline; }
+    .topbar h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .doc-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .doc-nav a {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      text-decoration: none;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+    }
+    .doc-nav a.is-active,
+    .doc-nav a:hover {
+      color: var(--primary);
+      border-color: #a5b4fc;
+      background: #eef2ff;
+    }
+    .hint {
+      margin: 8px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .hint--warn {
+      color: #b45309;
+    }
+    .page-layout {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 28px;
+      align-items: start;
+    }
+    main {
+      min-width: 0;
+    }
+    .toc {
+      position: sticky;
+      top: 88px;
+      max-height: calc(100vh - 104px);
+      overflow-y: auto;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .toc__title {
+      margin: 0 0 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .toc__list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .toc__list a {
+      display: block;
+      padding: 4px 0;
+      color: var(--muted);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      padding-left: 10px;
+      margin-left: -2px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .toc__list a:hover {
+      color: var(--primary);
+    }
+    .toc__list a.is-active {
+      color: var(--primary);
+      font-weight: 600;
+      border-left-color: var(--primary);
+    }
+    .toc__list--h3 a {
+      padding-left: 22px;
+      font-size: 12px;
+    }
+    .toc__empty {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .md-body {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      overflow-x: auto;
+    }
+    .md-body :first-child { margin-top: 0; }
+    .md-body :last-child { margin-bottom: 0; }
+    .md-body h1 { font-size: 1.75rem; margin: 0 0 1rem; line-height: 1.3; }
+    .md-body h2,
+    .md-body h3 {
+      scroll-margin-top: 96px;
+    }
+    .md-body h2 {
+      font-size: 1.25rem;
+      margin: 2rem 0 0.75rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .md-body h3 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; }
+    .md-body h2:hover .heading-anchor,
+    .md-body h3:hover .heading-anchor {
+      opacity: 1;
+    }
+    .heading-anchor {
+      margin-left: 0.35em;
+      font-size: 0.85em;
+      color: var(--muted);
+      text-decoration: none;
+      opacity: 0;
+      font-weight: 400;
+    }
+    .heading-anchor:hover { color: var(--primary); }
+    .md-body h4 { font-size: 0.95rem; margin: 1.25rem 0 0.4rem; }
+    .md-body p { margin: 0.65rem 0; }
+    .md-body ul, .md-body ol { margin: 0.5rem 0; padding-left: 1.4rem; }
+    .md-body li { margin: 0.25rem 0; }
+    .md-body blockquote {
+      margin: 1rem 0;
+      padding: 0.5rem 1rem;
+      border-left: 4px solid var(--quote-border);
+      background: #fafafa;
+      color: #3f3f46;
+    }
+    .md-body blockquote p { margin: 0.35rem 0; }
+    .md-body code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.12em 0.35em;
+      border-radius: 4px;
+    }
+    .md-body pre {
+      background: #27272a;
+      color: #fafafa;
+      padding: 14px 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .md-body pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+    .md-body a { color: var(--primary); }
+    .md-body hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+    .md-body table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 1rem 0;
+      min-width: 640px;
+    }
+    .md-body th,
+    .md-body td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .md-body th {
+      background: #f4f4f5;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .md-body tr:nth-child(even) td { background: #fafafa; }
+    .md-body .mermaid {
+      margin: 1rem 0;
+      overflow-x: auto;
+      text-align: center;
+    }
+    .md-body .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .md-body img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0.75rem auto;
+    }
+    .loading, .error {
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .error { color: #b91c1c; }
+    @media (max-width: 960px) {
+      .page-layout {
+        grid-template-columns: 1fr;
+      }
+      .toc {
+        position: static;
+        max-height: none;
+        order: -1;
+      }
+    }
+    @media (max-width: 640px) {
+      .md-body { padding: 18px 16px; }
+      .md-body h1 { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="topbar__row">
+        <a class="back" href="index.html">← H5 原型</a>
+        <h1 id="doc-title">文档预览</h1>
+      </div>
+      <nav class="doc-nav" id="doc-nav" aria-label="文档切换"></nav>
+      <p class="hint" id="file-hint"></p>
+    </div>
+  </header>
+  <div class="page-layout">
+    <main>
+      <article class="md-body" id="md-root">
+        <p class="loading">正在加载文档…</p>
+      </article>
+    </main>
+    <nav class="toc" id="toc" aria-label="章节导航">
+      <p class="toc__title">章节</p>
+      <p class="toc__empty">加载中…</p>
+    </nav>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js"></script>
+  <script>
+    (function () {
+      var DOCS = [
+        { id: 'rules', label: '意图实现规则', file: '意图识别-技术实现规则-v1.3.0.md' },
+        { id: 'intent', label: '意图识别说明', file: '意图识别说明-v1.3.0.md', page: '意图识别说明.html' },
+        { id: 'func', label: '功能描述', file: '功能描述-方案报价下单-v1.2.0.md' }
+      ];
+
+      var params = new URLSearchParams(location.search);
+      var fileParam = params.get('file');
+      var docParam = params.get('doc') || 'rules';
+      var currentFile = fileParam || (DOCS.find(function (d) { return d.id === docParam; }) || DOCS[0]).file;
+
+      var navEl = document.getElementById('doc-nav');
+      var rootEl = document.getElementById('md-root');
+      var tocEl = document.getElementById('toc');
+      var titleEl = document.getElementById('doc-title');
+      var hintEl = document.getElementById('file-hint');
+
+      DOCS.forEach(function (d) {
+        var a = document.createElement('a');
+        a.href = d.page || ('doc-preview.html?doc=' + encodeURIComponent(d.id));
+        a.textContent = d.label;
+        if (d.page && d.id === 'intent') {
+          if (docParam === 'intent' || fileParam === d.file) a.classList.add('is-active');
+        } else if (d.file === currentFile) {
+          a.classList.add('is-active');
+        }
+        navEl.appendChild(a);
+      });
+
+      if (location.protocol === 'file:') {
+        hintEl.innerHTML =
+          '<span class="hint--warn">当前为本地文件打开，浏览器可能无法加载 .md。请通过 GitHub Pages 或本地静态服务访问（如 <code>npx serve .</code>）。</span>';
+      } else {
+        hintEl.textContent = currentFile;
+      }
+
+      marked.setOptions({
+        gfm: true,
+        breaks: false,
+        mangle: false
+      });
+
+      function slugify(text) {
+        var base = (text || '')
+          .trim()
+          .replace(/\s+/g, '-')
+          .replace(/[^\w\u4e00-\u9fff-]+/g, '')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '');
+        return base || 'section';
+      }
+
+      function buildHeadingAnchors(container) {
+        var used = Object.create(null);
+        var headings = container.querySelectorAll('h2, h3');
+        headings.forEach(function (h) {
+          var text = h.textContent.replace(/#\s*$/, '').trim();
+          var id = slugify(text);
+          if (used[id]) {
+            used[id] += 1;
+            id = id + '-' + used[id];
+          } else {
+            used[id] = 1;
+          }
+          h.id = id;
+          var link = document.createElement('a');
+          link.className = 'heading-anchor';
+          link.href = '#' + id;
+          link.setAttribute('aria-label', '链接到此章节');
+          link.textContent = '#';
+          h.appendChild(link);
+        });
+        return headings;
+      }
+
+      function buildToc(headings) {
+        tocEl.innerHTML = '<p class="toc__title">章节</p>';
+        if (!headings.length) {
+          var empty = document.createElement('p');
+          empty.className = 'toc__empty';
+          empty.textContent = '暂无章节';
+          tocEl.appendChild(empty);
+          return [];
+        }
+        var listH2 = document.createElement('ul');
+        listH2.className = 'toc__list';
+        var listH3 = null;
+        var links = [];
+
+        headings.forEach(function (h) {
+          var li = document.createElement('li');
+          var a = document.createElement('a');
+          a.href = '#' + h.id;
+          a.textContent = h.textContent.replace(/#\s*$/, '').trim();
+          a.addEventListener('click', function (e) {
+            e.preventDefault();
+            history.replaceState(null, '', '#' + h.id);
+            h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+          li.appendChild(a);
+          links.push(a);
+
+          if (h.tagName === 'H2') {
+            listH3 = null;
+            listH2.appendChild(li);
+          } else {
+            if (!listH3) {
+              listH3 = document.createElement('ul');
+              listH3.className = 'toc__list toc__list--h3';
+              var parentLi = listH2.lastElementChild;
+              if (parentLi) {
+                parentLi.appendChild(listH3);
+              } else {
+                listH2.appendChild(li);
+                return;
+              }
+            }
+            listH3.appendChild(li);
+          }
+        });
+
+        tocEl.appendChild(listH2);
+        return links;
+      }
+
+      function initScrollSpy(headings, tocLinks) {
+        if (!headings.length || !('IntersectionObserver' in window)) return;
+
+        function setActive(id) {
+          tocLinks.forEach(function (a) {
+            var on = a.getAttribute('href') === '#' + id;
+            a.classList.toggle('is-active', on);
+          });
+        }
+
+        var observer = new IntersectionObserver(
+          function (entries) {
+            var visible = entries
+              .filter(function (e) { return e.isIntersecting; })
+              .sort(function (a, b) { return a.boundingClientRect.top - b.boundingClientRect.top; });
+            if (visible.length) {
+              setActive(visible[0].target.id);
+            }
+          },
+          { rootMargin: '-96px 0px -70% 0px', threshold: 0 }
+        );
+
+        headings.forEach(function (h) { observer.observe(h); });
+
+        if (location.hash) {
+          var target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+          if (target) {
+            setTimeout(function () {
+              target.scrollIntoView({ behavior: 'auto', block: 'start' });
+              setActive(target.id);
+            }, 0);
+          }
+        } else if (headings[0]) {
+          setActive(headings[0].id);
+        }
+
+        window.addEventListener('hashchange', function () {
+          var id = decodeURIComponent(location.hash.slice(1));
+          var el = document.getElementById(id);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setActive(id);
+          }
+        });
+      }
+
+      function rewriteMdLinks(container) {
+        container.querySelectorAll('a[href]').forEach(function (a) {
+          var href = a.getAttribute('href') || '';
+          if (!/\.md([#?]|$)/.test(href)) return;
+          var parts = href.split('#');
+          var path = parts[0].replace(/^\.\//, '');
+          var hash = parts[1] ? '#' + parts[1] : '';
+          a.setAttribute('href', 'doc-preview.html?file=' + encodeURIComponent(path) + hash);
+        });
+      }
+
+      function promoteMermaidBlocks(container) {
+        container.querySelectorAll('pre code.language-mermaid').forEach(function (code) {
+          var pre = code.parentElement;
+          if (!pre) return;
+          var div = document.createElement('div');
+          div.className = 'mermaid';
+          div.textContent = code.textContent;
+          pre.replaceWith(div);
+        });
+      }
+
+      function renderMermaidDiagrams(container) {
+        var blocks = container.querySelectorAll('.mermaid');
+        if (!blocks.length) return Promise.resolve();
+        if (typeof mermaid === 'undefined') return Promise.resolve();
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: 'neutral',
+          flowchart: { curve: 'basis', htmlLabels: true },
+        });
+        return mermaid.run({ nodes: blocks });
+      }
+
+      function loadMermaid() {
+        return new Promise(function (resolve) {
+          if (typeof mermaid !== 'undefined') {
+            resolve();
+            return;
+          }
+          var s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js';
+          s.onload = function () { resolve(); };
+          s.onerror = function () {
+            var s2 = document.createElement('script');
+            s2.src = 'https://unpkg.com/mermaid@10.9.1/dist/mermaid.min.js';
+            s2.onload = function () { resolve(); };
+            s2.onerror = function () { resolve(); };
+            document.head.appendChild(s2);
+          };
+          document.head.appendChild(s);
+        });
+      }
+
+      function finishRender(md) {
+        var firstLine = (md.match(/^#\s+(.+)$/m) || [])[1];
+        if (firstLine) titleEl.textContent = firstLine.replace(/\s*·.*$/, '').trim();
+        rootEl.innerHTML = marked.parse(md);
+        rewriteMdLinks(rootEl);
+        promoteMermaidBlocks(rootEl);
+        return loadMermaid()
+          .then(function () { return renderMermaidDiagrams(rootEl); })
+          .catch(function () {})
+          .then(function () {
+            var headings = buildHeadingAnchors(rootEl);
+            var tocLinks = buildToc(headings);
+            initScrollSpy(headings, tocLinks);
+          });
+      }
+
+      fetch(currentFile, { credentials: 'same-origin' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        })
+        .then(finishRender)
+        .catch(function (err) {
+          rootEl.innerHTML =
+            '<p class="error">无法加载「' +
+            currentFile +
+            '」<br><small>' +
+            (err && err.message ? err.message : '') +
+            '</small></p>';
+          tocEl.innerHTML = '<p class="toc__title">章节</p><p class="toc__empty">—</p>';
+        });
+    })();
+  </script>
+</body>
+</html>

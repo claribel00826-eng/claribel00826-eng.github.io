@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>标注文档 · v1.4.0</title>
+  <style>
+    body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; margin: 0; background: #fafafa; color: #18181b; }
+    header { padding: 16px 20px; background: #fff; border-bottom: 1px solid #e4e4e7; }
+    header a { color: #4f46e5; text-decoration: none; font-weight: 600; }
+    main { max-width: 48rem; margin: 0 auto; padding: 20px; }
+    pre { white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.6; background: #fff; border: 1px solid #e4e4e7; border-radius: 8px; padding: 16px; }
+    nav { margin: 12px 0; }
+    nav a { margin-right: 12px; font-size: 14px; }
+    nav a.is-active { font-weight: 600; color: #4f46e5; }
+    .hint { font-size: 13px; color: #71717a; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="../index.html">← 返回 H5 原型</a>
+    <h1 style="margin:8px 0 0;font-size:18px">标注文档 · v1.4.0</h1>
+    <p class="hint">本版标注文档 <strong>02～06</strong>（不含意图路由钉）。06 为经营分析 · 产能分析，产品源稿见 <a href="../功能描述-经营分析-v1.4.0.md">功能描述</a>。</p>
+  </header>
+  <main>
+    <nav id="doc-nav">
+      <a href="?doc=02" data-doc="02">02 · 方案报价下单</a>
+      <a href="?doc=03" data-doc="03">03 · 增量验收</a>
+      <a href="?doc=04" data-doc="04">04 · 数据填槽需求</a>
+      <a href="?doc=05" data-doc="05">05 · 交期与订单运营</a>
+      <a href="?doc=06" data-doc="06">06 · 经营分析</a>
+    </nav>
+    <pre id="doc-body">加载中…</pre>
+  </main>
+  <script>
+    const DOCS = {
+      '02': '02-方案报价下单.md',
+      '03': '03-v1.2.0-增量验收.md',
+      '04': '04-数据填槽需求.md',
+      '05': '05-交期与订单运营.md',
+      '06': '06-经营分析.md',
+    };
+    const params = new URLSearchParams(location.search);
+    const docId = params.get('doc') || '06';
+    const file = DOCS[docId] || DOCS['06'];
+    document.querySelectorAll('#doc-nav a').forEach(function (a) {
+      if (a.getAttribute('data-doc') === docId) a.classList.add('is-active');
+    });
+    fetch(file)
+      .then(function (r) { return r.text(); })
+      .then(function (t) { document.getElementById('doc-body').textContent = t; })
+      .catch(function () { document.getElementById('doc-body').textContent = '无法加载 ' + file; });
+  </script>
+</body>
+</html>

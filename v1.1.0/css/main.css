@@ -436,7 +436,15 @@ body {
   text-overflow: ellipsis;
 }
 
-.sc-header__clear {
+.sc-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sc-header__clear,
+.sc-header__logout {
   position: relative;
   z-index: 25;
   flex-shrink: 0;
@@ -450,7 +458,8 @@ body {
   cursor: pointer;
 }
 
-.sc-header__clear:hover:not(:disabled) {
+.sc-header__clear:hover:not(:disabled),
+.sc-header__logout:hover:not(:disabled) {
   color: #dc2626;
   border-color: #fecaca;
   background: #fef2f2;
@@ -1343,6 +1352,47 @@ body {
   z-index: 200;
   display: flex;
   align-items: flex-end;
+  justify-content: center;
+}
+
+.sc-overlay--dialog {
+  align-items: center;
+  padding: 24px 16px;
+}
+
+.sc-dialog {
+  width: 100%;
+  max-width: 320px;
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.sc-dialog__head {
+  font-size: 15px;
+  font-weight: 600;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f4f4f5;
+}
+
+.sc-dialog__prompt {
+  margin: 16px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.sc-dialog__actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.sc-dialog__actions .sc-btn {
+  flex: 1;
+  min-width: 0;
   justify-content: center;
 }
 
