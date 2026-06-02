@@ -27,12 +27,15 @@ jobs:
           set -e
           mkdir -p _pages
           cp index.html _pages/
-          cp index.html _pages/404.html
-          cp -r shared v1.1.0 v1.2.0 _pages/
+          cp 404.html _pages/404.html
+          cp -r shared js v1.1.0 v1.2.0 v1.3.0 v1.4.0 _pages/
           touch _pages/.nojekyll
+          test -f _pages/js/portal-base.js
+          test -f _pages/v1.1.0/index.html
           test -f _pages/v1.2.0/index.html
           test -f _pages/v1.2.0/js/app.js
-          test -f _pages/v1.1.0/index.html
+          test -f _pages/v1.3.0/index.html
+          test -f _pages/v1.4.0/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _pages
