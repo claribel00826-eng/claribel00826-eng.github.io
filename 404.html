@@ -127,15 +127,47 @@
     </p>
     <p class="portal__label">版本列表</p>
     <ul class="version-list" id="version-list">
+      <li data-version="v1.4.0">
+        <article class="version-card">
+          <div class="version-card__row">
+            <span class="version-card__id">v1.4.0</span>
+            <span class="version-card__tag">当前开发中</span>
+          </div>
+          <p class="version-card__meta">v1.3.0 + 经营分析：产能分析（排至日期 + 产线甘特 + 占用详情）</p>
+          <p class="version-card__links">
+            <a href="v1.4.0/index.html">打开 H5 原型</a>
+            <a href="v1.4.0/PRD.md">PRD（增量）</a>
+            <a href="v1.4.0/Plan.md">Plan</a>
+            <a href="v1.4.0/功能描述-经营分析-v1.4.0.md">功能描述</a>
+          </p>
+        </article>
+      </li>
+      <li data-version="v1.3.0">
+        <article class="version-card">
+          <div class="version-card__row">
+            <span class="version-card__id">v1.3.0</span>
+            <span class="version-card__tag">已发布</span>
+          </div>
+          <p class="version-card__meta">v1.2.0 + 交期三来源评审、订单五类状态与进度轴、复制/变更订单</p>
+          <p class="version-card__links">
+            <a href="v1.3.0/index.html">打开 H5 原型</a>
+            <a href="v1.3.0/意图识别说明.html">意图识别说明</a>
+            <a href="v1.3.0/PRD.md">PRD（增量）</a>
+            <a href="v1.3.0/Plan.md">Plan</a>
+            <a href="v1.3.0/annotation-docs/index.html">标注文档</a>
+          </p>
+        </article>
+      </li>
       <li data-version="v1.2.0">
         <article class="version-card">
           <div class="version-card__row">
             <span class="version-card__id">v1.2.0</span>
-            <span class="version-card__tag">当前</span>
+            <span class="version-card__tag">已发布</span>
           </div>
           <p class="version-card__meta">v1.1.0 + 主链路：方案速配 → 产品报价 → 确认下单（无交期卡点）</p>
           <p class="version-card__links">
             <a href="v1.2.0/index.html">打开 H5 原型</a>
+            <a href="v1.2.0/意图识别说明.html">意图识别说明</a>
             <a href="v1.2.0/PRD.md">PRD（增量）</a>
             <a href="v1.2.0/Plan.md">Plan</a>
             <a href="v1.2.0/annotation-docs/index.html">标注文档</a>
@@ -160,18 +192,29 @@
     </ul>
     <p class="portal__foot">新增版本时：复制上一版 <code>v*/</code> 目录 → 更新本页列表。演示账号 <code>demo</code> / <code>123456</code>。</p>
   </main>
+  <script src="/js/portal-base.js"></script>
   <script>
     (function () {
-      document.querySelectorAll('.version-card').forEach(function (card) {
-        var proto = card.querySelector('a[href$="index.html"]');
-        if (proto) {
+      function bindCards() {
+        document.querySelectorAll('.version-card').forEach(function (card) {
+          var proto = card.querySelector('a[href$="index.html"]');
+          if (!proto) return;
           card.style.cursor = 'pointer';
           card.addEventListener('click', function (e) {
             if (e.target.closest('a')) return;
-            window.location.href = proto.getAttribute('href');
+            window.location.href = proto.href;
           });
-        }
-      });
+        });
+      }
+      function run() {
+        if (window.PortalBase) PortalBase.fixLinks(document);
+        bindCards();
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run);
+      } else {
+        run();
+      }
     })();
   </script>
 </body>
