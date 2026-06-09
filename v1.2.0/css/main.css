@@ -2149,7 +2149,18 @@ button.is-flow-stale,
   width: 48px;
   flex-shrink: 0;
 }
-/* 工艺版本：规格行下方整行 */
+/* 自定义项：规格行下方 N 行（整行下拉/输入） */
+.sc-quote-line__custom-row {
+  min-width: 0;
+  margin: 0;
+}
+.sc-quote-line__custom-row .sc-quote-line__custom-select,
+.sc-quote-line__custom-row .sc-quote-line__custom-input {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+/* 工艺版本：自定义项下方整行 */
 .sc-quote-line__fields > .sc-quote-line__field {
   min-width: 0;
   margin: 0;
@@ -2489,6 +2500,27 @@ button.is-flow-stale,
 
 .sc-order-confirm__sub {
   font-weight: 600;
+}
+
+.sc-order-confirm__custom td {
+  padding-top: 0;
+  padding-bottom: 6px;
+  border-bottom: none;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.sc-order-confirm__custom-cell {
+  padding-left: 2.5em;
+}
+
+.sc-order-confirm__custom-label {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.sc-order-confirm__main + .sc-order-confirm__custom td {
+  border-top: none;
 }
 
 .sc-order-confirm__total {

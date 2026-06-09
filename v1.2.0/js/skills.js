@@ -4652,7 +4652,10 @@ window.Skills = (function () {
         unitPrice: quotePrice,
         sub: quotePrice * qty
       },
-      DemoData.lineCommercialFields(product, skuId)
+      DemoData.lineCommercialFields(product, skuId),
+      {
+        customAttrs: DemoData.resolveLineCustomAttrs(product, skuId, opts && opts.customAttrs)
+      }
     );
   }
 
@@ -4747,6 +4750,83 @@ window.Skills = (function () {
     const fields = DemoData.lineCommercialFields(pr, line.skuId);
     if (!opts.keepProcess && !line._processVersionTouched) line.processVersion = fields.processVersion;
     if (!opts.keepTax && !line._taxRateTouched) line.taxRate = fields.taxRate;
+    if (!opts.keepCustom && !line._customAttrsTouched) {
+      line.customAttrs = DemoData.resolveLineCustomAttrs(pr, line.skuId);
+    }
+  }
+
+  function syncLineCustomAttrsFromDom(line, idx) {
+    const pr = productById(line.productId);
+    if (!pr) return;
+    const defs = DemoData.productCustomAttrDefs(pr);
+    if (!defs.length) return;
+    const pid = line.productId;
+    const attrs = defs.map(function (d) {
+      const el =
+        document.querySelector(
+          '[data-action="quote-line-custom"][data-pid="' + pid + '"][data-attr-key="' + d.key + '"]'
+        ) ||
+        document.querySelector(
+          '[data-action="quote-line-custom"][data-idx="' + idx + '"][data-attr-key="' + d.key + '"]'
+        );
+      const prev = (line.customAttrs || []).find(function (x) { return x.key === d.key; });
+      return {
+        key: d.key,
+        label: d.label,
+        value: el ? el.value : prev && prev.value != null ? prev.value : '',
+        options: d.options
+      };
+    });
+    line.customAttrs = attrs;
+    line._customAttrsTouched = true;
+  }
+
+  function renderQuoteLineCustomAttrRows(pr, line, pid, idx) {
+    const attrs = line.customAttrs || DemoData.resolveLineCustomAttrs(pr, line.skuId);
+    if (!attrs.length) return '';
+    return attrs
+      .map(function (a) {
+        const hasOpts = a.options && a.options.length;
+        const inputHtml = hasOpts
+          ? '<select class="sc-input sc-input--field sc-quote-line__custom-select" data-action="quote-line-custom" data-pid="' +
+            pid +
+            '" data-idx="' +
+            idx +
+            '" data-attr-key="' +
+            App.escapeHtml(a.key) +
+            '">' +
+            a.options
+              .map(function (o) {
+                return (
+                  '<option value="' +
+                  App.escapeHtml(o) +
+                  '"' +
+                  (o === a.value ? ' selected' : '') +
+                  '>' +
+                  App.escapeHtml(o) +
+                  '</option>'
+                );
+              })
+              .join('') +
+            '</select>'
+          : '<input type="text" class="sc-input sc-input--field sc-quote-line__custom-input" data-action="quote-line-custom" data-pid="' +
+            pid +
+            '" data-idx="' +
+            idx +
+            '" data-attr-key="' +
+            App.escapeHtml(a.key) +
+            '" value="' +
+            App.escapeHtml(a.value || '') +
+            '"/>';
+        return (
+          '<label class="sc-quote-line__field sc-quote-line__custom-row">' +
+          App.escapeHtml(a.label) +
+          ' ' +
+          inputHtml +
+          '</label>'
+        );
+      })
+      .join('');
   }
 
   function validateQuoteLineCommercial(pending) {
@@ -4801,6 +4881,7 @@ window.Skills = (function () {
       idx +
       '" class="sc-qty-input sc-input sc-input--field"/></label>' +
       '</div>' +
+      renderQuoteLineCustomAttrRows(pr, line, pid, idx) +
       renderQuoteLineProcessVersionField(pr, line, pid, idx) +
       '<div class="sc-quote-price-hints"><span>最新售价 <strong data-quote-latest="' +
       pid +
@@ -4914,6 +4995,7 @@ window.Skills = (function () {
           line._taxRateTouched = true;
         }
       }
+      syncLineCustomAttrsFromDom(line, idx);
       line.sub = (line.quotePrice || 0) * line.qty;
       line.unitPrice = line.quotePrice;
       const subEl = document.querySelector('[data-quote-sub="' + pid + '"]');
@@ -5696,6 +5778,7 @@ window.Skills = (function () {
           skuLabel: l.skuLabel,
           processVersion: l.processVersion,
           taxRate: l.taxRate,
+          customAttrs: l.customAttrs,
           qty: l.qty,
           salesUnit: l.salesUnit,
           unitPrice: l.quotePrice != null ? l.quotePrice : l.unitPrice,
@@ -5764,7 +5847,8 @@ window.Skills = (function () {
         qty: l.qty,
         skuLabel: l.skuLabel,
         processVersion: l.processVersion,
-        taxRate: l.taxRate
+        taxRate: l.taxRate,
+        customAttrs: l.customAttrs
       }))
     };
   }
@@ -5819,6 +5903,23 @@ window.Skills = (function () {
     return parts.length ? parts.join(' · ') : '—';
   }
 
+  function renderOrderLineCustomAttrRows(line) {
+    const attrs = line.customAttrs;
+    if (!attrs || !attrs.length) return '';
+    return attrs
+      .map(function (a) {
+        return (
+          '<tr class="sc-order-confirm__custom"><td></td><td colspan="7" class="sc-order-confirm__custom-cell">' +
+          '<span class="sc-order-confirm__custom-label">' +
+          App.escapeHtml(a.label) +
+          '</span> ' +
+          App.escapeHtml(a.value || '—') +
+          '</td></tr>'
+        );
+      })
+      .join('');
+  }
+
   function orderSourceLabel(pending) {
     if (!pending) return '—';
     if (pending.sourceType === 'quote' && pending.quoteId) {
@@ -5837,8 +5938,9 @@ window.Skills = (function () {
         const unit = line.salesUnit || '件';
         const price = line.quotePrice != null ? line.quotePrice : line.unitPrice || 0;
         const sub = line.sub != null ? line.sub : price * (line.qty || 1);
+        const customRows = renderOrderLineCustomAttrRows(line);
         return (
-          '<tr><td class="sc-order-confirm__idx">' +
+          '<tr class="sc-order-confirm__main"><td class="sc-order-confirm__idx">' +
           (i + 1) +
           '</td><td><strong>' +
           App.escapeHtml(line.inventoryName || '—') +
@@ -5858,7 +5960,8 @@ window.Skills = (function () {
           fmtMoney(price) +
           '</td><td class="sc-order-confirm__num sc-order-confirm__sub">' +
           fmtMoney(sub) +
-          '</td></tr>'
+          '</td></tr>' +
+          customRows
         );
       })
       .join('');

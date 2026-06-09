@@ -194,9 +194,13 @@ window.DemoData = {
       latestPrice: 1320,
       minPrice: 1150,
       defaultTaxRate: 13,
+      customAttrs: [
+        { key: 'color', label: '颜色', options: ['标准银', '哑光黑', '工程蓝'] },
+        { key: 'surface', label: '表面处理', options: ['磷化', '镀锌', '本色'] }
+      ],
       skus: [
-        { id: 'p1-s1', label: '标准型 Φ120', processVersion: 'V2024.1' },
-        { id: 'p1-s2', label: '加强型 Φ120', processVersion: 'V2024.2' }
+        { id: 'p1-s1', label: '标准型 Φ120', processVersion: 'V2024.1', customAttrValues: { color: '标准银', surface: '磷化' } },
+        { id: 'p1-s2', label: '加强型 Φ120', processVersion: 'V2024.2', customAttrValues: { color: '哑光黑', surface: '镀锌' } }
       ]
     },
     {
@@ -210,9 +214,10 @@ window.DemoData = {
       unitPrice: 3680,
       latestPrice: 3680,
       minPrice: 3250,
+      customAttrs: [{ key: 'install', label: '安装方向确认', options: ['卧式', '立式'] }],
       skus: [
-        { id: 'p2-s1', label: '卧式 M3' },
-        { id: 'p2-s2', label: '立式 M3' }
+        { id: 'p2-s1', label: '卧式 M3', customAttrValues: { install: '卧式' } },
+        { id: 'p2-s2', label: '立式 M3', customAttrValues: { install: '立式' } }
       ],
       customItems: ['减速比1:30', '产线主传动']
     },
@@ -228,9 +233,13 @@ window.DemoData = {
       latestPrice: 2180,
       minPrice: 1920,
       defaultTaxRate: 13,
+      customAttrs: [
+        { key: 'color', label: '颜色', options: ['银灰', '黑色', '工程蓝'] },
+        { key: 'encoder', label: '编码器', options: ['增量式', '绝对值'] }
+      ],
       skus: [
-        { id: 'p3-s1', label: '法兰安装', processVersion: 'V2025-A' },
-        { id: 'p3-s2', label: '底座安装', processVersion: 'V2025-A' }
+        { id: 'p3-s1', label: '法兰安装', processVersion: 'V2025-A', customAttrValues: { color: '银灰', encoder: '增量式' } },
+        { id: 'p3-s2', label: '底座安装', processVersion: 'V2025-A', customAttrValues: { color: '黑色', encoder: '绝对值' } }
       ],
       customItems: ['750W伺服', '自动化产线标配']
     },
@@ -697,7 +706,55 @@ window.DemoData = {
         else if (x && (x.label || x.value)) parts.push(x.label || x.value);
       });
     }
+    (product.customAttrs || []).forEach(function (a) {
+      if (!a) return;
+      if (typeof a === 'string') parts.push(a);
+      else {
+        if (a.label) parts.push(a.label);
+        (a.options || []).forEach(function (o) {
+          if (o) parts.push(o);
+        });
+      }
+    });
     return parts.filter(Boolean);
+  },
+
+  /** 产品自定义属性定义（规格行下方 N 行） */
+  productCustomAttrDefs(product) {
+    if (!product || !Array.isArray(product.customAttrs)) return [];
+    return product.customAttrs.map(function (a) {
+      if (typeof a === 'string') return { key: a, label: a, options: [] };
+      return {
+        key: a.key || a.label,
+        label: a.label || a.key,
+        options: Array.isArray(a.options) ? a.options : []
+      };
+    });
+  },
+
+  /** 按 SKU 解析行级自定义项（报价/下单行快照） */
+  resolveLineCustomAttrs(product, skuId, saved) {
+    const defs = DemoData.productCustomAttrDefs(product);
+    if (!defs.length) return [];
+    const sk = (product.skus || []).find(function (s) {
+      return s.id === skuId;
+    });
+    const skuVals = (sk && sk.customAttrValues) || {};
+    const savedMap = {};
+    if (Array.isArray(saved)) {
+      saved.forEach(function (x) {
+        if (x && x.key != null) savedMap[x.key] = x.value;
+      });
+    }
+    return defs.map(function (d) {
+      const fallback = skuVals[d.key] != null ? skuVals[d.key] : d.options[0] || '';
+      return {
+        key: d.key,
+        label: d.label,
+        value: savedMap[d.key] != null ? savedMap[d.key] : fallback,
+        options: d.options
+      };
+    });
   },
 
   productMatchBlob(product) {

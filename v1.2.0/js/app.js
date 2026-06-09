@@ -2112,6 +2112,8 @@
       if (quoteLineSku && window.Skills && Skills.onQuoteLineSkuChange) Skills.onQuoteLineSkuChange(quoteLineSku);
       const quoteLineProcess = e.target.closest('[data-action="quote-line-process"]');
       if (quoteLineProcess && window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
+      const quoteLineCustom = e.target.closest('[data-action="quote-line-custom"]');
+      if (quoteLineCustom && window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
       const orderSku = e.target.closest('[data-action="order-sku"]');
       if (orderSku && window.Skills) Skills.handleAction('order-sku', orderSku);
       const sel = e.target.closest('[data-action="plan-sku"]');
@@ -2128,7 +2130,8 @@
       if (
         e.target.closest('[data-action="quote-line-price"]') ||
         e.target.closest('[data-action="quote-line-qty"]') ||
-        e.target.closest('[data-action="quote-line-tax"]')
+        e.target.closest('[data-action="quote-line-tax"]') ||
+        e.target.closest('[data-action="quote-line-custom"]')
       ) {
         if (window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
       }
