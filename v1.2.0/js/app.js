@@ -2106,18 +2106,10 @@
     if (skillSwitchDiscard) skillSwitchDiscard.onclick = () => confirmSkillSwitchDiscard();
 
     document.addEventListener('change', (e) => {
-      const skuSel = e.target.closest('[data-action="quote-sku"]');
-      if (skuSel && window.Skills) Skills.handleAction('quote-sku', skuSel);
-      const quoteLineSku = e.target.closest('[data-action="quote-line-sku"]');
-      if (quoteLineSku && window.Skills && Skills.onQuoteLineSkuChange) Skills.onQuoteLineSkuChange(quoteLineSku);
+      const pickFreeAttr = e.target.closest('[data-action="pick-free-attr"]');
+      if (pickFreeAttr && window.Skills && Skills.onPickFreeAttrChange) Skills.onPickFreeAttrChange(pickFreeAttr);
       const quoteLineProcess = e.target.closest('[data-action="quote-line-process"]');
       if (quoteLineProcess && window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
-      const quoteLineCustom = e.target.closest('[data-action="quote-line-custom"]');
-      if (quoteLineCustom && window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
-      const orderSku = e.target.closest('[data-action="order-sku"]');
-      if (orderSku && window.Skills) Skills.handleAction('order-sku', orderSku);
-      const sel = e.target.closest('[data-action="plan-sku"]');
-      if (sel && window.Skills) Skills.handleAction('plan-sku', sel);
       const planQty = e.target.closest('[data-action="plan-qty"]');
       if (planQty && window.Skills && Skills.syncPlanQtyFromDom) Skills.syncPlanQtyFromDom();
       const quoteQty = e.target.closest('[data-action="quote-qty"]');
@@ -2131,7 +2123,7 @@
         e.target.closest('[data-action="quote-line-price"]') ||
         e.target.closest('[data-action="quote-line-qty"]') ||
         e.target.closest('[data-action="quote-line-tax"]') ||
-        e.target.closest('[data-action="quote-line-custom"]')
+        e.target.closest('[data-action="pick-free-attr"]')
       ) {
         if (window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
       }

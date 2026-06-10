@@ -795,6 +795,7 @@ window.Skills = (function () {
       awaitingDemand: false,
       selected: {},
       sku: {},
+      customAttrs: {},
       qty: {},
       templateId: null,
       moreVisible: PLAN_MORE_PAGE_SIZE
@@ -1964,7 +1965,10 @@ window.Skills = (function () {
       const pid = row.product.id;
       plan.selected[pid] = true;
       plan.qty[pid] = plan.qty[pid] || 1;
-      plan.sku[pid] = DemoData.defaultSkuId(row.product);
+      const skuId = DemoData.defaultSkuId(row.product);
+      plan.sku[pid] = skuId;
+      if (!plan.customAttrs) plan.customAttrs = {};
+      plan.customAttrs[pid] = DemoData.resolveLineCustomAttrs(row.product, skuId);
     });
     const tpl = DemoData.planTemplates[0];
     if (!tpl) return null;
@@ -2259,6 +2263,7 @@ window.Skills = (function () {
     if (!plan) return;
     plan.selected = {};
     plan.sku = {};
+    plan.customAttrs = {};
     plan.qty = {};
     plan.filter = '';
     resetPlanMoreVisible(plan);
@@ -2321,10 +2326,11 @@ window.Skills = (function () {
         return ctx().orderDraft;
       },
       refresh: refreshLastOrderPickCard,
-      resetSelections: function (draft) {
+        resetSelections: function (draft) {
         if (!draft) return;
         draft.selected = {};
         draft.sku = {};
+        draft.customAttrs = {};
         draft.qty = {};
         draft.filter = '';
         resetPickMoreVisible(draft);
@@ -2517,6 +2523,7 @@ window.Skills = (function () {
     if (!draft) return;
     draft.selected = {};
     draft.sku = {};
+    draft.customAttrs = {};
     draft.qty = {};
     draft.filter = '';
     resetPickMoreVisible(draft);
@@ -2542,6 +2549,7 @@ window.Skills = (function () {
       awaitingDemand: false,
       selected: {},
       sku: {},
+      customAttrs: {},
       qty: {},
       quotePrice: {},
       saveAsScheme: false,
@@ -2861,11 +2869,66 @@ window.Skills = (function () {
     });
   }
 
-  function syncPlanSkuFromDom() {
-    document.querySelectorAll('[data-action="plan-sku"]').forEach((sel) => {
-      const id = sel.getAttribute('data-pid');
-      if (id && ctx().plan) ctx().plan.sku[id] = sel.value;
+  function pickDraftForScope(scope) {
+    if (scope === 'plan') return ctx().plan;
+    if (scope === 'quote') return ctx().quoteDraft;
+    if (scope === 'order') return ctx().orderDraft;
+    return null;
+  }
+
+  function ensurePickCustomAttrs(draft, pid, product) {
+    if (!draft.customAttrs) draft.customAttrs = {};
+    if (!draft.sku) draft.sku = {};
+    if (!draft.customAttrs[pid]) {
+      const skuId = draft.sku[pid] || DemoData.defaultSkuId(product);
+      draft.customAttrs[pid] = DemoData.resolveLineCustomAttrs(product, skuId);
+      draft.sku[pid] = skuId;
+    }
+    return draft.customAttrs[pid];
+  }
+
+  function syncPickSkuFromCustomAttrs(draft, pid, product) {
+    const attrs = draft.customAttrs && draft.customAttrs[pid];
+    if (!attrs || !product) return;
+    const map = {};
+    attrs.forEach(function (a) {
+      if (a && a.key) map[a.key] = a.value;
     });
+    if (!draft.sku) draft.sku = {};
+    draft.sku[pid] = DemoData.resolveSkuFromAttrValues(product, map);
+  }
+
+  function syncPickCustomAttrsFromDom(scope) {
+    const draft = pickDraftForScope(scope);
+    if (!draft) return;
+    document.querySelectorAll('[data-action="pick-free-attr"][data-scope="' + scope + '"]').forEach(function (el) {
+      const pid = el.getAttribute('data-pid');
+      const key = el.getAttribute('data-attr-key');
+      if (!pid || !key) return;
+      const pr = productById(pid);
+      if (!pr) return;
+      ensurePickCustomAttrs(draft, pid, pr);
+      const attrs = draft.customAttrs[pid];
+      const a = attrs.find(function (x) {
+        return x.key === key;
+      });
+      if (a) a.value = el.value;
+      draft._customAttrsTouched = draft._customAttrsTouched || {};
+      draft._customAttrsTouched[pid] = true;
+      syncPickSkuFromCustomAttrs(draft, pid, pr);
+    });
+  }
+
+  function syncPlanSkuFromDom() {
+    syncPickCustomAttrsFromDom('plan');
+  }
+
+  function syncQuotePickCustomAttrsFromDom() {
+    syncPickCustomAttrsFromDom('quote');
+  }
+
+  function syncOrderPickCustomAttrsFromDom() {
+    syncPickCustomAttrsFromDom('order');
   }
 
   function planSelectedIds() {
@@ -2875,31 +2938,82 @@ window.Skills = (function () {
   function ensurePlanSku(pid, product) {
     const plan = ctx().plan;
     if (!plan.sku) plan.sku = {};
-    if (!plan.sku[pid]) plan.sku[pid] = DemoData.defaultSkuId(product);
+    ensurePickCustomAttrs(plan, pid, product);
   }
 
-  function renderSkuSelect(product, pid) {
-    ensurePlanSku(pid, product);
-    const cur = ctx().plan.sku[pid];
-    const opts = (product.skus || [])
-      .map(
-        (s) =>
-          '<option value="' +
-          s.id +
-          '"' +
-          (s.id === cur ? ' selected' : '') +
-          '>' +
-          App.escapeHtml(s.label) +
-          '</option>'
-      )
-      .join('');
+  function renderPickFreeAttrRows(product, pid, scope, lineOpts) {
+    const defs = DemoData.productCustomAttrDefs(product);
+    if (!defs.length) return '';
+    let attrs;
+    if (scope === 'quote-line' && lineOpts && lineOpts.line) {
+      attrs = lineOpts.line.customAttrs || DemoData.resolveLineCustomAttrs(product, lineOpts.line.skuId);
+    } else {
+      const draft = pickDraftForScope(scope);
+      attrs = ensurePickCustomAttrs(draft, pid, product);
+    }
+    const idx = lineOpts && lineOpts.idx != null ? lineOpts.idx : '';
+    const stopProp = scope === 'quote' || scope === 'order' ? ' onclick="event.stopPropagation()"' : '';
     return (
-      '<label class="sc-plan-sku-label">规格 <select class="sc-plan-sku-select" data-action="plan-sku" data-pid="' +
-      pid +
-      '" onclick="event.stopPropagation()">' +
-      opts +
-      '</select></label>'
+      '<div class="sc-pick-free-attrs">' +
+      attrs
+        .map(function (a) {
+          const hasOpts = a.options && a.options.length;
+          const inputHtml = hasOpts
+            ? '<select class="sc-pick-free-attr__control sc-pick-free-attr__select" data-action="pick-free-attr" data-scope="' +
+              scope +
+              '" data-pid="' +
+              pid +
+              '" data-attr-key="' +
+              App.escapeHtml(a.key) +
+              '"' +
+              (idx !== '' ? ' data-idx="' + idx + '"' : '') +
+              stopProp +
+              '>' +
+              a.options
+                .map(function (o) {
+                  return (
+                    '<option value="' +
+                    App.escapeHtml(o) +
+                    '"' +
+                    (o === a.value ? ' selected' : '') +
+                    '>' +
+                    App.escapeHtml(o) +
+                    '</option>'
+                  );
+                })
+                .join('') +
+              '</select>'
+            : '<input type="text" class="sc-pick-free-attr__control sc-pick-free-attr__input" data-action="pick-free-attr" data-scope="' +
+              scope +
+              '" data-pid="' +
+              pid +
+              '" data-attr-key="' +
+              App.escapeHtml(a.key) +
+              '"' +
+              (idx !== '' ? ' data-idx="' + idx + '"' : '') +
+              stopProp +
+              ' value="' +
+              App.escapeHtml(a.value || '') +
+              '"/>';
+          return (
+            '<label class="sc-pick-free-attr">' +
+            '<span class="sc-pick-free-attr__label">' +
+            App.escapeHtml(a.label) +
+            '</span>' +
+            inputHtml +
+            '</label>'
+          );
+        })
+        .join('') +
+      '</div>'
     );
+  }
+
+  function renderPickSpecBlock(product, pid, scope, lineOpts) {
+    const freeAttrs = renderPickFreeAttrRows(product, pid, scope, lineOpts);
+    if (!freeAttrs) return '';
+    if (scope === 'quote-line') return freeAttrs;
+    return '<div class="sc-pick-spec-block">' + freeAttrs + '</div>';
   }
 
   function renderPlanQtyInput(pid) {
@@ -2966,8 +3080,8 @@ window.Skills = (function () {
       App.escapeHtml(product.name) +
       '</span>' +
       pickRowTagsHtml(tagHtml) +
-      '</button><div class="sc-plan-sku-row sc-plan-sku-row--inline">' +
-      renderSkuSelect(product, pid) +
+      '</button><div class="sc-plan-sku-row sc-plan-sku-row--inline sc-plan-sku-row--free">' +
+      renderPickSpecBlock(product, pid, 'plan') +
       renderPlanQtyInput(pid) +
       '</div></div>'
     );
@@ -2977,7 +3091,7 @@ window.Skills = (function () {
     const d = ctx().quoteDraft;
     if (!d) return;
     if (!d.sku) d.sku = {};
-    if (!d.sku[pid]) d.sku[pid] = DemoData.defaultSkuId(product);
+    ensurePickCustomAttrs(d, pid, product);
   }
 
   /** 报价/下单选品行：规格 + 数量同一行；规格下拉始终可改 */
@@ -2999,9 +3113,8 @@ window.Skills = (function () {
       App.escapeHtml(product.name) +
       '</span>' +
       pickRowTagsHtml(tagHtml) +
-      '</button><div class="sc-plan-sku-row sc-plan-sku-row--inline">' +
-      renderQuoteSkuSelect(product, pid) +
-      renderQuoteQtyInput(pid) +
+      '</button><div class="sc-plan-sku-row sc-plan-sku-row--inline sc-plan-sku-row--free">' +
+      renderPickSpecBlock(product, pid, 'quote') +
       '</div></div>'
     );
   }
@@ -3010,7 +3123,7 @@ window.Skills = (function () {
     const d = ctx().orderDraft;
     if (!d) return;
     if (!d.sku) d.sku = {};
-    if (!d.sku[pid]) d.sku[pid] = DemoData.defaultSkuId(product);
+    ensurePickCustomAttrs(d, pid, product);
   }
 
   function orderDemandForMatch() {
@@ -3047,9 +3160,8 @@ window.Skills = (function () {
       App.escapeHtml(product.name) +
       '</span>' +
       pickRowTagsHtml(tagHtml) +
-      '</button><div class="sc-plan-sku-row sc-plan-sku-row--inline">' +
-      renderOrderSkuSelect(product, pid) +
-      renderOrderQtyInput(pid) +
+      '</button><div class="sc-plan-sku-row sc-plan-sku-row--inline sc-plan-sku-row--free">' +
+      renderPickSpecBlock(product, pid, 'order') +
       '</div></div>'
     );
   }
@@ -3262,11 +3374,11 @@ window.Skills = (function () {
       .map((it) => {
         const pid = it.p.id;
         return (
-          '<div class="sc-plan-cart-row"><span class="sc-follow-row__name">' +
+          '<div class="sc-plan-cart-row sc-plan-cart-row--free"><span class="sc-follow-row__name">' +
           App.escapeHtml(it.p.name) +
           '</span>' +
-          renderSkuSelect(it.p, pid) +
-          '<label class="sc-qty-inline">数量 <input type="number" min="1" value="' +
+          renderPickSpecBlock(it.p, pid, 'plan') +
+          '<label class="sc-qty-inline sc-plan-cart-qty">数量 <input type="number" min="1" value="' +
           it.qty +
           '" data-action="plan-qty" data-pid="' +
           pid +
@@ -3484,11 +3596,16 @@ window.Skills = (function () {
       const p = productById(pid);
       const qty = plan.qty[pid] || 1;
       const skuId = plan.sku[pid] || DemoData.defaultSkuId(p);
+      const customAttrs =
+        plan.customAttrs && plan.customAttrs[pid]
+          ? plan.customAttrs[pid]
+          : DemoData.resolveLineCustomAttrs(p, skuId);
       return {
         productId: pid,
         name: p.name,
         skuId,
-        skuLabel: DemoData.skuLabel(p, skuId),
+        skuLabel: DemoData.skuLabelFromAttrs(p, customAttrs) || DemoData.skuLabel(p, skuId),
+        customAttrs: customAttrs,
         qty,
         sub: p.unitPrice * qty
       };
@@ -3778,7 +3895,10 @@ window.Skills = (function () {
       const pid = row.product.id;
       plan.selected[pid] = true;
       plan.qty[pid] = row.qty || 1;
-      plan.sku[pid] = DemoData.defaultSkuId(row.product);
+      const skuId = DemoData.defaultSkuId(row.product);
+      plan.sku[pid] = skuId;
+      if (!plan.customAttrs) plan.customAttrs = {};
+      plan.customAttrs[pid] = DemoData.resolveLineCustomAttrs(row.product, skuId);
     });
   }
 
@@ -4069,7 +4189,7 @@ window.Skills = (function () {
     ctx().plan.selected[pid] = selectOn !== false;
     if (ctx().plan.selected[pid]) {
       ctx().plan.qty[pid] = ctx().plan.qty[pid] || 1;
-      ctx().plan.sku[pid] = ctx().plan.sku[pid] || DemoData.defaultSkuId(p);
+      ensurePickCustomAttrs(ctx().plan, pid, p);
     }
   }
 
@@ -4127,12 +4247,11 @@ window.Skills = (function () {
     const pr = productById(pid);
     if (patch.qty != null) plan.qty[pid] = patch.qty;
     if (patch.skuKeyword && pr) {
-      const kw = String(patch.skuKeyword).toLowerCase();
-      const sk = (pr.skus || []).find(
-        (s) => s.label.toLowerCase().indexOf(kw) >= 0 || s.id === patch.skuKeyword
-      );
-      if (!sk) return false;
-      plan.sku[pid] = sk.id;
+      const m = DemoData.matchProductSpecKeyword(pr, patch.skuKeyword);
+      if (!m) return false;
+      if (!plan.customAttrs) plan.customAttrs = {};
+      plan.customAttrs[pid] = m.attrs;
+      plan.sku[pid] = m.skuId;
     }
     refreshLastPlanCartCard();
     return true;
@@ -4168,6 +4287,26 @@ window.Skills = (function () {
         return true;
       }
       App.toast(planSelectedIds().length > 1 ? '未找到对应行' : '请先预览方案');
+      return true;
+    }
+
+    const attrM =
+      t.match(/第\s*(\d+)\s*[项个条]?\s*(颜色|大小)\s*(.+)/) ||
+      t.match(/(.+?)\s+(颜色|大小)\s*(.+)/);
+    if (attrM) {
+      const idx = /第\s*\d+/.test(t) ? parseInt(attrM[1], 10) - 1 : findPlanCartLineIndex(attrM[1]);
+      const kw = attrM[3].trim();
+      if (idx >= 0 && applyPlanCartPatch(idx, { skuKeyword: kw })) {
+        pushAiMeta(
+          '<p class="sc-card__meta">已更新' +
+            App.escapeHtml(attrM[2]) +
+            '为「' +
+            App.escapeHtml(kw) +
+            '」。</p>'
+        );
+        return true;
+      }
+      App.toast('未匹配到该规格选项');
       return true;
     }
 
@@ -4399,18 +4538,17 @@ window.Skills = (function () {
     }
     if (patch.qty != null) line.qty = patch.qty;
     if (patch.skuKeyword && pr) {
-      const sk = (pr.skus || []).find(
-        (s) =>
-          s.label.toLowerCase().indexOf(String(patch.skuKeyword).toLowerCase()) >= 0 ||
-          s.id === patch.skuKeyword
-      );
-      if (!sk) return false;
-      line.skuId = sk.id;
-      line.skuLabel = sk.label;
+      const m = DemoData.matchProductSpecKeyword(pr, patch.skuKeyword);
+      if (!m) return false;
+      line.skuId = m.skuId;
+      line.customAttrs = m.attrs;
+      line.skuLabel = DemoData.skuLabelFromAttrs(pr, m.attrs);
+      line._customAttrsTouched = true;
       const hints = DemoData.priceHints(pr, line.skuId);
       line.latestPrice = hints.latestPrice;
       line.minPrice = hints.minPrice;
       if (!line._quotePriceTouched) line.quotePrice = hints.latestPrice;
+      applyQuoteLineCommercialDefaults(line, pr, { keepCustom: true });
     }
     line.sub = (line.quotePrice || 0) * (line.qty || 1);
     line.unitPrice = line.quotePrice;
@@ -4587,11 +4725,13 @@ window.Skills = (function () {
         awaitingDemand: false,
         selected: {},
         sku: {},
+        customAttrs: {},
         qty: {},
         quotePrice: {},
         saveAsScheme: false
       };
     }
+    if (!ctx().quoteDraft.customAttrs) ctx().quoteDraft.customAttrs = {};
     if (ctx().quoteDraft.demandText == null) ctx().quoteDraft.demandText = '';
     if (ctx().quoteDraft.awaitingDemand == null) ctx().quoteDraft.awaitingDemand = false;
     if (ctx().quoteDraft.moreVisible == null) ctx().quoteDraft.moreVisible = PLAN_MORE_PAGE_SIZE;
@@ -4618,16 +4758,8 @@ window.Skills = (function () {
     d.selected[pid] = on !== false;
     if (d.selected[pid]) {
       d.qty[pid] = d.qty[pid] || 1;
-      d.sku[pid] = d.sku[pid] || DemoData.defaultSkuId(pr);
+      ensurePickCustomAttrs(d, pid, pr);
     }
-  }
-
-  function renderQuoteSkuSelect(product, pid) {
-    const cur = ctx().quoteDraft.sku[pid] || DemoData.defaultSkuId(product);
-    const opts = (product.skus || [])
-      .map((s) => '<option value="' + s.id + '"' + (s.id === cur ? ' selected' : '') + '>' + App.escapeHtml(s.label) + '</option>')
-      .join('');
-    return '<label class="sc-plan-sku-label">规格 <select class="sc-plan-sku-select" data-action="quote-sku" data-pid="' + pid + '" onclick="event.stopPropagation()">' + opts + '</select></label>';
   }
 
   function makeQuoteLine(product, opts) {
@@ -4643,7 +4775,8 @@ window.Skills = (function () {
         inventoryCode: product.inventoryCode || product.id.toUpperCase(),
         inventoryName: product.name,
         inventorySpec: product.spec,
-        skuLabel: DemoData.skuLabel(product, skuId),
+        skuLabel:
+          DemoData.skuLabelFromAttrs(product, opts && opts.customAttrs) || DemoData.skuLabel(product, skuId),
         salesUnit: product.salesUnit || '件',
         qty: qty,
         latestPrice: hints.latestPrice,
@@ -4677,7 +4810,8 @@ window.Skills = (function () {
         if (!pr) return null;
         const opts = {
           skuId: draft.sku[pid] || DemoData.defaultSkuId(pr),
-          qty: draft.qty[pid] || 1
+          qty: draft.qty[pid] || 1,
+          customAttrs: draft.customAttrs && draft.customAttrs[pid]
         };
         if (draft.quotePrice && draft.quotePrice[pid] != null) opts.quotePrice = draft.quotePrice[pid];
         return makeQuoteLine(pr, opts);
@@ -4731,6 +4865,19 @@ window.Skills = (function () {
     );
   }
 
+  function renderQuoteLineQtyField(line, pid, idx) {
+    const qty = line.qty || 1;
+    return (
+      '<label class="sc-quote-line__field sc-quote-line__qty-field">数量<input type="number" min="1" step="1" value="' +
+      qty +
+      '" data-action="quote-line-qty" data-pid="' +
+      pid +
+      '" data-idx="' +
+      idx +
+      '" class="sc-input sc-input--field sc-quote-line__qty-input"/></label>'
+    );
+  }
+
   function renderQuoteLineTaxRateField(line, pid, idx) {
     const rate = line.taxRate != null ? line.taxRate : 13;
     return (
@@ -4764,10 +4911,10 @@ window.Skills = (function () {
     const attrs = defs.map(function (d) {
       const el =
         document.querySelector(
-          '[data-action="quote-line-custom"][data-pid="' + pid + '"][data-attr-key="' + d.key + '"]'
+          '[data-action="pick-free-attr"][data-scope="quote-line"][data-pid="' + pid + '"][data-attr-key="' + d.key + '"]'
         ) ||
         document.querySelector(
-          '[data-action="quote-line-custom"][data-idx="' + idx + '"][data-attr-key="' + d.key + '"]'
+          '[data-action="pick-free-attr"][data-scope="quote-line"][data-idx="' + idx + '"][data-attr-key="' + d.key + '"]'
         );
       const prev = (line.customAttrs || []).find(function (x) { return x.key === d.key; });
       return {
@@ -4781,54 +4928,6 @@ window.Skills = (function () {
     line._customAttrsTouched = true;
   }
 
-  function renderQuoteLineCustomAttrRows(pr, line, pid, idx) {
-    const attrs = line.customAttrs || DemoData.resolveLineCustomAttrs(pr, line.skuId);
-    if (!attrs.length) return '';
-    return attrs
-      .map(function (a) {
-        const hasOpts = a.options && a.options.length;
-        const inputHtml = hasOpts
-          ? '<select class="sc-input sc-input--field sc-quote-line__custom-select" data-action="quote-line-custom" data-pid="' +
-            pid +
-            '" data-idx="' +
-            idx +
-            '" data-attr-key="' +
-            App.escapeHtml(a.key) +
-            '">' +
-            a.options
-              .map(function (o) {
-                return (
-                  '<option value="' +
-                  App.escapeHtml(o) +
-                  '"' +
-                  (o === a.value ? ' selected' : '') +
-                  '>' +
-                  App.escapeHtml(o) +
-                  '</option>'
-                );
-              })
-              .join('') +
-            '</select>'
-          : '<input type="text" class="sc-input sc-input--field sc-quote-line__custom-input" data-action="quote-line-custom" data-pid="' +
-            pid +
-            '" data-idx="' +
-            idx +
-            '" data-attr-key="' +
-            App.escapeHtml(a.key) +
-            '" value="' +
-            App.escapeHtml(a.value || '') +
-            '"/>';
-        return (
-          '<label class="sc-quote-line__field sc-quote-line__custom-row">' +
-          App.escapeHtml(a.label) +
-          ' ' +
-          inputHtml +
-          '</label>'
-        );
-      })
-      .join('');
-  }
-
   function validateQuoteLineCommercial(pending) {
     if (!pending || !pending.lines.length) return { ok: false, reason: 'empty' };
     const noProcess = pending.lines.find(function (l) {
@@ -4840,20 +4939,6 @@ window.Skills = (function () {
     });
     if (badTax) return { ok: false, reason: 'tax' };
     return { ok: true };
-  }
-
-  function renderQuoteLineSkuSelectByPid(product, line, pid) {
-    const cur = line.skuId || DemoData.defaultSkuId(product);
-    const opts = (product.skus || [])
-      .map((s) => '<option value="' + s.id + '"' + (s.id === cur ? ' selected' : '') + '>' + App.escapeHtml(s.label) + '</option>')
-      .join('');
-    return (
-      '<label class="sc-plan-sku-label">规格 <select class="sc-plan-sku-select" data-action="quote-line-sku" data-pid="' +
-      pid +
-      '">' +
-      opts +
-      '</select></label>'
-    );
   }
 
   function renderQuoteLineConfigRow(line, idx) {
@@ -4872,16 +4957,10 @@ window.Skills = (function () {
       App.escapeHtml(line.inventoryName) +
       '</p><div class="sc-quote-line__fields">' +
       '<div class="sc-quote-line__row-inline sc-quote-line__row-inline--spec">' +
-      renderQuoteLineSkuSelectByPid(pr, line, pid) +
-      '<label class="sc-qty-inline">数量 <input type="number" min="1" value="' +
-      line.qty +
-      '" data-action="quote-line-qty" data-pid="' +
-      pid +
-      '" data-idx="' +
-      idx +
-      '" class="sc-qty-input sc-input sc-input--field"/></label>' +
+      '<div class="sc-pick-spec-block sc-pick-spec-block--quote-line">' +
+      renderPickFreeAttrRows(pr, pid, 'quote-line', { line: line, idx: idx }) +
       '</div>' +
-      renderQuoteLineCustomAttrRows(pr, line, pid, idx) +
+      '</div>' +
       renderQuoteLineProcessVersionField(pr, line, pid, idx) +
       '<div class="sc-quote-price-hints"><span>最新售价 <strong data-quote-latest="' +
       pid +
@@ -4893,8 +4972,9 @@ window.Skills = (function () {
       fmtMoney(line.minPrice) +
       '</strong></span></div>' +
       '<div class="sc-quote-line__row-inline sc-quote-line__row-inline--price">' +
+      renderQuoteLineQtyField(line, pid, idx) +
       renderQuoteLineTaxRateField(line, pid, idx) +
-      '<label class="sc-quote-price-input">本单报价<input type="number" min="0" step="0.01" value="' +
+      '<label class="sc-quote-line__field sc-quote-price-input">本单报价<input type="number" min="0" step="0.01" value="' +
       line.quotePrice +
       '" data-action="quote-line-price" data-pid="' +
       pid +
@@ -4958,9 +5038,6 @@ window.Skills = (function () {
       const priceInp =
         document.querySelector('[data-action="quote-line-price"][data-pid="' + pid + '"]') ||
         document.querySelector('[data-action="quote-line-price"][data-idx="' + idx + '"]');
-      const skuSel =
-        document.querySelector('[data-action="quote-line-sku"][data-pid="' + pid + '"]') ||
-        document.querySelector('[data-action="quote-line-sku"][data-idx="' + idx + '"]');
       if (qtyInp) line.qty = parseInt(qtyInp.value, 10) || 1;
       if (priceInp) {
         const v = parseFloat(priceInp.value);
@@ -4969,14 +5046,19 @@ window.Skills = (function () {
           if (priceInp.value !== '') line._quotePriceTouched = true;
         }
       }
-      if (skuSel) {
-        line.skuId = skuSel.value;
-        const pr = productById(line.productId);
-        line.skuLabel = DemoData.skuLabel(pr, line.skuId);
+      syncLineCustomAttrsFromDom(line, idx);
+      const pr = productById(line.productId);
+      if (pr && line.customAttrs) {
+        const map = {};
+        line.customAttrs.forEach(function (a) {
+          if (a && a.key) map[a.key] = a.value;
+        });
+        line.skuId = DemoData.resolveSkuFromAttrValues(pr, map);
+        line.skuLabel = DemoData.skuLabelFromAttrs(pr, line.customAttrs);
         const hints = DemoData.priceHints(pr, line.skuId);
         line.latestPrice = hints.latestPrice;
         line.minPrice = hints.minPrice;
-        applyQuoteLineCommercialDefaults(line, pr);
+        applyQuoteLineCommercialDefaults(line, pr, { keepCustom: true });
       }
       const processSel =
         document.querySelector('[data-action="quote-line-process"][data-pid="' + pid + '"]') ||
@@ -4995,7 +5077,6 @@ window.Skills = (function () {
           line._taxRateTouched = true;
         }
       }
-      syncLineCustomAttrsFromDom(line, idx);
       line.sub = (line.quotePrice || 0) * line.qty;
       line.unitPrice = line.quotePrice;
       const subEl = document.querySelector('[data-quote-sub="' + pid + '"]');
@@ -5012,24 +5093,63 @@ window.Skills = (function () {
     updateQuoteCartTotalInCard();
   }
 
+  function onPickFreeAttrChange(el) {
+    const scope = el.getAttribute('data-scope');
+    const pid = el.getAttribute('data-pid');
+    const key = el.getAttribute('data-attr-key');
+    const val = el.value;
+    const pr = productById(pid);
+    if (!pr || !key) return;
+
+    if (scope === 'quote-line') {
+      const pending = ctx().quotePending;
+      if (!pending) return;
+      const idx = parseInt(el.getAttribute('data-idx'), 10);
+      const line = pid
+        ? pending.lines.find(function (l) {
+            return l.productId === pid;
+          })
+        : pending.lines[idx];
+      if (!line) return;
+      if (!line.customAttrs) line.customAttrs = DemoData.resolveLineCustomAttrs(pr, line.skuId);
+      const a = line.customAttrs.find(function (x) {
+        return x.key === key;
+      });
+      if (a) a.value = val;
+      line._customAttrsTouched = true;
+      const map = {};
+      line.customAttrs.forEach(function (x) {
+        if (x && x.key) map[x.key] = x.value;
+      });
+      line.skuId = DemoData.resolveSkuFromAttrValues(pr, map);
+      line.skuLabel = DemoData.skuLabelFromAttrs(pr, line.customAttrs);
+      const hints = DemoData.priceHints(pr, line.skuId);
+      line.latestPrice = hints.latestPrice;
+      line.minPrice = hints.minPrice;
+      if (!line._quotePriceTouched) line.quotePrice = hints.latestPrice;
+      applyQuoteLineCommercialDefaults(line, pr, { keepCustom: true });
+      line.sub = line.quotePrice * line.qty;
+      line.unitPrice = line.quotePrice;
+      if (isQuoteSetupOpen()) refreshQuoteSetupLines();
+      else if (document.querySelector('[data-spec-id="card-quote-cart"]')) refreshLastQuoteConfirmCard();
+      return;
+    }
+
+    const draft = pickDraftForScope(scope);
+    if (!draft) return;
+    ensurePickCustomAttrs(draft, pid, pr);
+    const attrs = draft.customAttrs[pid];
+    const attr = attrs.find(function (x) {
+      return x.key === key;
+    });
+    if (attr) attr.value = val;
+    draft._customAttrsTouched = draft._customAttrsTouched || {};
+    draft._customAttrsTouched[pid] = true;
+    syncPickSkuFromCustomAttrs(draft, pid, pr);
+  }
+
   function onQuoteLineSkuChange(sel) {
-    const pending = ctx().quotePending;
-    if (!pending) return;
-    const pid = sel.getAttribute('data-pid');
-    const line = pid ? pending.lines.find((l) => l.productId === pid) : pending.lines[parseInt(sel.getAttribute('data-idx'), 10)];
-    if (!line) return;
-    const pr = productById(line.productId);
-    line.skuId = sel.value;
-    line.skuLabel = DemoData.skuLabel(pr, line.skuId);
-    const hints = DemoData.priceHints(pr, line.skuId);
-    line.latestPrice = hints.latestPrice;
-    line.minPrice = hints.minPrice;
-    if (!line._quotePriceTouched) line.quotePrice = hints.latestPrice;
-    applyQuoteLineCommercialDefaults(line, pr);
-    line.sub = line.quotePrice * line.qty;
-    line.unitPrice = line.quotePrice;
-    if (isQuoteSetupOpen()) refreshQuoteSetupLines();
-    else if (document.querySelector('[data-spec-id="card-quote-cart"]')) refreshLastQuoteConfirmCard();
+    onPickFreeAttrChange(sel);
   }
 
   function updateQuoteCartTotalInCard() {
@@ -5084,6 +5204,7 @@ window.Skills = (function () {
     }
     if (opts.simulateUserMsg) simulateUserUtterance(opts.utterance || utteranceQuotePickToSetup());
     syncQuoteQtyFromDom();
+    syncQuotePickCustomAttrsFromDom();
     const lines = linesFromQuoteDraft(ctx().quoteDraft);
     setQuotePending(lines, {
       customerId: ctx().quoteDraft.customerId,
@@ -5575,8 +5696,18 @@ window.Skills = (function () {
     const c = customer || requireCustomer();
     if (!c) return null;
     if (!ctx().orderDraft || ctx().orderDraft.customerId !== c.id) {
-      ctx().orderDraft = { customerId: c.id, filter: '', selected: {}, sku: {}, qty: {}, saveAsScheme: false, moreVisible: PLAN_MORE_PAGE_SIZE };
+      ctx().orderDraft = {
+        customerId: c.id,
+        filter: '',
+        selected: {},
+        sku: {},
+        customAttrs: {},
+        qty: {},
+        saveAsScheme: false,
+        moreVisible: PLAN_MORE_PAGE_SIZE
+      };
     }
+    if (!ctx().orderDraft.customAttrs) ctx().orderDraft.customAttrs = {};
     if (ctx().orderDraft.moreVisible == null) ctx().orderDraft.moreVisible = PLAN_MORE_PAGE_SIZE;
     return c;
   }
@@ -5600,16 +5731,8 @@ window.Skills = (function () {
     d.selected[pid] = on !== false;
     if (d.selected[pid]) {
       d.qty[pid] = d.qty[pid] || 1;
-      d.sku[pid] = d.sku[pid] || DemoData.defaultSkuId(pr);
+      ensurePickCustomAttrs(d, pid, pr);
     }
-  }
-
-  function renderOrderSkuSelect(product, pid) {
-    const cur = ctx().orderDraft.sku[pid] || DemoData.defaultSkuId(product);
-    const opts = (product.skus || [])
-      .map((s) => '<option value="' + s.id + '"' + (s.id === cur ? ' selected' : '') + '>' + App.escapeHtml(s.label) + '</option>')
-      .join('');
-    return '<label class="sc-plan-sku-label">规格 <select class="sc-plan-sku-select" data-action="order-sku" data-pid="' + pid + '" onclick="event.stopPropagation()">' + opts + '</select></label>';
   }
 
   function linesFromOrderDraft(draft) {
@@ -5619,7 +5742,8 @@ window.Skills = (function () {
         if (!pr) return null;
         return makeQuoteLine(pr, {
           skuId: draft.sku[pid] || DemoData.defaultSkuId(pr),
-          qty: draft.qty[pid] || 1
+          qty: draft.qty[pid] || 1,
+          customAttrs: draft.customAttrs && draft.customAttrs[pid]
         });
       })
       .filter(Boolean);
@@ -5634,6 +5758,7 @@ window.Skills = (function () {
     }
     if (opts.simulateUserMsg) simulateUserUtterance(opts.utterance || utteranceOrderPickToSetup());
     syncOrderQtyFromDom();
+    syncOrderPickCustomAttrsFromDom();
     const saveCb = document.getElementById('order-save-scheme');
     if (saveCb) ctx().orderDraft.saveAsScheme = saveCb.checked;
     enterSkill('order');
@@ -5715,8 +5840,13 @@ window.Skills = (function () {
     const d = ctx().orderDraft;
     const rows = orderSelectedIds().map((pid) => {
       const pr = productById(pid);
-      return '<div class="sc-plan-cart-row"><span class="sc-follow-row__name">' + App.escapeHtml(pr.name) + '</span>' + renderOrderSkuSelect(pr, pid) +
-        '<label class="sc-qty-inline">数量 <input type="number" min="1" value="' + (d.qty[pid] || 1) + '" data-action="order-qty" data-pid="' + pid + '" class="sc-qty-input"/></label></div>';
+      return (
+        '<div class="sc-plan-cart-row sc-plan-cart-row--free"><span class="sc-follow-row__name">' +
+        App.escapeHtml(pr.name) +
+        '</span>' +
+        renderPickSpecBlock(pr, pid, 'order') +
+        '</div>'
+      );
     }).join('');
     return '<div class="sc-card sc-card--compact" data-spec-id="card-order-cart"><div class="sc-card__head sc-card__head--compact">订单购物车</div><div class="sc-follow-list">' + rows + '</div>' +
       '<label class="sc-plan-save-scheme"><input type="checkbox" id="order-save-scheme"' + (d.saveAsScheme ? ' checked' : '') + '/> 保存为方案</label>' +
@@ -5951,11 +6081,11 @@ window.Skills = (function () {
           '</td><td class="sc-order-confirm__meta">' +
           App.escapeHtml(line.processVersion || '—') +
           '</td><td class="sc-order-confirm__num">' +
-          (line.taxRate != null ? line.taxRate + '%' : '—') +
-          '</td><td class="sc-order-confirm__num">' +
           (line.qty || 0) +
           ' ' +
           App.escapeHtml(unit) +
+          '</td><td class="sc-order-confirm__num">' +
+          (line.taxRate != null ? line.taxRate + '%' : '—') +
           '</td><td class="sc-order-confirm__num">' +
           fmtMoney(price) +
           '</td><td class="sc-order-confirm__num sc-order-confirm__sub">' +
@@ -6000,7 +6130,7 @@ window.Skills = (function () {
       pending.lines.length +
       ' 项）</p>' +
       '<div class="sc-order-confirm__table-wrap"><table class="sc-order-confirm__table">' +
-      '<thead><tr><th>#</th><th>品名</th><th>规格</th><th>工艺版本</th><th>税率</th><th>数量</th><th>单价</th><th>小计</th></tr></thead><tbody>' +
+      '<thead><tr><th>#</th><th>品名</th><th>规格</th><th>工艺版本</th><th>数量</th><th>税率</th><th>单价</th><th>小计</th></tr></thead><tbody>' +
       lineRows +
       '</tbody></table></div>' +
       '<p class="sc-order-confirm__total">合计金额 <strong>' +
@@ -6866,6 +6996,12 @@ window.Skills = (function () {
       draft.selected[pid] = true;
       draft.qty[pid] = plan.qty[pid] || 1;
       draft.sku[pid] = plan.sku[pid] || DemoData.defaultSkuId(pr);
+      if (!draft.customAttrs) draft.customAttrs = {};
+      if (plan.customAttrs && plan.customAttrs[pid]) {
+        draft.customAttrs[pid] = plan.customAttrs[pid];
+      } else {
+        ensurePickCustomAttrs(draft, pid, pr);
+      }
     });
   }
 
@@ -7123,8 +7259,8 @@ window.Skills = (function () {
       refreshLastPlanPickCard();
       return true;
     }
-    if (action === 'plan-sku' && pid) {
-      ctx().plan.sku[pid] = btn.value;
+    if (action === 'pick-free-attr' && pid) {
+      onPickFreeAttrChange(btn);
       return true;
     }
     if (action === 'plan-view-history') {
@@ -7307,10 +7443,6 @@ window.Skills = (function () {
       refreshLastQuotePickCard();
       return true;
     }
-    if (action === 'quote-sku' && pid) {
-      ctx().quoteDraft.sku[pid] = btn.value;
-      return true;
-    }
     if (action === 'quote-filter' || action === 'quote-pick-query-apply') {
       applyPickQuery('quote', { simulateUserMsg: true });
       return true;
@@ -7399,10 +7531,6 @@ window.Skills = (function () {
     if (action === 'order-toggle' && pid) {
       orderSelectProduct(pid, !ctx().orderDraft.selected[pid]);
       refreshLastOrderPickCard();
-      return true;
-    }
-    if (action === 'order-sku' && pid) {
-      ctx().orderDraft.sku[pid] = btn.value;
       return true;
     }
     if (action === 'order-filter' || action === 'order-pick-query-apply') {
@@ -7529,6 +7657,7 @@ window.Skills = (function () {
     syncQuoteQtyFromDom,
     syncOrderQtyFromDom,
     onQuoteLineSkuChange,
+    onPickFreeAttrChange,
     refreshLastQuoteConfirmCard
   };
 })();

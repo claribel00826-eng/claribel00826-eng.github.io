@@ -2023,6 +2023,13 @@ button.is-flow-stale,
 .sc-plan-sku-row--inline .sc-plan-qty-label {
   flex: 0 0 auto;
 }
+.sc-plan-sku-row--free {
+  align-items: flex-start;
+}
+.sc-plan-sku-row--free .sc-pick-spec-block {
+  flex: 1 1 160px;
+  min-width: 0;
+}
 .sc-plan-sku-label {
   font-size: 12px;
   color: var(--color-text-muted);
@@ -2038,6 +2045,44 @@ button.is-flow-stale,
   border-radius: 6px;
   font-size: 12px;
 }
+.sc-pick-spec-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.sc-pick-free-attrs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  min-width: 0;
+}
+.sc-pick-free-attr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  min-width: 0;
+}
+.sc-pick-free-attr__label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.sc-pick-free-attr__control {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 12px;
+  box-sizing: border-box;
+  background: var(--color-surface, #fff);
+}
+.sc-pick-spec-block--quote-line {
+  flex: 1;
+  min-width: 0;
+}
 .sc-plan-cart-row {
   display: flex;
   flex-wrap: wrap;
@@ -2045,6 +2090,16 @@ button.is-flow-stale,
   gap: 8px 12px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--color-border);
+}
+.sc-plan-cart-row--free {
+  align-items: flex-start;
+}
+.sc-plan-cart-row--free .sc-pick-spec-block {
+  flex: 1 1 100%;
+}
+.sc-plan-cart-row--free .sc-plan-cart-qty {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 .sc-plan-cart-row .sc-follow-row__name { flex: 1 1 100%; font-weight: 600; }
 .sc-plan-voice-hint { margin: 8px 0 0; font-size: 11px; color: var(--color-text-muted); }
@@ -2127,9 +2182,14 @@ button.is-flow-stale,
   gap: 8px;
   align-items: center;
 }
-/* 规格 + 数量：左宽右窄 */
+/* 自由项：整行 */
 .sc-quote-line__row-inline--spec {
-  grid-template-columns: minmax(0, 1fr) 88px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+.sc-quote-line__row-inline--spec .sc-pick-spec-block {
+  min-width: 0;
+  margin: 0;
 }
 .sc-quote-line__row-inline--spec .sc-plan-sku-label {
   min-width: 0;
@@ -2170,15 +2230,17 @@ button.is-flow-stale,
   max-width: none;
   box-sizing: border-box;
 }
-/* 税率 + 本单报价：左窄右宽 */
+/* 数量 + 税率 + 本单报价（同一行） */
 .sc-quote-line__row-inline--price {
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: minmax(72px, 0.85fr) minmax(72px, 0.85fr) minmax(0, 1.3fr);
   align-items: end;
+  gap: 10px 12px;
 }
 .sc-quote-line__row-inline--price .sc-quote-line__field {
   min-width: 0;
   margin: 0;
 }
+.sc-quote-line__row-inline--price .sc-quote-line__qty-input,
 .sc-quote-line__row-inline--price .sc-quote-line__tax {
   width: 100%;
   max-width: none;
