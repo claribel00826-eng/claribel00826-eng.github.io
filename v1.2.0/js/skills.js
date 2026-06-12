@@ -4930,10 +4930,12 @@ window.Skills = (function () {
 
   function validateQuoteLineCommercial(pending) {
     if (!pending || !pending.lines.length) return { ok: false, reason: 'empty' };
-    const noProcess = pending.lines.find(function (l) {
-      return !l.processVersion || !String(l.processVersion).trim();
+    pending.lines.forEach(function (line) {
+      if (!line.processVersion || !String(line.processVersion).trim()) {
+        const pr = productById(line.productId);
+        applyQuoteLineCommercialDefaults(line, pr);
+      }
     });
-    if (noProcess) return { ok: false, reason: 'process' };
     const badTax = pending.lines.find(function (l) {
       return l.taxRate == null || isNaN(l.taxRate) || l.taxRate < 0;
     });
@@ -4961,7 +4963,6 @@ window.Skills = (function () {
       renderPickFreeAttrRows(pr, pid, 'quote-line', { line: line, idx: idx }) +
       '</div>' +
       '</div>' +
-      renderQuoteLineProcessVersionField(pr, line, pid, idx) +
       '<div class="sc-quote-price-hints"><span>最新售价 <strong data-quote-latest="' +
       pid +
       '">' +
@@ -5539,10 +5540,6 @@ window.Skills = (function () {
     }
     const commercial = validateQuoteLineCommercial(pending);
     if (!commercial.ok) {
-      if (commercial.reason === 'process') {
-        App.toast('请为每项选择工艺版本');
-        return;
-      }
       if (commercial.reason === 'tax') {
         App.toast('请为每项填写税率');
         return;
@@ -5569,10 +5566,6 @@ window.Skills = (function () {
     }
     const commercial = validateQuoteLineCommercial(pending);
     if (!commercial.ok) {
-      if (commercial.reason === 'process') {
-        App.toast('请为每项选择工艺版本');
-        return;
-      }
       if (commercial.reason === 'tax') {
         App.toast('请为每项填写税率');
         return;
@@ -5620,10 +5613,6 @@ window.Skills = (function () {
     }
     const commercial = validateQuoteLineCommercial(pending);
     if (!commercial.ok) {
-      if (commercial.reason === 'process') {
-        App.toast('请为每项选择工艺版本');
-        return;
-      }
       if (commercial.reason === 'tax') {
         App.toast('请为每项填写税率');
         return;
@@ -5868,6 +5857,31 @@ window.Skills = (function () {
     });
   }
 
+  function enrichOrderLineStock(line) {
+    const pr = productById(line.productId);
+    if (!pr) return;
+    const skuId = line.skuId || DemoData.defaultSkuId(pr);
+    const skus = pr.skus || [];
+    const sku = skus.find(function (s) {
+      return s.id === skuId;
+    }) || { id: skuId };
+    if (line.availableQty == null || line.onHandQty == null) {
+      const st = DemoData.skuInventoryStock(pr, sku);
+      if (line.availableQty == null) line.availableQty = st.available;
+      if (line.onHandQty == null) line.onHandQty = st.onHand;
+    }
+  }
+
+  function finalizeOrderPendingLines(pending) {
+    if (!pending || !pending.lines) return;
+    pending.lines.forEach(function (line) {
+      enrichOrderLineStock(line);
+      if (!line.deliverDatetime && pending.shipDate) {
+        line.deliverDatetime = pending.shipDate;
+      }
+    });
+  }
+
   function setOrderPending(lines, meta) {
     meta = meta || {};
     const enriched = enrichOrderLines(lines);
@@ -5878,15 +5892,16 @@ window.Skills = (function () {
         customerId: meta.customerId,
         sourceType: meta.sourceType,
         quoteId: meta.quoteId || null,
+        copiedOrderId: meta.copiedOrderId || null,
         lines: enriched,
         total: meta.total != null ? meta.total : enriched.reduce((s, l) => s + (l.sub || 0), 0),
         saveAsScheme: !!meta.saveAsScheme
       },
       header
     );
+    finalizeOrderPendingLines(ctx().orderPending);
   }
 
-  /** 提交销售订单接口报文（演示：控制台输出；正式对接 ERP） */
   function buildOrderSubmitPayload(pending, c) {
     if (!pending || !c) return null;
     return {
@@ -5894,41 +5909,172 @@ window.Skills = (function () {
       businessType: '客户下单',
       customerId: c.id,
       customerName: c.name,
-      settlementCustomer: c.name,
+      settlementCustomer: pending.settlementCustomer || c.settlementCustomer || c.name,
       settlementMethod: pending.settlementMethod,
       settlementCurrency: pending.settlementCurrency,
+      paymentMethod: pending.paymentMethod,
       shipDate: pending.shipDate,
+      transportMethod: pending.transportMethod,
+      shipAddress: pending.shipAddress,
+      contactName: pending.contactName,
+      contactPhone: pending.contactPhone,
+      headerRemark: pending.headerRemark,
       sourceType: pending.sourceType,
       quoteId: pending.quoteId || null,
+      deliveryReview: ctx().delivery && ctx().delivery.confirmed ? ctx().delivery : null,
       lines: (pending.lines || []).map(function (l) {
+        const price = l.quotePrice != null ? l.quotePrice : l.unitPrice;
+        const qty = l.qty || 0;
+        const sub = l.sub != null ? l.sub : price * qty;
+        const taxRate = l.taxRate != null ? l.taxRate : 13;
+        const afterTax = sub * (1 + taxRate / 100);
         return {
+          stockCode: l.inventoryCode,
+          stockName: l.inventoryName,
+          stockSpecifications: l.inventorySpec,
+          freeItem: l.skuLabel,
+          stockTechnologyVersionId: l.processVersion,
+          unitOfMeasureName: l.salesUnit,
+          totalNumber: qty,
+          unitPrice: price,
+          taxRate: taxRate,
+          totalAmount: sub,
+          totalAmountAfterTax: Math.round(afterTax * 100) / 100,
+          deliverDatetime: l.deliverDatetime || pending.shipDate,
+          currentAvailableQuantity: l.availableQty,
+          currentQuantity: l.onHandQty,
           inventoryCode: l.inventoryCode,
           inventoryName: l.inventoryName,
           inventorySpec: l.inventorySpec,
           skuLabel: l.skuLabel,
           processVersion: l.processVersion,
-          taxRate: l.taxRate,
-          customAttrs: l.customAttrs,
-          qty: l.qty,
+          qty: qty,
           salesUnit: l.salesUnit,
-          unitPrice: l.quotePrice != null ? l.quotePrice : l.unitPrice,
-          sub: l.sub
+          sub: sub
         };
       }),
       total: pending.total
     };
   }
 
+  function orderConfirmRoot() {
+    const cards = document.querySelectorAll('[data-spec-id="sheet-order"]');
+    return cards.length ? cards[cards.length - 1] : null;
+  }
+
   function syncOrderConfirmFromDom() {
     const pending = ctx().orderPending;
-    const el = document.querySelector('[data-spec-id="sheet-order"]');
+    const el = orderConfirmRoot();
     if (!pending || !el) return;
     const method = el.querySelector('[data-field="settlement-method"]');
     const currency = el.querySelector('[data-field="settlement-currency"]');
+    const payment = el.querySelector('[data-field="payment-method"]');
     const ship = el.querySelector('[data-field="ship-date"]');
+    const transport = el.querySelector('[data-field="transport-method"]');
+    const address = el.querySelector('[data-field="ship-address"]');
+    const contactName = el.querySelector('[data-field="contact-name"]');
+    const contactPhone = el.querySelector('[data-field="contact-phone"]');
+    const remark = el.querySelector('[data-field="header-remark"]');
     if (method) pending.settlementMethod = method.value;
     if (currency) pending.settlementCurrency = currency.value;
-    if (ship) pending.shipDate = ship.value;
+    if (payment) pending.paymentMethod = payment.value;
+    if (ship) {
+      pending.shipDate = ship.value;
+      pending.lines.forEach(function (line) {
+        if (!line._deliverDatetimeTouched) line.deliverDatetime = ship.value;
+      });
+    }
+    if (transport) pending.transportMethod = transport.value;
+    if (address) pending.shipAddress = address.value;
+    if (contactName) pending.contactName = contactName.value;
+    if (contactPhone) pending.contactPhone = contactPhone.value;
+    if (remark) pending.headerRemark = remark.value;
+    syncOrderConfirmLinesFromDom();
+  }
+
+  function syncOrderConfirmLinesFromDom() {
+    const pending = ctx().orderPending;
+    const root = orderConfirmRoot();
+    if (!pending || !root) return;
+    pending.lines.forEach(function (line, idx) {
+      const qtyInp = root.querySelector('[data-action="order-confirm-line-qty"][data-idx="' + idx + '"]');
+      const priceInp = root.querySelector('[data-action="order-confirm-line-price"][data-idx="' + idx + '"]');
+      const taxInp = root.querySelector('[data-action="order-confirm-line-tax"][data-idx="' + idx + '"]');
+      const processSel = root.querySelector('[data-action="order-confirm-line-process"][data-idx="' + idx + '"]');
+      const deliverInp = root.querySelector('[data-action="order-confirm-line-deliver"][data-idx="' + idx + '"]');
+      if (qtyInp) line.qty = parseInt(qtyInp.value, 10) || 1;
+      if (priceInp) {
+        const v = parseFloat(priceInp.value);
+        if (!isNaN(v)) {
+          line.quotePrice = v;
+          if (priceInp.value !== '') line._quotePriceTouched = true;
+        }
+      }
+      if (taxInp && taxInp.value !== '') {
+        const t = parseFloat(taxInp.value);
+        if (!isNaN(t)) {
+          line.taxRate = t;
+          line._taxRateTouched = true;
+        }
+      }
+      if (processSel) line.processVersion = processSel.value;
+      if (deliverInp && deliverInp.value) {
+        line.deliverDatetime = deliverInp.value;
+        line._deliverDatetimeTouched = true;
+      }
+      line.sub = (line.quotePrice != null ? line.quotePrice : line.unitPrice || 0) * (line.qty || 1);
+      line.unitPrice = line.quotePrice != null ? line.quotePrice : line.unitPrice;
+      const subEl = root.querySelector('[data-order-confirm-sub="' + idx + '"]');
+      if (subEl) subEl.textContent = fmtMoney(line.sub);
+      const amountEl = root.querySelector('[data-order-confirm-amount="' + idx + '"]');
+      if (amountEl) amountEl.textContent = fmtMoney(line.sub);
+      const row = root.querySelector('[data-order-confirm-line-idx="' + idx + '"]');
+      if (row) {
+        const lowStock = line.availableQty === 0;
+        row.classList.toggle('sc-order-confirm-line--warn', lowStock);
+        const subMeta = row.querySelector('.sc-order-confirm-line__sub');
+        if (subMeta) {
+          subMeta.textContent =
+            (line.inventoryCode || '—') +
+            ' · ' +
+            (line.qty || 0) +
+            ' ' +
+            (line.salesUnit || '件');
+        }
+      }
+    });
+    recalcOrderPendingTotal();
+    const totalEl = root.querySelector('[data-order-confirm-total]');
+    if (totalEl) totalEl.textContent = fmtMoney(pending.total);
+  }
+
+  function refreshLastOrderConfirmCard() {
+    const card = orderConfirmRoot();
+    if (!card) return;
+    const pending = ctx().orderPending;
+    if (!pending) return;
+    const c = App.getCustomer(pending.customerId);
+    const body = card.querySelector('.sc-order-confirm-body');
+    if (body) body.innerHTML = renderOrderConfirmBody(pending, c);
+    applyOrderHeaderMoreOpenState(card);
+    rescanAnnotationPins();
+  }
+
+  function applyOrderHeaderMoreOpenState(card) {
+    if (!card) return;
+    const open = !!ctx().orderHeaderMoreOpen;
+    const panel = card.querySelector('[data-order-header-more]');
+    const toggleBtn = card.querySelector('[data-action="order-header-more-toggle"]');
+    if (panel) panel.classList.toggle('sc-hidden', !open);
+    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function toggleOrderHeaderMore(btn) {
+    syncOrderConfirmFromDom();
+    const card = (btn && btn.closest('[data-spec-id="sheet-order"]')) || orderConfirmRoot();
+    if (!card) return;
+    ctx().orderHeaderMoreOpen = !ctx().orderHeaderMoreOpen;
+    applyOrderHeaderMoreOpenState(card);
   }
 
   function renderOrderSettlementFieldSelect(field, value, options) {
@@ -5945,7 +6091,13 @@ window.Skills = (function () {
         );
       })
       .join('');
-    return '<select class="sc-input sc-input--field sc-order-confirm__select" data-field="' + field + '">' + opts + '</select>';
+    return (
+      '<select class="sc-input sc-input--field sc-order-confirm__select" data-field="' +
+      field +
+      '">' +
+      opts +
+      '</select>'
+    );
   }
 
   function findPendingSubmitOrderByQuoteId(quoteId) {
@@ -5965,10 +6117,6 @@ window.Skills = (function () {
       items: pending.lines.map((l) => l.inventoryName + '×' + l.qty).join('、'),
       productIds: pending.lines.map((l) => l.productId).filter(Boolean),
       quoteId: pending.quoteId || null,
-      settlementCustomer: pending.settlementCustomer,
-      settlementMethod: pending.settlementMethod,
-      settlementCurrency: pending.settlementCurrency,
-      shipDate: pending.shipDate,
       lines: pending.lines.map((l) => ({
         inventoryCode: l.inventoryCode,
         inventoryName: l.inventoryName,
@@ -5978,14 +6126,16 @@ window.Skills = (function () {
         skuLabel: l.skuLabel,
         processVersion: l.processVersion,
         taxRate: l.taxRate,
-        customAttrs: l.customAttrs
+        quotePrice: l.quotePrice,
+        unitPrice: l.unitPrice,
+        sub: l.sub
       }))
     };
   }
 
   function createOrderFromPending(pending, c, opts) {
     opts = opts || {};
-    const status = opts.status || '待排产';
+    const status = opts.status || '未审核';
     const isPendingSubmit = status === DemoData.orderStatusPendingSubmit;
     const orderNo = 'SO' + Date.now().toString().slice(-10);
     const snap = orderSnapshotFromPending(pending, c);
@@ -5993,9 +6143,24 @@ window.Skills = (function () {
       id: 'o' + Date.now(),
       no: orderNo,
       status: status,
-      statusDetail: isPendingSubmit ? '报价已生成，待确认下单' : '订单已创建，等待排产',
+      statusDetail: isPendingSubmit
+        ? '报价已生成，待确认下单'
+        : '订单已提交，待内勤审核',
       date: new Date().toISOString().slice(0, 10),
       salesperson: DemoData.salesperson,
+      timeline: isPendingSubmit
+        ? []
+        : [
+            {
+              label: '未审核',
+              at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+              done: false,
+              current: true
+            },
+            { label: '销售审核', at: '', done: false },
+            { label: '已审核', at: '', done: false },
+            { label: '已完成', at: '', done: false }
+          ],
       ...snap
     };
     DemoData.orders.unshift(order);
@@ -6020,8 +6185,14 @@ window.Skills = (function () {
 
   function submitPendingOrder(existing, pending, c) {
     const snap = orderSnapshotFromPending(pending, c);
-    existing.status = '待排产';
-    existing.statusDetail = '订单已创建，等待排产';
+    existing.status = '未审核';
+    existing.statusDetail = '订单已提交，待内勤审核';
+    existing.timeline = [
+      { label: '未审核', at: new Date().toISOString().slice(0, 16).replace('T', ' '), done: false, current: true },
+      { label: '销售审核', at: '', done: false },
+      { label: '已审核', at: '', done: false },
+      { label: '已完成', at: '', done: false }
+    ];
     Object.assign(existing, snap);
     return existing;
   }
@@ -6033,74 +6204,241 @@ window.Skills = (function () {
     return parts.length ? parts.join(' · ') : '—';
   }
 
-  function renderOrderLineCustomAttrRows(line) {
-    const attrs = line.customAttrs;
-    if (!attrs || !attrs.length) return '';
-    return attrs
-      .map(function (a) {
-        return (
-          '<tr class="sc-order-confirm__custom"><td></td><td colspan="7" class="sc-order-confirm__custom-cell">' +
-          '<span class="sc-order-confirm__custom-label">' +
-          App.escapeHtml(a.label) +
-          '</span> ' +
-          App.escapeHtml(a.value || '—') +
-          '</td></tr>'
-        );
-      })
-      .join('');
-  }
-
   function orderSourceLabel(pending) {
     if (!pending) return '—';
     if (pending.sourceType === 'quote' && pending.quoteId) {
       return '按报价单 · ' + pending.quoteId;
+    }
+    if (pending.sourceType === 'copy') {
+      const oid = pending.copiedOrderId;
+      const o =
+        oid &&
+        DemoData.orders.find(function (x) {
+          return x.id === oid;
+        });
+      return '复制订单 · ' + (o ? o.no : oid || '—');
     }
     if (pending.sourceType === 'direct') return '直选下单';
     if (pending.sourceType === 'scheme') return '按方案';
     return '—';
   }
 
+  function recalcOrderPendingTotal() {
+    const pending = ctx().orderPending;
+    if (!pending || !pending.lines) return;
+    pending.lines.forEach(function (l) {
+      l.sub = (l.quotePrice != null ? l.quotePrice : l.unitPrice || 0) * (l.qty || 1);
+      l.unitPrice = l.quotePrice != null ? l.quotePrice : l.unitPrice;
+    });
+    pending.total = pending.lines.reduce(function (s, l) {
+      return s + (l.sub || 0);
+    }, 0);
+    const el = document.querySelector('[data-spec-id="card-order-copy"] [data-order-copy-total]');
+    if (el) el.textContent = fmtMoney(pending.total);
+    const totalEl = document.querySelector('[data-order-confirm-total]');
+    if (totalEl) totalEl.textContent = fmtMoney(pending.total);
+  }
+
+  
+function renderOrderConfirmLineProcessField(pr, line, idx) {
+    const options = DemoData.processVersionOptions(pr, line.skuId);
+    const cur = line.processVersion || options[0] || '标准版';
+    const opts = options
+      .map(function (v) {
+        return (
+          '<option value="' +
+          App.escapeHtml(v) +
+          '"' +
+          (v === cur ? ' selected' : '') +
+          '>' +
+          App.escapeHtml(v) +
+          '</option>'
+        );
+      })
+      .join('');
+    return (
+      '<label class="sc-quote-line__field">工艺版本 <select class="sc-input sc-input--field sc-quote-line__select" data-action="order-confirm-line-process" data-idx="' +
+      idx +
+      '">' +
+      opts +
+      '</select></label>'
+    );
+  }
+
+  function renderOrderConfirmLineInfoGrid(line) {
+    const stockWarn = line.availableQty === 0;
+    const availVal = stockWarn
+      ? '无库存'
+      : line.availableQty != null
+        ? String(line.availableQty)
+        : '—';
+    const onHandVal = line.onHandQty != null ? String(line.onHandQty) : '—';
+    const warnCls = stockWarn ? ' sc-order-confirm-line__info-pair--warn' : '';
+    return (
+      '<dl class="sc-order-confirm-line__info">' +
+      '<div class="sc-order-confirm-line__info-pair' +
+      warnCls +
+      '"><dt>可用量</dt><dd>' +
+      App.escapeHtml(availVal) +
+      '</dd></div>' +
+      '<div class="sc-order-confirm-line__info-pair' +
+      warnCls +
+      '"><dt>现存量</dt><dd>' +
+      App.escapeHtml(onHandVal) +
+      '</dd></div>' +
+      '<div class="sc-order-confirm-line__info-pair sc-order-confirm-line__info-pair--full"><dt>规格</dt><dd>' +
+      App.escapeHtml(formatOrderLineSpec(line)) +
+      '</dd></div>' +
+      '<div class="sc-order-confirm-line__info-pair"><dt>单位</dt><dd>' +
+      App.escapeHtml(line.salesUnit || '件') +
+      '</dd></div>' +
+      '</dl>'
+    );
+  }
+
+  function renderOrderConfirmLineFields(line, idx, pr) {
+    const price = line.quotePrice != null ? line.quotePrice : line.unitPrice || 0;
+    const tax = line.taxRate != null ? line.taxRate : 13;
+    const deliver = line.deliverDatetime || '';
+    return (
+      renderOrderConfirmLineInfoGrid(line) +
+      '<div class="sc-order-confirm-line__fields-grid">' +
+      renderOrderConfirmLineProcessField(pr, line, idx) +
+      '<label class="sc-quote-line__field">数量 <input type="number" min="1" class="sc-input sc-input--field" data-action="order-confirm-line-qty" data-idx="' +
+      idx +
+      '" value="' +
+      (line.qty || 1) +
+      '" /></label>' +
+      '<label class="sc-quote-line__field">单价 <input type="number" min="0" step="0.01" class="sc-input sc-input--field" data-action="order-confirm-line-price" data-idx="' +
+      idx +
+      '" value="' +
+      price +
+      '" /></label>' +
+      '<label class="sc-quote-line__field">税率（%） <input type="number" min="0" step="0.01" class="sc-input sc-input--field" data-action="order-confirm-line-tax" data-idx="' +
+      idx +
+      '" value="' +
+      tax +
+      '" /></label>' +
+      '</div>' +
+      '<label class="sc-quote-line__field">要货时间 <input type="date" class="sc-input sc-input--field" data-action="order-confirm-line-deliver" data-idx="' +
+      idx +
+      '" value="' +
+      App.escapeHtml(deliver) +
+      '" /></label>' +
+      '<p class="sc-card__meta">小计 <strong data-order-confirm-sub="' +
+      idx +
+      '">' +
+      fmtMoney(line.sub != null ? line.sub : price * (line.qty || 1)) +
+      '</strong></p>'
+    );
+  }
+
+  function renderOrderConfirmLineCard(line, idx) {
+    const pr = productById(line.productId);
+    const unit = line.salesUnit || '件';
+    const price = line.quotePrice != null ? line.quotePrice : line.unitPrice || 0;
+    const sub = line.sub != null ? line.sub : price * (line.qty || 1);
+    const lowStock = line.availableQty === 0;
+    return (
+      '<div class="sc-order-confirm-line sc-order-confirm-line--open' +
+      (lowStock ? ' sc-order-confirm-line--warn' : '') +
+      '" data-order-confirm-line-idx="' +
+      idx +
+      '">' +
+      '<div class="sc-order-confirm-line__head sc-order-confirm-line__head--static">' +
+      '<span class="sc-order-confirm-line__idx">' +
+      (idx + 1) +
+      '</span>' +
+      '<span class="sc-order-confirm-line__main">' +
+      '<span class="sc-order-confirm-line__name">' +
+      App.escapeHtml(line.inventoryName || '—') +
+      '</span>' +
+      '<span class="sc-order-confirm-line__sub">' +
+      App.escapeHtml(line.inventoryCode || '—') +
+      ' · ' +
+      (line.qty || 0) +
+      ' ' +
+      App.escapeHtml(unit) +
+      '</span></span>' +
+      '<span class="sc-order-confirm-line__amount" data-order-confirm-amount="' +
+      idx +
+      '">' +
+      fmtMoney(sub) +
+      '</span></div>' +
+      '<div class="sc-order-confirm-line__body">' +
+      renderOrderConfirmLineFields(line, idx, pr) +
+      '</div></div>'
+    );
+  }
+
+  function renderOrderConfirmHeaderMore(pending) {
+    const open = !!ctx().orderHeaderMoreOpen;
+    return (
+      '<button type="button" class="sc-order-confirm__more-toggle" data-action="order-header-more-toggle" aria-expanded="' +
+      (open ? 'true' : 'false') +
+      '">' +
+      '<span>更多表头信息</span><span class="sc-order-confirm__more-chevron" aria-hidden="true">›</span></button>' +
+      '<div class="sc-order-confirm__header-more' +
+      (open ? '' : ' sc-hidden') +
+      '" data-order-header-more><dl class="sc-order-confirm__summary">' +
+      '<div class="sc-order-confirm__row sc-order-confirm__row--field"><dt>收/付款方式</dt><dd>' +
+      renderOrderSettlementFieldSelect('payment-method', pending.paymentMethod, DemoData.paymentMethodOptions) +
+      '</dd></div>' +
+      '<div class="sc-order-confirm__row sc-order-confirm__row--field"><dt>运输方式</dt><dd>' +
+      renderOrderSettlementFieldSelect('transport-method', pending.transportMethod, DemoData.transportMethodOptions) +
+      '</dd></div>' +
+      '<div class="sc-order-confirm__row sc-order-confirm__row--field"><dt>发货地址</dt><dd><input type="text" class="sc-input sc-input--field" data-field="ship-address" value="' +
+      App.escapeHtml(pending.shipAddress || '') +
+      '" placeholder="发货地址" /></dd></div>' +
+      '<div class="sc-order-confirm__row sc-order-confirm__row--field"><dt>联系人</dt><dd><input type="text" class="sc-input sc-input--field" data-field="contact-name" value="' +
+      App.escapeHtml(pending.contactName || '') +
+      '" /></dd></div>' +
+      '<div class="sc-order-confirm__row sc-order-confirm__row--field"><dt>联系方式</dt><dd><input type="tel" class="sc-input sc-input--field" data-field="contact-phone" value="' +
+      App.escapeHtml(pending.contactPhone || '') +
+      '" /></dd></div>' +
+      '<div class="sc-order-confirm__row sc-order-confirm__row--field"><dt>备注</dt><dd><input type="text" class="sc-input sc-input--field" data-field="header-remark" value="' +
+      App.escapeHtml(pending.headerRemark || '') +
+      '" placeholder="表头备注" /></dd></div>' +
+      '</dl></div>'
+    );
+  }
+
   function renderOrderConfirmBody(pending, c) {
     if (!pending || !pending.lines || !pending.lines.length) return '';
     const del = ctx().delivery;
-    const lineRows = pending.lines
+    const lineCards = pending.lines
       .map(function (line, i) {
-        const unit = line.salesUnit || '件';
-        const price = line.quotePrice != null ? line.quotePrice : line.unitPrice || 0;
-        const sub = line.sub != null ? line.sub : price * (line.qty || 1);
-        const customRows = renderOrderLineCustomAttrRows(line);
-        return (
-          '<tr class="sc-order-confirm__main"><td class="sc-order-confirm__idx">' +
-          (i + 1) +
-          '</td><td><strong>' +
-          App.escapeHtml(line.inventoryName || '—') +
-          '</strong><span class="sc-order-confirm__code">' +
-          App.escapeHtml(line.inventoryCode || '—') +
-          '</span></td><td>' +
-          App.escapeHtml(formatOrderLineSpec(line)) +
-          '</td><td class="sc-order-confirm__meta">' +
-          App.escapeHtml(line.processVersion || '—') +
-          '</td><td class="sc-order-confirm__num">' +
-          (line.qty || 0) +
-          ' ' +
-          App.escapeHtml(unit) +
-          '</td><td class="sc-order-confirm__num">' +
-          (line.taxRate != null ? line.taxRate + '%' : '—') +
-          '</td><td class="sc-order-confirm__num">' +
-          fmtMoney(price) +
-          '</td><td class="sc-order-confirm__num sc-order-confirm__sub">' +
-          fmtMoney(sub) +
-          '</td></tr>' +
-          customRows
-        );
+        return renderOrderConfirmLineCard(line, i);
       })
       .join('');
     const customerMeta =
       c && c.code
         ? '<span class="sc-order-confirm__code">' + App.escapeHtml(c.code) + '</span>'
         : '';
+    const deliveryBlock =
+      del && del.confirmed
+        ? '<div class="sc-order-confirm__section">' +
+          '<h3 class="sc-order-confirm__section-title">交期评审</h3>' +
+          '<dl class="sc-order-confirm__summary">' +
+          '<div class="sc-order-confirm__row"><dt>结论</dt><dd>' +
+          App.escapeHtml(del.verdict || del.status || '') +
+          ' · ' +
+          App.escapeHtml(del.detail || '') +
+          '</dd></div>' +
+          '<div class="sc-order-confirm__row"><dt>期望交期</dt><dd>' +
+          App.escapeHtml((del.expectedDate || '').replace(/-/g, '/')) +
+          '</dd></div>' +
+          '<div class="sc-order-confirm__row"><dt>计划区间</dt><dd>' +
+          App.escapeHtml((del.planStartDate || '').replace(/-/g, '/')) +
+          '～' +
+          App.escapeHtml((del.planEndDate || '').replace(/-/g, '/')) +
+          '</dd></div>' +
+          '</dl></div>'
+        : '';
     return (
       '<div class="sc-order-confirm">' +
+      '<section class="sc-order-confirm__section">' +
+      '<h3 class="sc-order-confirm__section-title">订单摘要</h3>' +
       '<dl class="sc-order-confirm__summary">' +
       '<div class="sc-order-confirm__row"><dt>客户</dt><dd><strong>' +
       App.escapeHtml(c ? c.name : '—') +
@@ -6110,6 +6448,11 @@ window.Skills = (function () {
       '<div class="sc-order-confirm__row"><dt>订单来源</dt><dd>' +
       App.escapeHtml(orderSourceLabel(pending)) +
       '</dd></div>' +
+      '</dl></section>' +
+      deliveryBlock +
+      '<section class="sc-order-confirm__section">' +
+      '<h3 class="sc-order-confirm__section-title">订单信息</h3>' +
+      '<dl class="sc-order-confirm__summary">' +
       '<div class="sc-order-confirm__row"><dt>结算客户</dt><dd><strong>' +
       App.escapeHtml(pending.settlementCustomer || (c && c.settlementCustomer) || (c && c.name) || '—') +
       '</strong></dd></div>' +
@@ -6122,57 +6465,25 @@ window.Skills = (function () {
       '<div class="sc-order-confirm__row sc-order-confirm__row--field"><dt>发货日期</dt><dd><input type="date" class="sc-input sc-input--field" data-field="ship-date" value="' +
       App.escapeHtml(pending.shipDate || '') +
       '" /></dd></div>' +
-      (del && del.detail
-        ? '<div class="sc-order-confirm__row"><dt>交期评审</dt><dd>' + App.escapeHtml(del.detail) + '</dd></div>'
-        : '') +
       '</dl>' +
-      '<p class="sc-order-confirm__lines-title">订单明细（' +
+      renderOrderConfirmHeaderMore(pending) +
+      '</section>' +
+      '<section class="sc-order-confirm__section">' +
+      '<h3 class="sc-order-confirm__section-title">订单明细（' +
       pending.lines.length +
-      ' 项）</p>' +
-      '<div class="sc-order-confirm__table-wrap"><table class="sc-order-confirm__table">' +
-      '<thead><tr><th>#</th><th>品名</th><th>规格</th><th>工艺版本</th><th>数量</th><th>税率</th><th>单价</th><th>小计</th></tr></thead><tbody>' +
-      lineRows +
-      '</tbody></table></div>' +
-      '<p class="sc-order-confirm__total">合计金额 <strong>' +
+      ' 项）</h3>' +
+      '<div class="sc-order-confirm-lines">' +
+      lineCards +
+      '</div>' +
+      '<div class="sc-order-confirm__total-row">合计金额 <strong data-order-confirm-total>' +
       fmtMoney(pending.total) +
-      '</strong></p></div>'
+      '</strong></div>' +
+      '</section></div>'
     );
   }
 
-  function renderOrderSuccessCard(order, customerName, total) {
-    const lineHtml = (order.lines || [])
-      .map(function (line) {
-        const unit = line.salesUnit || '件';
-        return (
-          '<p class="sc-card__meta sc-order-success-line"><strong>' +
-          App.escapeHtml(line.inventoryName || '—') +
-          '</strong> · ' +
-          App.escapeHtml(formatOrderLineSpec(line)) +
-          ' · ' +
-          line.qty +
-          ' ' +
-          App.escapeHtml(unit) +
-          '</p>'
-        );
-      })
-      .join('');
-    return (
-      '<div class="sc-card" data-spec-id="card-order-success"><div class="sc-card__head sc-card__head--compact">订单提交成功</div><div class="sc-card__row sc-card__row--compact">' +
-      '<p class="sc-card__meta">订单号：<strong>' +
-      App.escapeHtml(order.no) +
-      '</strong></p><p class="sc-card__meta">客户：' +
-      App.escapeHtml(customerName) +
-      '</p><p class="sc-card__meta">状态：' +
-      App.escapeHtml(order.status) +
-      '</p>' +
-      (lineHtml ? '<p class="sc-card__meta sc-order-success-lines-title">订单明细</p>' + lineHtml : '') +
-      '<p class="sc-card__meta">金额：<strong>' +
-      fmtMoney(total) +
-      '</strong></p></div></div>'
-    );
-  }
-
-  function refreshLastOrderPickCard() {
+  
+function refreshLastOrderPickCard() {
     const cards = document.querySelectorAll('[data-spec-id="card-order-pick"]');
     const card = cards[cards.length - 1];
     if (card) card.outerHTML = renderOrderProductPickCard();
@@ -6185,6 +6496,7 @@ window.Skills = (function () {
       App.toast('订单明细为空');
       return;
     }
+    ctx().orderHeaderMoreOpen = false;
     pushNextAiCard(renderOrderConfirmCard());
     rescanAnnotationPins();
   }
@@ -6195,11 +6507,11 @@ window.Skills = (function () {
     const c = App.getCustomer(pending.customerId);
     return (
       '<div class="sc-card sc-card--compact sc-card--inline-form sc-card--order" data-spec-id="sheet-order">' +
-      '<div class="sc-card__head sc-card__head--compact">订单确认</div>' +
+      '<div class="sc-card__head sc-card__head--compact">确认下单</div>' +
       '<div class="sc-order-confirm-body">' +
       renderOrderConfirmBody(pending, c) +
       '</div>' +
-      '<div class="sc-card__actions-inline"><button type="button" class="sc-btn sc-btn--primary" data-action="order-submit">生成订单</button></div>' +
+      '<div class="sc-card__actions-inline"><button type="button" class="sc-btn sc-btn--primary" data-action="order-submit">确认下单</button></div>' +
       '</div>'
     );
   }
@@ -7391,8 +7703,12 @@ window.Skills = (function () {
       return true;
     }
     if (action === 'order-submit') {
-      simulateUserUtterance(btnLabel(btn, '生成订单'));
+      simulateUserUtterance(btnLabel(btn, '确认下单'));
       submitOrder();
+      return true;
+    }
+    if (action === 'order-header-more-toggle') {
+      toggleOrderHeaderMore(btn);
       return true;
     }
     if (action === 'delivery-submit') {
@@ -7653,6 +7969,7 @@ window.Skills = (function () {
     openPdf,
     quoteSetupNext,
     syncQuotePendingFromDom,
+    syncOrderConfirmFromDom,
     syncPlanQtyFromDom,
     syncQuoteQtyFromDom,
     syncOrderQtyFromDom,

@@ -17,13 +17,6 @@
     flowStepId: 1
   };
 
-  const CUSTOMER_PARTNER_TABS = [
-    { id: 'both', label: '供应商/客户' },
-    { id: 'customer', label: '客户' },
-    { id: 'supplier', label: '供应商' }
-  ];
-
-  let customerPickerTab = 'both';
   let customerPickerQuery = '';
 
   const $ = (sel) => document.querySelector(sel);
@@ -77,12 +70,9 @@
     );
   }
 
-  function partnerTypeMatchesPickerTab(c, tab) {
+  function isPickerCustomerRecord(c) {
     const pt = c.partnerType || 'customer';
-    if (tab === 'customer') return pt === 'customer' || pt === 'both';
-    if (tab === 'supplier') return pt === 'supplier' || pt === 'both';
-    if (tab === 'both') return pt === 'both';
-    return pt === tab;
+    return pt === 'customer' || pt === 'both';
   }
 
   function todayYmd() {
@@ -735,18 +725,12 @@
     saveDailyHomeStore(store);
   }
 
-  function partnerTypeLabel(c) {
-    const tab = CUSTOMER_PARTNER_TABS.find((t) => t.id === c.partnerType);
-    return tab ? tab.label : '客户';
-  }
-
   function filteredCustomersForPicker() {
     const q = (customerPickerQuery || '').trim();
-    const tab = customerPickerTab;
     const matchFn = window.DemoData && DemoData.customerMatchesQuery;
     const scoreFn = window.DemoData && DemoData.customerSearchScore;
     const items = customersForPicker().filter((c) => {
-      if (!partnerTypeMatchesPickerTab(c, tab)) return false;
+      if (!isPickerCustomerRecord(c)) return false;
       if (!q) return true;
       if (matchFn) return DemoData.customerMatchesQuery(c, q);
       const lower = q.toLowerCase();
@@ -800,19 +784,6 @@
   }
 
   function renderCustomerPickCardHtml() {
-    const tabs = CUSTOMER_PARTNER_TABS.map(function (chip) {
-      return (
-        '<button type="button" class="sc-filter-chip' +
-        (customerPickerTab === chip.id ? ' sc-filter-chip--active' : '') +
-        '" data-action="customer-tab" data-tab="' +
-        escapeHtml(chip.id) +
-        '" role="tab" aria-selected="' +
-        (customerPickerTab === chip.id ? 'true' : 'false') +
-        '">' +
-        escapeHtml(chip.label) +
-        '</button>'
-      );
-    }).join('');
     const items = filteredCustomersForPicker();
     return (
       '<div class="sc-card sc-card--compact sc-card--inline-form" data-spec-id="sheet-customer">' +
@@ -820,9 +791,6 @@
       '<input type="search" class="sc-search sc-card__search" data-action="customer-search" value="' +
       escapeHtml(customerPickerQuery) +
       '" placeholder="模糊搜索名称、编码（支持不连续关键字）" autocomplete="off" />' +
-      '<div class="sc-filter-row" role="tablist" aria-label="往来单位类型">' +
-      tabs +
-      '</div>' +
       '<div class="sc-customer-list sc-customer-list--card">' +
       buildCustomerListHtml(items) +
       '</div></div>'
@@ -963,67 +931,6 @@
           '</span>'
       );
     }, 200);
-  }
-
-  function renderCustomerCategoryFilters() {
-    const row = $('#customer-category-filters');
-    if (!row) return;
-    row.innerHTML = '';
-    CUSTOMER_PARTNER_TABS.forEach((chip) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className =
-        'sc-filter-chip' + (customerPickerTab === chip.id ? ' sc-filter-chip--active' : '');
-      b.textContent = chip.label;
-      b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', customerPickerTab === chip.id ? 'true' : 'false');
-      b.onclick = () => {
-        customerPickerTab = chip.id;
-        renderCustomerCategoryFilters();
-        renderCustomerPickerList();
-      };
-      row.appendChild(b);
-    });
-  }
-
-  function renderCustomerPickerList() {
-    const list = $('#customer-list');
-    const empty = $('#customer-list-empty');
-    if (!list) return;
-    const items = filteredCustomersForPicker();
-    list.innerHTML = '';
-    if (!items.length) {
-      if (empty) empty.classList.remove('sc-hidden');
-      return;
-    }
-    if (empty) empty.classList.add('sc-hidden');
-    items.forEach((c) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className =
-        'sc-list-item sc-list-item--customer' +
-        (c.id === state.customerId ? ' sc-list-item--active' : '');
-      btn.innerHTML =
-        '<span class="sc-list-item__main">' +
-        '<span class="sc-list-item__name">' +
-        escapeHtml(c.name) +
-        '</span>' +
-        '<span class="sc-list-item__sub">' +
-        escapeHtml(c.code) +
-        ' · ' +
-        escapeHtml(c.category) +
-        '</span></span>' +
-        '<span class="sc-badge ' +
-        customerTypeBadgeClass(c) +
-        '">' +
-        customerTypeLabel(c) +
-        '</span>';
-      btn.onclick = () => {
-        closeOverlays();
-        switchCustomer(c.id, { fromPicker: true });
-      };
-      list.appendChild(btn);
-    });
   }
 
   function getSkillLabel(skillId) {
@@ -1596,11 +1503,6 @@
       switchCustomer(btn.getAttribute('data-cid'), { fromPicker: true });
       return;
     }
-    if (action === 'customer-tab') {
-      customerPickerTab = btn.getAttribute('data-tab') || 'both';
-      refreshLastCustomerPickCard();
-      return;
-    }
     if (action === 'pick-enterprise') {
       const eid = btn.getAttribute('data-eid');
       const ent = DemoData.enterprises.find(function (e) {
@@ -1784,7 +1686,6 @@
   function openCustomerSheet(prefillQuery) {
     if (prefillQuery != null) customerPickerQuery = String(prefillQuery);
     else customerPickerQuery = '';
-    customerPickerTab = 'both';
     pushAiHtml(renderCustomerPickCardHtml());
     if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
   }
@@ -2110,6 +2011,8 @@
       if (pickFreeAttr && window.Skills && Skills.onPickFreeAttrChange) Skills.onPickFreeAttrChange(pickFreeAttr);
       const quoteLineProcess = e.target.closest('[data-action="quote-line-process"]');
       if (quoteLineProcess && window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
+      const orderConfirmProcess = e.target.closest('[data-action="order-confirm-line-process"]');
+      if (orderConfirmProcess && window.Skills && Skills.syncOrderConfirmFromDom) Skills.syncOrderConfirmFromDom();
       const planQty = e.target.closest('[data-action="plan-qty"]');
       if (planQty && window.Skills && Skills.syncPlanQtyFromDom) Skills.syncPlanQtyFromDom();
       const quoteQty = e.target.closest('[data-action="quote-qty"]');
@@ -2126,6 +2029,14 @@
         e.target.closest('[data-action="pick-free-attr"]')
       ) {
         if (window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
+      }
+      if (
+        e.target.closest('[data-action="order-confirm-line-price"]') ||
+        e.target.closest('[data-action="order-confirm-line-qty"]') ||
+        e.target.closest('[data-action="order-confirm-line-tax"]') ||
+        e.target.closest('[data-action="order-confirm-line-deliver"]')
+      ) {
+        if (window.Skills && Skills.syncOrderConfirmFromDom) Skills.syncOrderConfirmFromDom();
       }
       if (e.target.closest('[data-action="plan-qty"]') && window.Skills && Skills.syncPlanQtyFromDom) {
         Skills.syncPlanQtyFromDom();

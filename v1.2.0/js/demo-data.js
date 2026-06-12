@@ -1396,17 +1396,26 @@ window.DemoData = {
 
   settlementMethodOptions: ['月结 30 天', '月结 60 天', '预付 100%', '货到付款'],
   settlementCurrencyOptions: ['CNY（人民币）', 'USD（美元）', 'EUR（欧元）'],
+  transportMethodOptions: ['货运', '快递', '自提'],
+  paymentMethodOptions: ['现结', '月结'],
 
   /** 下单确认页 · 表头默认值（结算信息取自客户主档，发货日默认 +14 天） */
   defaultOrderHeader(customer) {
     const c = customer || {};
     const ship = new Date();
     ship.setDate(ship.getDate() + 14);
+    const shipDate = ship.toISOString().slice(0, 10);
     return {
       settlementCustomer: c.settlementCustomer || c.name || '',
       settlementMethod: c.settlementMethod || DemoData.settlementMethodOptions[0],
       settlementCurrency: c.settlementCurrency || DemoData.settlementCurrencyOptions[0],
-      shipDate: ship.toISOString().slice(0, 10)
+      paymentMethod: c.paymentMethod || DemoData.paymentMethodOptions[0],
+      shipDate: shipDate,
+      transportMethod: c.transportMethod || DemoData.transportMethodOptions[0],
+      shipAddress: c.shipAddress || c.address || '',
+      contactName: c.contactName || '',
+      contactPhone: c.contactPhone || c.phone || '',
+      headerRemark: ''
     };
   },
 
@@ -1444,6 +1453,23 @@ window.DemoData = {
     const latest = (sk && sk.latestPrice != null) ? sk.latestPrice : (product.latestPrice != null ? product.latestPrice : base);
     const min = (sk && sk.minPrice != null) ? sk.minPrice : (product.minPrice != null ? product.minPrice : Math.round(latest * 0.88));
     return { latestPrice: latest, minPrice: min };
+  },
+
+  /** 库存查询 · 单规格可用量 / 现存量（演示；正式对接库存服务） */
+  skuInventoryStock(product, sku) {
+    if (!product || !sku) return { available: 0, onHand: 0 };
+    if (sku.availableQty != null && sku.onHandQty != null) {
+      return { available: sku.availableQty, onHand: sku.onHandQty };
+    }
+    var h = 0;
+    var sid = sku.id || '';
+    var pid = product.id || '';
+    for (var i = 0; i < sid.length; i++) h = (h * 31 + sid.charCodeAt(i)) | 0;
+    for (var j = 0; j < pid.length; j++) h = (h * 17 + pid.charCodeAt(j)) | 0;
+    var onHand = 120 + (Math.abs(h) % 900);
+    var reserved = 30 + (Math.abs(h >> 3) % 120);
+    var available = Math.max(0, onHand - reserved);
+    return { available: available, onHand: onHand };
   },
 
   /** 由选品上下文生成订单行（报价后待提交订单用） */
