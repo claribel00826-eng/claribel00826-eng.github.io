@@ -1119,12 +1119,81 @@
 
   function ensureDeliveryPendingLines(meta) {
     if (!meta) return [];
+    if (meta.reverseSchedule == null) meta.reverseSchedule = false;
     if (!meta.lines || !meta.lines.length) {
       meta.lines = enrichOrderLines(deliveryLinesForReview(meta));
     } else {
       meta.lines = enrichOrderLines(meta.lines);
     }
+    meta.lines.forEach(function (line) {
+      ensureDeliveryLineReviewDefaults(line, meta);
+    });
     return meta.lines;
+  }
+
+  function ensureDeliveryLineReviewDefaults(line, meta) {
+    const pr = productById(line.productId);
+    if (!line.expectedDate) {
+      line.expectedDate = (meta && meta.expectedDate) || deliveryDefaultExpectedDate(meta) || '';
+    }
+    if (pr && (!line.customAttrs || !line.customAttrs.length)) {
+      line.customAttrs = DemoData.resolveLineCustomAttrs(pr, line.skuId, line.customAttrs);
+    }
+    if (pr && (!line.processVersion || !String(line.processVersion).trim())) {
+      const options = DemoData.processVersionOptions(pr, line.skuId);
+      line.processVersion = options[0] || '标准版';
+    }
+  }
+
+  function deliveryLineFreeAttrsText(line, pr) {
+    pr = pr || productById(line.productId);
+    if (!pr) return line.skuLabel || '—';
+    const attrs =
+      line.customAttrs && line.customAttrs.length
+        ? line.customAttrs
+        : DemoData.resolveLineCustomAttrs(pr, line.skuId, line.customAttrs);
+    return DemoData.skuLabelFromAttrs(pr, attrs);
+  }
+
+  function renderDeliveryReverseScheduleField(name, value, extra) {
+    extra = extra || '';
+    const want = !!value;
+    return (
+      '<div class="sc-radio-group sc-radio-group--inline"' +
+      extra +
+      '>' +
+      [
+        { value: 'no', label: '否' },
+        { value: 'yes', label: '是' }
+      ]
+        .map(function (o) {
+          const checked = (o.value === 'yes' && want) || (o.value === 'no' && !want);
+          return (
+            '<label class="sc-radio-pill"><input type="radio" name="' +
+            App.escapeHtml(name) +
+            '" value="' +
+            o.value +
+            '"' +
+            (checked ? ' checked' : '') +
+            ' /> ' +
+            App.escapeHtml(o.label) +
+            '</label>'
+          );
+        })
+        .join('') +
+      '</div>'
+    );
+  }
+
+  function renderDeliveryLineExpectedDateField(line, idx) {
+    const val = line.expectedDate || '';
+    return (
+      '<input class="sc-input sc-input--field sc-delivery-line__date" data-field="delivery-line-expected-date" data-idx="' +
+      idx +
+      '" type="date" value="' +
+      App.escapeHtml(val) +
+      '" placeholder="请选择" />'
+    );
   }
 
   function renderDeliveryLineProcessVersionField(pr, line, idx) {
@@ -1182,45 +1251,60 @@
     return html;
   }
 
-  function renderDeliveryLinesProcessSection(lines) {
-    if (!lines || !lines.length) return '';
-    const rows = lines
-      .map(function (line, idx) {
-        const pr = productById(line.productId);
-        if (!pr) return '';
-        return (
-          '<tr><td>' +
-          (idx + 1) +
-          '</td><td><strong>' +
-          App.escapeHtml(line.inventoryName || '—') +
-          '</strong></td><td>' +
-          renderDeliveryLineProcessVersionField(pr, line, idx) +
-          '</td></tr>'
-        );
-      })
-      .join('');
+  function renderDeliveryLineReviewCard(line, idx, pr) {
+    pr = pr || productById(line.productId);
+    if (!pr) return '';
     return (
-      '<label class="sc-field-label">工艺版本（按货品）</label>' +
-      '<div class="sc-order-confirm__table-wrap sc-delivery-lines-process">' +
-      '<table class="sc-order-confirm__table sc-order-confirm__table--compact">' +
-      '<thead><tr><th>#</th><th>品名</th><th>工艺版本</th></tr></thead><tbody>' +
-      rows +
-      '</tbody></table></div>'
+      '<div class="sc-delivery-line-card">' +
+      '<p class="sc-delivery-line-card__name">' +
+      App.escapeHtml(line.inventoryName || '—') +
+      '</p>' +
+      '<p class="sc-delivery-line-card__attrs">' +
+      App.escapeHtml(deliveryLineFreeAttrsText(line, pr)) +
+      '</p>' +
+      '<div class="sc-delivery-line-card__date-row">' +
+      '<label class="sc-field-label">期望交期<span class="sc-field-required">*</span></label>' +
+      renderDeliveryLineExpectedDateField(line, idx) +
+      '</div></div>'
     );
   }
 
-  function syncDeliveryPendingProcessFromDom(el) {
+  function renderDeliveryLinesProcessSection(lines, meta) {
+    if (!lines || !lines.length) return '';
+    const cards = lines
+      .map(function (line, idx) {
+        return renderDeliveryLineReviewCard(line, idx, productById(line.productId));
+      })
+      .join('');
+    return (
+      '<label class="sc-field-label">货品明细</label>' +
+      '<div class="sc-delivery-line-cards">' +
+      cards +
+      '</div>'
+    );
+  }
+
+  function syncDeliveryPendingLinesFromDom(el) {
     const meta = ctx().deliveryPending;
     if (!meta || !meta.lines) return;
+    const reverseFormEl =
+      el && el.querySelector('input[name="delivery-reverse-schedule"]:checked');
+    if (reverseFormEl) {
+      meta.reverseSchedule = reverseFormEl.value === 'yes';
+    }
     meta.lines.forEach(function (line, idx) {
-      const sel =
-        (el && el.querySelector('[data-action="delivery-line-process"][data-idx="' + idx + '"]')) ||
-        document.querySelector('[data-spec-id="sheet-delivery"] [data-action="delivery-line-process"][data-idx="' + idx + '"]');
-      if (sel) {
-        line.processVersion = sel.value;
-        line._processVersionTouched = true;
-      }
+      const dateInp =
+        (el &&
+          el.querySelector('[data-field="delivery-line-expected-date"][data-idx="' + idx + '"]')) ||
+        document.querySelector(
+          '[data-spec-id="sheet-delivery"] [data-field="delivery-line-expected-date"][data-idx="' + idx + '"]'
+        );
+      if (dateInp) line.expectedDate = dateInp.value;
     });
+  }
+
+  function syncDeliveryPendingProcessFromDom(el) {
+    syncDeliveryPendingLinesFromDom(el);
   }
 
   function formatDeliveryLinesProcessSummary(lines) {
@@ -1435,6 +1519,13 @@ function renderDeliveryOrderPickCard(list) {
 
   function openDeliveryForm(meta) {
     meta = meta || {};
+    const prev = ctx().deliveryPending || {};
+    if (!meta.expectedDate && prev.expectedDate) {
+      meta.expectedDate = prev.expectedDate;
+    }
+    if (meta.reverseSchedule == null && prev.reverseSchedule != null) {
+      meta.reverseSchedule = prev.reverseSchedule;
+    }
     ensureDeliveryPendingLines(meta);
     ctx().deliveryPending = meta;
     App.pushAiHtml(renderDeliveryFormCard());
@@ -1453,9 +1544,8 @@ function renderDeliveryOrderPickCard(list) {
       lines: d.lines.map(function (l) {
         return Object.assign({}, l);
       }),
-      generateProcurementPlan:
-        d.generateProcurementPlan != null ? d.generateProcurementPlan : true,
-      expectedDate: d.expectedDate || ''
+      expectedDate: d.expectedDate || '',
+      reverseSchedule: d.reverseSchedule != null ? !!d.reverseSchedule : false
     };
     if (meta.schemeId) {
       const sch =
@@ -1492,6 +1582,41 @@ function renderDeliveryOrderPickCard(list) {
     return meta;
   }
 
+  function openDeliveryLinesPick(meta, opts) {
+    opts = opts || {};
+    meta = meta || {};
+    const lines = (meta.lines || []).map(function (l) {
+      return Object.assign({}, l);
+    });
+    if (!lines.length) {
+      App.toast('评审数据缺失');
+      return;
+    }
+    const c = requireCustomer('delivery');
+    if (!c) return;
+    enterSkill('delivery');
+    setDeliverySkillAtEntry(false);
+    ctx().deliveryLinesMode = true;
+    ctx().quotePickForOrder = false;
+    ctx().deliveryPending = {
+      sourceType: 'lines',
+      lines: lines,
+      expectedDate: meta.expectedDate || '',
+      reverseSchedule: meta.reverseSchedule != null ? !!meta.reverseSchedule : false
+    };
+    seedOrderDraftFromDeliveryLines(lines);
+    const lead =
+      opts.leadHtml != null
+        ? opts.leadHtml
+        : '<p class="sc-reply-lead">请重新选择要评估的货品。</p>';
+    pushNextAiCard(
+      lead + renderOrderProductPickCardForDelivery(),
+      opts.utterance === false ? null : opts.utterance != null ? opts.utterance : '调整方案'
+    );
+    scheduleOrderPickLazyBind();
+    rescanAnnotationPins();
+  }
+
   function adjustDeliveryFromResult(opts) {
     opts = opts || {};
     const d = ctx().delivery;
@@ -1504,19 +1629,9 @@ function renderDeliveryOrderPickCard(list) {
       App.toast('评审数据缺失');
       return;
     }
-    enterSkill('delivery');
-    setDeliverySkillAtEntry(false);
-    /** 从结果回表单时明细已在 deliveryPending，勿再进入自选选品阶段 */
-    ctx().deliveryLinesMode = false;
-    ctx().deliveryPending = meta;
-    ensureDeliveryPendingLines(meta);
-    pushNextAiCard(
-      '<p class="sc-reply-lead">已打开交期评审表单，可修改期望交期或工艺版本后重新提交。</p>' +
-        renderDeliveryFormCard(),
-      opts.utterance === false ? null : '调整交期评审方案'
-    );
-    focusSpecHost('sheet-delivery');
-    rescanAnnotationPins();
+    openDeliveryLinesPick(meta, {
+      utterance: opts.utterance === false ? null : '调整方案'
+    });
   }
 
 
@@ -1536,43 +1651,91 @@ function renderDeliveryOrderPickCard(list) {
     return '';
   }
 
+  function syncDeliveryLineDatesFromForm(formDate, formCard) {
+    formCard = formCard || getActiveFormCard('sheet-delivery');
+    if (!formCard) return;
+    const meta = ctx().deliveryPending;
+    if (!meta) return;
+    const date = formDate != null ? String(formDate).trim() : '';
+    meta.expectedDate = date;
+    if (!meta.lines) return;
+    meta.lines.forEach(function (line, idx) {
+      line.expectedDate = date;
+      const inp = formCard.querySelector(
+        '[data-field="delivery-line-expected-date"][data-idx="' + idx + '"]'
+      );
+      if (inp) inp.value = date;
+    });
+  }
+
+  function onDeliveryFormExpectedDateChange(inp) {
+    if (!inp || !inp.closest('[data-spec-id="sheet-delivery"]')) return;
+    syncDeliveryLineDatesFromForm(inp.value, inp.closest('[data-spec-id="sheet-delivery"]'));
+  }
+
+  function syncDeliveryFormPendingFromDom(el) {
+    const meta = ctx().deliveryPending || {};
+    const expectedInp = el && el.querySelector('[data-field="delivery-expected-date"]');
+    if (expectedInp && expectedInp.value) meta.expectedDate = expectedInp.value;
+    syncDeliveryPendingLinesFromDom(el);
+    ctx().deliveryPending = meta;
+    return meta;
+  }
+
+  function seedOrderDraftFromDeliveryLines(lines) {
+    const c = activeCustomer() || requireCustomer('delivery');
+    if (!c) return;
+    ensureOrderDraft(c);
+    const d = ctx().orderDraft;
+    d.selected = {};
+    d.sku = {};
+    d.qty = {};
+    (lines || []).forEach(function (line) {
+      const pid = line.productId;
+      if (!pid) return;
+      d.selected[pid] = true;
+      d.qty[pid] = line.qty != null ? line.qty : 1;
+      const pr = productById(pid);
+      d.sku[pid] = line.skuId || (pr ? DemoData.defaultSkuId(pr) : '');
+    });
+  }
+
+  function repickDeliveryLines(opts) {
+    opts = opts || {};
+    const el = getActiveFormCard('sheet-delivery');
+    const meta = syncDeliveryFormPendingFromDom(el);
+    if (meta.sourceType !== 'lines') {
+      App.toast('当前来源不支持调整方案');
+      return;
+    }
+    openDeliveryLinesPick(meta, {
+      utterance: opts.simulateUserMsg === false ? null : '调整方案'
+    });
+  }
+
 function renderDeliveryFormCard() {
     const meta = ctx().deliveryPending || {};
     const lines = ensureDeliveryPendingLines(meta);
-    const wantProc =
-      meta.generateProcurementPlan != null ? !!meta.generateProcurementPlan : true;
-    const procOpts = (DemoData.procurementPlanOptions || [
-      { value: 'yes', label: '是' },
-      { value: 'no', label: '否' }
-    ])
-      .map(function (o) {
-        const checked = (o.value === 'yes' && wantProc) || (o.value === 'no' && !wantProc);
-        return (
-          '<label class="sc-radio-pill"><input type="radio" name="delivery-procurement" value="' +
-          App.escapeHtml(o.value) +
-          '"' +
-          (checked ? ' checked' : '') +
-          ' /> ' +
-          App.escapeHtml(o.label) +
-          '</label>'
-        );
-      })
-      .join('');
     const expectedDefault = deliveryDefaultExpectedDate(meta);
+    const reverseDefault = meta.reverseSchedule != null ? !!meta.reverseSchedule : false;
+    const repickBtn =
+      meta.sourceType === 'lines'
+        ? '<button type="button" class="sc-btn sc-btn--ghost" data-action="delivery-repick-lines">调整方案</button>'
+        : '';
     return (
       '<div class="sc-card sc-card--compact sc-card--inline-form" data-spec-id="sheet-delivery" data-spec-pin-root>' +
-      '<div class="sc-card__head sc-card__head--compact">交期评审</div>' +
+      '<div class="sc-card__head sc-card__head--compact">交期评审 · 表单</div>' +
       renderDeliveryFormSourceBlock(meta, lines) +
       '<label class="sc-field-label">期望交期<span class="sc-field-required">*</span></label>' +
       '<input class="sc-input sc-input--field" data-field="delivery-expected-date" type="date" value="' +
       App.escapeHtml(expectedDefault) +
       '" placeholder="请选择" />' +
-      renderDeliveryLinesProcessSection(lines) +
-      '<label class="sc-field-label">是否生成采购计划</label>' +
-      '<div class="sc-radio-group sc-radio-group--inline">' +
-      procOpts +
-      '</div>' +
-      '<div class="sc-card__actions-inline"><button type="button" class="sc-btn sc-btn--primary" data-action="delivery-submit">提交评审</button></div>' +
+      '<label class="sc-field-label">是否倒排</label>' +
+      renderDeliveryReverseScheduleField('delivery-reverse-schedule', reverseDefault) +
+      renderDeliveryLinesProcessSection(lines, meta) +
+      '<div class="sc-card__actions-inline sc-card__actions-inline--delivery-form">' +
+      repickBtn +
+      '<button type="button" class="sc-btn sc-btn--primary" data-action="delivery-submit">提交评审</button></div>' +
       '</div>'
     );
   }
@@ -1774,7 +1937,14 @@ function deliveryOpenFormForOrder(o) {
     }
     ctx().deliveryLinesMode = false;
     if (opts.simulateUserMsg) simulateUserUtterance('下一步：确认选品');
-    openDeliveryForm({ sourceType: 'lines', lines: lines });
+    const prevPending = ctx().deliveryPending || {};
+    openDeliveryForm({
+      sourceType: 'lines',
+      lines: lines,
+      expectedDate: prevPending.expectedDate || '',
+      reverseSchedule:
+        prevPending.reverseSchedule != null ? !!prevPending.reverseSchedule : false
+    });
   }
 
   function showOrderSkillEntry(opts) {
@@ -6493,122 +6663,126 @@ function deliveryOpenFormForOrder(o) {
     return [];
   }
 
-  function evaluateDeliveryReview(input) {
-    input = input || {};
-    const expectedDate = input.expectedDate || '';
-    const planEndDate = input.planEndDate || '';
-    const generateProcurementPlan = !!input.generateProcurementPlan;
-    const lines = input.lines || [];
-    const orderNo = input.orderNo || deliveryReviewOrderNo(input.meta || {});
+  function evaluateDeliveryLineReview(line, planDates, meta) {
+    const expectedDate = line.expectedDate || '';
+    const reverseSchedule = meta && meta.reverseSchedule != null ? !!meta.reverseSchedule : false;
+    const compareDate = reverseSchedule ? planDates.start : planDates.end;
     const fmt = function (d) {
       return (d || '').replace(/-/g, '/');
     };
-    const expectOk = new Date(expectedDate) >= new Date(planEndDate);
-    const procOk = !generateProcurementPlan || expectOk;
-    const onTime = expectOk && procOk;
-    const blockers = [];
-    let detail = '';
+    const onTime = expectedDate && new Date(expectedDate) >= new Date(compareDate);
+    return {
+      inventoryName: line.inventoryName || '—',
+      freeAttrsText: deliveryLineFreeAttrsText(line),
+      expectedDate: expectedDate,
+      onTime: onTime,
+      status: onTime ? '按期' : '不齐套',
+      detail: onTime
+        ? '预计 ' + fmt(expectedDate) + ' 可交付'
+        : '部分物料缺货，建议延后至 ' + fmt(planDates.end) + ' 或调整方案'
+    };
+  }
 
+  function evaluateDeliveryReview(input) {
+    input = input || {};
+    const lines = input.lines || [];
+    const meta = input.meta || {};
+    const planDates = {
+      start: input.planStartDate || '',
+      end: input.planEndDate || ''
+    };
+    const lineResults = lines.map(function (line) {
+      return evaluateDeliveryLineReview(line, planDates, meta);
+    });
+    const onTime = lineResults.length ? lineResults.every(function (r) {
+      return r.onTime;
+    }) : false;
+    const fmt = function (d) {
+      return (d || '').replace(/-/g, '/');
+    };
+    let detail = '';
     if (onTime) {
-      detail = '预计 ' + fmt(planEndDate) + ' 可整单交付';
+      detail = '全部货品可按期望交期交付';
     } else {
-      const targetLines = lines.length ? lines : [{}];
-      targetLines.forEach(function (line, idx) {
-        blockers.push({
-          orderNo: orderNo,
-          inventoryCode: deliveryBlockerInventoryCode(line, idx),
-          reasons: buildDeliveryProcessLineReasons(idx === 0 ? 3 : 2)
-        });
+      const firstLate = lineResults.find(function (r) {
+        return !r.onTime;
       });
-      detail = '无法在期望交期 ' + fmt(expectedDate) + ' 前整单交付';
+      detail =
+        (firstLate && firstLate.detail) ||
+        '部分物料缺货，建议延后至 ' + fmt(planDates.end) + ' 或调整方案';
     }
 
     return {
       onTime: onTime,
-      status: onTime ? '按期' : '无法按时交付',
+      status: onTime ? '按期' : '不齐套',
       verdict: onTime ? '可以按时交付' : '无法按时交付',
       detail: detail,
-      blockers: blockers
+      lineResults: lineResults
     };
   }
 
-function formatDeliveryBlockerLine(blocker, line) {
-    blocker = blocker || {};
-    line = line || {};
-    const reasons = blocker.reasons || [];
-    const name = line.inventoryName || blocker.inventoryCode || '—';
-    const reasonText = reasons.length ? reasons.join('；') : '产能或物料不足';
-    return name + '：' + reasonText;
-  }
-
-  function renderDeliveryResultSummaryHtml(d, fmtDate) {
-    return (
-      '<dl class="sc-delivery-result__summary">' +
-      '<div class="sc-delivery-result__row">' +
-      '<dt>期望交期</dt><dd class="sc-delivery-result__date-value">' +
-      fmtDate(d.expectedDate) +
-      '</dd></div>' +
-      '<div class="sc-delivery-result__row">' +
-      '<dt>开始时间</dt><dd class="sc-delivery-result__date-value">' +
-      fmtDate(d.planStartDate) +
-      '</dd></div>' +
-      '<div class="sc-delivery-result__row">' +
-      '<dt>结束时间</dt><dd class="sc-delivery-result__date-value">' +
-      fmtDate(d.planEndDate) +
-      '</dd></div>' +
-      '</dl>'
-    );
-  }
-
-  function renderDeliveryBlockersHtml(blockers, lines) {
-    if (!blockers || !blockers.length) return '';
-    lines = lines || [];
-    const orderNo = blockers[0] && blockers[0].orderNo;
-    const sameOrder =
-      orderNo &&
-      blockers.every(function (b) {
-        return b.orderNo === orderNo;
-      });
-    const rows = blockers
-      .map(function (b, idx) {
-        const line = lines[idx] || {};
-        const name = line.inventoryName || '—';
-        const spec = line.skuLabel || line.inventorySpec || '';
-        const title = spec ? name + ' · ' + spec : name;
-        const code = b.inventoryCode || line.inventoryCode || '';
-        const reasons = (b.reasons || []).filter(Boolean);
-        const reasonItems = reasons.length
-          ? reasons
-              .map(function (r) {
-                return '<li>' + App.escapeHtml(r) + '</li>';
-              })
-              .join('')
-          : '<li>产能或物料不足</li>';
+  function renderDeliveryResultLinesHtml(lineResults) {
+    lineResults = lineResults || [];
+    if (!lineResults.length) return '';
+    const rows = lineResults
+      .map(function (r) {
+        const badge = r.onTime ? 'sc-badge--new' : 'sc-badge--old';
+        const status = r.status || (r.onTime ? '按期' : '不齐套');
+        const fmt = function (v) {
+          return App.escapeHtml((v || '').replace(/-/g, '/'));
+        };
         return (
-          '<li class="sc-delivery-result__blocker">' +
-          '<p class="sc-delivery-result__blocker-head">' +
+          '<div class="sc-delivery-result__line">' +
+          '<div class="sc-delivery-result__line-head">' +
           '<strong>' +
-          App.escapeHtml(title) +
+          App.escapeHtml(r.inventoryName || '—') +
           '</strong>' +
-          (code
-            ? '<span class="sc-delivery-result__blocker-code">' + App.escapeHtml(code) + '</span>'
-            : '') +
+          '<span class="sc-badge ' +
+          badge +
+          '">' +
+          App.escapeHtml(status) +
+          '</span></div>' +
+          '<p class="sc-card__meta sc-delivery-result__line-meta">' +
+          App.escapeHtml(r.freeAttrsText || '—') +
           '</p>' +
-          '<ul class="sc-delivery-result__blocker-reasons">' +
-          reasonItems +
-          '</ul></li>'
+          '<p class="sc-card__meta sc-delivery-result__line-date">' +
+          '期望交期 ' +
+          fmt(r.expectedDate) +
+          '</p>' +
+          '<p class="sc-card__meta">' +
+          App.escapeHtml(r.detail || '') +
+          '</p></div>'
         );
       })
       .join('');
-    const orderLine =
-      false ? '' : '';
+    return '<div class="sc-delivery-result__lines">' + rows + '</div>';
+  }
+
+function renderDeliveryResultCard(delivery) {
+    const d = delivery || ctx().delivery || {};
+    const src = d.sourceType || 'quote';
+    const byOrder = src === 'order';
+    const lineResults = d.lineResults || [];
+    const bodyHtml = renderDeliveryResultLinesHtml(lineResults);
+
+    let primaryBtn = '';
+    let secondaryBtn = '';
+    if (!byOrder) {
+      primaryBtn =
+        '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="delivery-to-order">下单</button>';
+    }
+    secondaryBtn =
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="delivery-adjust">调整方案</button>';
+
     return (
-      '<div class="sc-delivery-result__blockers-wrap">' +
-      '<p class="sc-delivery-result__blockers-title">异常原因</p>' +
-      orderLine +
-      '<ul class="sc-delivery-result__blockers">' +
-      rows +
-      '</ul></div>'
+      '<div class="sc-card sc-card--delivery-result" data-spec-id="card-delivery">' +
+      '<div class="sc-card__head sc-card__head--compact">交期评审</div>' +
+      '<div class="sc-card__row sc-card__row--compact sc-card__row--delivery-result">' +
+      bodyHtml +
+      '<div class="sc-card__actions-inline sc-card__actions-inline--delivery-result">' +
+      primaryBtn +
+      secondaryBtn +
+      '</div></div></div>'
     );
   }
 
@@ -6616,34 +6790,44 @@ function formatDeliveryBlockerLine(blocker, line) {
     const el = getActiveFormCard('sheet-delivery');
     const meta = ctx().deliveryPending || {};
     const expectedInp = el && el.querySelector('[data-field="delivery-expected-date"]');
-    const procEl = el && el.querySelector('input[name="delivery-procurement"]:checked');
-    const expectedDate = expectedInp ? expectedInp.value : '';
+    const formExpectedDate = expectedInp ? expectedInp.value : '';
+    const reverseFormEl =
+      el && el.querySelector('input[name="delivery-reverse-schedule"]:checked');
+    if (reverseFormEl) {
+      meta.reverseSchedule = reverseFormEl.value === 'yes';
+    }
     const planDates = defaultDeliveryPlanDates();
     const planStartDate = planDates.start;
     const planEndDate = planDates.end;
-    const generateProcurementPlan = procEl
-      ? procEl.value === 'yes'
-      : meta.generateProcurementPlan != null
-        ? !!meta.generateProcurementPlan
-        : true;
-    syncDeliveryPendingProcessFromDom(el);
+    syncDeliveryPendingLinesFromDom(el);
     const reviewLines = enrichOrderLines(meta.lines || deliveryLinesForReview(meta));
+    reviewLines.forEach(function (line) {
+      if (!line.expectedDate) line.expectedDate = formExpectedDate;
+      ensureDeliveryLineReviewDefaults(line, meta);
+    });
     meta.lines = reviewLines;
     const missingProcess = reviewLines.find(function (l) {
       return !l.processVersion || !String(l.processVersion).trim();
     });
     if (missingProcess) {
-      App.toast('请为每项选择工艺版本');
+      App.toast('评审数据异常，请重试');
       return;
     }
-    if (!expectedDate) {
+    const missingDate = reviewLines.find(function (l) {
+      return !l.expectedDate;
+    });
+    if (!formExpectedDate && missingDate) {
       App.toast('请选择期望交期');
       return;
     }
+    if (missingDate) {
+      App.toast('请为每项选择期望交期');
+      return;
+    }
+    meta.expectedDate = formExpectedDate || reviewLines[0].expectedDate || '';
     const review = evaluateDeliveryReview({
-      expectedDate: expectedDate,
+      planStartDate: planStartDate,
       planEndDate: planEndDate,
-      generateProcurementPlan: generateProcurementPlan,
       lines: reviewLines,
       meta: meta
     });
@@ -6653,15 +6837,15 @@ function formatDeliveryBlockerLine(blocker, line) {
       quoteId: meta.quoteId || null,
       orderId: meta.orderId || null,
       lines: reviewLines,
-      generateProcurementPlan: generateProcurementPlan,
-      expectedDate: expectedDate,
+      expectedDate: meta.expectedDate,
+      reverseSchedule: meta.reverseSchedule != null ? !!meta.reverseSchedule : false,
       planStartDate: planStartDate,
       planEndDate: planEndDate,
       onTime: review.onTime,
       status: review.status,
       verdict: review.verdict,
       detail: review.detail,
-      blockers: review.blockers,
+      lineResults: review.lineResults,
       summary: deliverySummaryLabel(meta),
       confirmed: true
     };
@@ -6670,55 +6854,6 @@ function formatDeliveryBlockerLine(blocker, line) {
     App.closeOverlays();
     App.pushAiHtml(renderDeliveryResultCard(ctx().delivery));
     rescanAnnotationPins();
-  }
-
-function renderDeliveryResultCard(delivery) {
-    const d = delivery || ctx().delivery || {};
-    const ok = d.onTime != null ? !!d.onTime : d.status === '按期';
-    const badge = ok ? 'sc-badge--new' : 'sc-badge--old';
-    const src = d.sourceType || 'quote';
-    const byOrder = src === 'order';
-    const statusLabel = ok ? '按期交付' : '未按期交付';
-    const fmtDate = function (v) {
-      return App.escapeHtml((v || '').replace(/-/g, '/'));
-    };
-
-    let bodyHtml =
-      renderDeliveryResultSummaryHtml(d, fmtDate) +
-      (ok ? '' : renderDeliveryBlockersHtml(d.blockers, d.lines));
-    let primaryBtn = '';
-    let secondaryBtn = '';
-
-    if (ok) {
-      if (!byOrder) {
-        primaryBtn =
-          '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="delivery-to-order">下单</button>';
-      }
-      secondaryBtn =
-        '<button type="button" class="sc-btn sc-btn--ghost" data-action="delivery-adjust">调整方案</button>';
-    } else {
-      primaryBtn =
-        '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="delivery-adjust">调整方案</button>';
-      if (!byOrder) {
-        secondaryBtn =
-          '<button type="button" class="sc-btn sc-btn--ghost" data-action="delivery-to-order">仍要生成订单</button>';
-      }
-    }
-
-    return (
-      '<div class="sc-card sc-card--delivery-result" data-spec-id="card-delivery">' +
-      '<div class="sc-card__head sc-card__head--compact">交期评审 · <span class="sc-badge ' +
-      badge +
-      '">' +
-      App.escapeHtml(statusLabel) +
-      '</span></div>' +
-      '<div class="sc-card__row sc-card__row--compact sc-card__row--delivery-result">' +
-      bodyHtml +
-      '<div class="sc-card__actions-inline sc-card__actions-inline--delivery-result">' +
-      primaryBtn +
-      secondaryBtn +
-      '</div></div></div>'
-    );
   }
 
 
@@ -10751,6 +10886,11 @@ function openChangeSheet(oid, opts) {
       adjustDeliveryFromResult();
       return true;
     }
+    if (action === 'delivery-repick-lines') {
+      simulateUserUtterance('调整方案');
+      repickDeliveryLines({ simulateUserMsg: false });
+      return true;
+    }
     if (action === 'copy-demand-submit') {
       const card = btn.closest('[data-spec-id="card-copy-demand"]');
       const fromInput = readDemandTextFromCardEl(card);
@@ -11414,6 +11554,7 @@ function openChangeSheet(oid, opts) {
     syncOrderConfirmLinesFromDom,
     onQuoteLineSkuChange,
     onCopyLineSkuChange,
+    onDeliveryFormExpectedDateChange,
     refreshLastQuoteConfirmCard
   };
 })();

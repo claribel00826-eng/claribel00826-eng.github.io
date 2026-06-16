@@ -486,7 +486,7 @@ window.DemoData = {
   deliveryProcessVersions: ['标准版', 'V2024.1', 'V2024.2', 'V2025-A'],
   /** 交期评审演示 · 产线名称（历史演示字段，保留兼容） */
   deliveryReviewLines: ['机加工一线', '装配二线', '仓储发运线'],
-  /** 交期评审 · 是否生成采购计划 */
+  /** @deprecated 交期评审已移除「是否生成采购计划」 */
   procurementPlanOptions: [
     { value: 'yes', label: '是', generate: true },
     { value: 'no', label: '否', generate: false }

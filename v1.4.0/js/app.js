@@ -2105,6 +2105,15 @@
       if (orderConfirmProcess && window.Skills && Skills.syncOrderConfirmLinesFromDom) {
         Skills.syncOrderConfirmLinesFromDom();
       }
+      const deliveryFormDate = e.target.closest('[data-field="delivery-expected-date"]');
+      if (
+        deliveryFormDate &&
+        deliveryFormDate.closest('[data-spec-id="sheet-delivery"]') &&
+        window.Skills &&
+        Skills.onDeliveryFormExpectedDateChange
+      ) {
+        Skills.onDeliveryFormExpectedDateChange(deliveryFormDate);
+      }
       const sel = e.target.closest('[data-action="plan-sku"]');
       if (sel && window.Skills) Skills.handleAction('plan-sku', sel);
       const planQty = e.target.closest('[data-action="plan-qty"]');
@@ -2146,6 +2155,15 @@
       }
       if (e.target.closest('[data-action="order-qty"]') && window.Skills && Skills.syncOrderQtyFromDom) {
         Skills.syncOrderQtyFromDom();
+      }
+      const deliveryFormDateInput = e.target.closest('[data-field="delivery-expected-date"]');
+      if (
+        deliveryFormDateInput &&
+        deliveryFormDateInput.closest('[data-spec-id="sheet-delivery"]') &&
+        window.Skills &&
+        Skills.onDeliveryFormExpectedDateChange
+      ) {
+        Skills.onDeliveryFormExpectedDateChange(deliveryFormDateInput);
       }
     });
 
