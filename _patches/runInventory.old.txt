@@ -1,0 +1,15 @@
+  function runInventory() {
+    const c = requireCustomer();
+    if (!c) return;
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为 <strong>' +
+        App.escapeHtml(c.name) +
+        '</strong> 查询在库与在途：</p>' +
+        renderInsightCard('库存查询', [
+          { label: '轴承组件 A 型', value: '现货 860 件 · 在途 200 件' },
+          { label: '传动齿轮箱 M3', value: '现货 42 台 · 安全库存 30 台' },
+          { label: '伺服电机 750W', value: '现货 18 台 · 预计 5 月 22 日到货' },
+          { label: '齐套率', value: '当前方案 SKU 齐套率 94%' }
+        ], 'card-insight-inventory')
+    );
+  }

@@ -1,0 +1,41 @@
+    if (action === 'delivery-scheme-pick') {
+      const sid = btn.getAttribute('data-scheme-id');
+      const sch = schemesForCustomer((activeCustomer() || {}).id).find(function (x) {
+        return x.id === sid;
+      });
+      if (sch) {
+        simulateUserUtterance(
+          '按方案 ' + (sch.templateName || sch.id)
+        );
+        deliveryOpenFormForScheme(sch);
+      }
+      return true;
+    }
+    if (action === 'delivery-quote-pick') {
+      const qid = btn.getAttribute('data-quote-id');
+      const q = quotesForCustomer((activeCustomer() || {}).id).find(function (x) {
+        return x.id === qid;
+      });
+      if (q) {
+        simulateUserUtterance('按报价单 ' + q.id);
+        persistQuote(q);
+        openDeliveryForm({
+          sourceType: 'quote',
+          quoteId: q.id,
+          total: q.total,
+          lines: q.lines || []
+        });
+      }
+      return true;
+    }
+    if (action === 'delivery-order-pick') {
+      const oid = btn.getAttribute('data-oid');
+      const o = DemoData.orders.find(function (x) {
+        return x.id === oid;
+      });
+      if (o) {
+        simulateUserUtterance('按订单 ' + o.no);
+        deliveryOpenFormForOrder(o);
+      }
+      return true;
+    }

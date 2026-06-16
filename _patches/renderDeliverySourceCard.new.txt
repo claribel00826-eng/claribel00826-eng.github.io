@@ -1,0 +1,91 @@
+  function renderDeliverySourceOption(opts) {
+    const title = opts.title;
+    const desc = opts.desc;
+    const action = opts.action;
+    const extra = opts.extra || '';
+    const disabled = !!opts.disabled;
+    const primary = !!opts.primary;
+    const inner =
+      '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">' +
+      App.escapeHtml(title) +
+      '</span><span class="sc-plan-entry__option-desc">' +
+      App.escapeHtml(desc) +
+      '</span></span>' +
+      (disabled ? '' : '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span>');
+    const cls =
+      'sc-plan-entry__option' +
+      (primary ? ' sc-plan-entry__option--primary' : '') +
+      (disabled ? ' sc-plan-entry__option--disabled' : '');
+    if (disabled) {
+      return '<div class="' + cls + '" aria-disabled="true">' + inner + '</div>';
+    }
+    return (
+      '<button type="button" class="' +
+      cls +
+      '" data-action="' +
+      action +
+      '"' +
+      extra +
+      '>' +
+      inner +
+      '</button>'
+    );
+  }
+
+  function renderDeliverySourceCard(c) {
+    const schemesList = c ? schemesForCustomer(c.id) : [];
+    const schemesCount = schemesList.length;
+    const quotesList = c ? quotesForCustomer(c.id) : [];
+    const quotesCount = quotesList.length;
+    const ordersList = c ? deliveryOrdersForCustomer(c.id) : [];
+    const ordersCount = ordersList.length;
+    const schemesSub =
+      schemesCount > 0 ? '共 ' + schemesCount + ' 个已保存方案' : '暂无已保存方案';
+    const quotesSub = quotesCount > 0 ? '共 ' + quotesCount + ' 份历史报价单' : '暂无历史报价单';
+    const ordersSub =
+      ordersCount > 0 ? '共 ' + ordersCount + ' 笔未排程订单' : '暂无未排程订单';
+    const schemeBtnExtra =
+      schemesCount === 1 ? ' data-scheme-id="' + App.escapeHtml(schemesList[0].id) + '"' : '';
+    const quoteBtnExtra =
+      quotesCount === 1 ? ' data-quote-id="' + App.escapeHtml(quotesList[0].id) + '"' : '';
+    const orderBtnExtra =
+      ordersCount === 1 ? ' data-oid="' + App.escapeHtml(ordersList[0].id) + '"' : '';
+
+    return (
+      '<div class="sc-card sc-card--compact sc-card--delivery-source" data-spec-id="card-delivery-source">' +
+      '<div class="sc-card__head sc-card__head--compact">交期评审 · 选择来源</div>' +
+      '<p class="sc-plan-entry__group-label">已有单据</p>' +
+      '<div class="sc-plan-entry__actions sc-plan-entry__actions--compact" role="group" aria-label="已有单据来源">' +
+      renderDeliverySourceOption({
+        title: '按方案',
+        desc: schemesSub,
+        action: 'delivery-source-scheme',
+        extra: schemeBtnExtra,
+        disabled: schemesCount === 0
+      }) +
+      renderDeliverySourceOption({
+        title: '按报价单',
+        desc: quotesSub,
+        action: 'delivery-source-quote',
+        extra: quoteBtnExtra,
+        disabled: quotesCount === 0
+      }) +
+      renderDeliverySourceOption({
+        title: '按订单',
+        desc: ordersSub,
+        action: 'delivery-source-order',
+        extra: orderBtnExtra,
+        disabled: ordersCount === 0
+      }) +
+      '</div>' +
+      '<p class="sc-plan-entry__group-label">从头评估</p>' +
+      '<div class="sc-plan-entry__actions sc-plan-entry__actions--compact" role="group" aria-label="自选商品">' +
+      renderDeliverySourceOption({
+        title: '自选商品',
+        desc: '直选品、规格与数量评审交期',
+        action: 'delivery-source-lines',
+        primary: true
+      }) +
+      '</div></div>'
+    );
+  }

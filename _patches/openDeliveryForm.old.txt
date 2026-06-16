@@ -1,0 +1,7 @@
+  function openDeliveryForm(meta) {
+    meta = meta || {};
+    ensureDeliveryPendingLines(meta);
+    ctx().deliveryPending = meta;
+    App.pushAiHtml(renderDeliveryFormCard());
+    rescanAnnotationPins();
+  }

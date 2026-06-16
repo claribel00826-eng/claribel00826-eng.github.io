@@ -1,0 +1,38 @@
+  function beginDeliveryFromScheme(schemeId) {
+    setDeliverySkillAtEntry(false);
+    const c = requireCustomer('delivery');
+    if (!c) return;
+    enterSkill('delivery');
+    seedDemoHistoryIfEmpty(c);
+    const list = schemesForCustomer(c.id);
+    if (!list.length) {
+      App.pushAiHtml(
+        '<p class="sc-reply-lead">当前客户暂无已保存方案，请先 <strong>方案速配</strong> 或改用自选商品评估交期。</p>'
+      );
+      App.pushAiHtml(renderDeliverySourceCard(c));
+      rescanAnnotationPins();
+      return;
+    }
+    if (schemeId) {
+      const hit = list.find(function (s) {
+        return s.id === schemeId;
+      });
+      if (hit) {
+        deliveryOpenFormForScheme(hit);
+        return;
+      }
+    }
+    if (list.length === 1) {
+      deliveryOpenFormForScheme(list[0]);
+      return;
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">本客户有 <strong>' +
+        list.length +
+        '</strong> 个方案，<strong>按方案评估须先选择</strong>：</p>' +
+        renderDeliverySchemePickCard(list)
+    );
+    rescanAnnotationPins();
+  }
+
+  function beginDeliveryFromQuote(quoteId) {

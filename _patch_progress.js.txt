@@ -1,0 +1,178 @@
+  function orderProgressSalesperson(o) {
+    if (o && o.salesperson) return o.salesperson;
+    return DemoData.demoSalesUser || DemoData.salesperson || '—';
+  }
+
+  function orderProgressWorkStatus(o) {
+    return (o && o.workOrderStatus) || '未排程';
+  }
+
+  function orderProgressShipDate(o) {
+    if (!o) return '—';
+    return o.shipDate || o.requiredDeliveryDate || o.date || '—';
+  }
+
+  function orderProgressDetailLines(o) {
+    const base =
+      o && o.lines && o.lines.length ? o.lines.slice() : linesFromHistoricalOrder(o);
+    return base.map(function (line, idx) {
+      const price = line.quotePrice != null ? line.quotePrice : line.unitPrice || 0;
+      const qty = line.qty || 1;
+      const taxRate = line.taxRate != null ? line.taxRate : 13;
+      const preTax = line.sub != null ? line.sub : price * qty;
+      const taxAmount =
+        line.taxAmount != null ? line.taxAmount : Math.round((preTax * taxRate) / 100);
+      const postTax =
+        line.postTaxAmount != null ? line.postTaxAmount : preTax + taxAmount;
+      const taxUnitPrice =
+        line.taxUnitPrice != null ? line.taxUnitPrice : price * (1 + taxRate / 100);
+      return {
+        idx: idx + 1,
+        inventoryCode: line.inventoryCode || '—',
+        inventoryName: line.inventoryName || '—',
+        spec: formatOrderLineSpec(line),
+        salesUnit: line.salesUnit || '个',
+        unitPrice: price,
+        taxUnitPrice: taxUnitPrice,
+        taxAmount: taxAmount,
+        preTaxAmount: preTax,
+        postTaxAmount: postTax,
+        qty: qty,
+        returnQty: line.returnQty != null ? line.returnQty : 0,
+        actualShipDate: line.actualShipDate || (o && o.actualShipDate) || '',
+        productionNo: line.productionNo || '',
+        remark: line.lineRemark || line.remark || ''
+      };
+    });
+  }
+
+  function renderOrderProgressDetailTable(lines) {
+    if (!lines.length) {
+      return '<p class="sc-card__meta">暂无明细行</p>';
+    }
+    const rows = lines
+      .map(function (row) {
+        return (
+          '<tr><td class="sc-order-confirm__idx">' +
+          row.idx +
+          '</td><td>' +
+          App.escapeHtml(row.inventoryCode) +
+          '</td><td><strong>' +
+          App.escapeHtml(row.inventoryName) +
+          '</strong></td><td>' +
+          App.escapeHtml(row.spec) +
+          '</td><td>' +
+          App.escapeHtml(row.salesUnit) +
+          '</td><td class="sc-order-confirm__num">' +
+          row.unitPrice.toFixed(6) +
+          '</td><td class="sc-order-confirm__num">' +
+          row.taxUnitPrice.toFixed(6) +
+          '</td><td class="sc-order-confirm__num">' +
+          row.taxAmount +
+          '</td><td class="sc-order-confirm__num">' +
+          row.preTaxAmount.toFixed(2) +
+          '</td><td class="sc-order-confirm__num">' +
+          row.postTaxAmount.toFixed(2) +
+          '</td><td class="sc-order-confirm__num">' +
+          row.qty +
+          '</td><td class="sc-order-confirm__num">' +
+          row.returnQty +
+          '</td><td>' +
+          App.escapeHtml(row.actualShipDate || '—') +
+          '</td><td>' +
+          App.escapeHtml(row.productionNo || '—') +
+          '</td><td>' +
+          App.escapeHtml(row.remark || '—') +
+          '</td></tr>'
+        );
+      })
+      .join('');
+    return (
+      '<div class="sc-order-confirm__table-wrap sc-progress-detail__table-wrap">' +
+      '<table class="sc-order-confirm__table sc-progress-detail__table">' +
+      '<thead><tr><th>#</th><th>存货编码</th><th>存货名称</th><th>存货规格</th><th>销售单位</th><th>单价</th><th>税后单价</th><th>税额</th><th>未税金额</th><th>税后金额</th><th>下单数量</th><th>累计退货</th><th>实际发货日期</th><th>生产单号</th><th>备注</th></tr></thead><tbody>' +
+      rows +
+      '</tbody></table></div>'
+    );
+  }
+
+  function renderOrderProgressDetailCard(o) {
+    if (!o) return '';
+    const c = App.getCustomer(o.customerId);
+    const lines = orderProgressDetailLines(o);
+    const customerCode = c && c.code ? c.code : '';
+    const customerLabel = c
+      ? c.name + (customerCode ? '（' + customerCode + '）' : '')
+      : '—';
+    return (
+      '<div class="sc-card sc-card--compact sc-card--progress-detail" data-spec-id="card-order-progress-detail" data-oid="' +
+      App.escapeHtml(o.id) +
+      '">' +
+      '<div class="sc-card__head sc-card__head--compact">订单进度 · ' +
+      App.escapeHtml(o.no) +
+      ' ' +
+      orderStatusBadgeHtml(o.status) +
+      '</div>' +
+      '<dl class="sc-order-confirm__summary sc-progress-detail__summary">' +
+      '<div class="sc-order-confirm__row"><dt>客户名称</dt><dd><strong>' +
+      App.escapeHtml(customerLabel) +
+      '</strong></dd></div>' +
+      '<div class="sc-order-confirm__row"><dt>单据日期</dt><dd>' +
+      App.escapeHtml(o.date || '—') +
+      '</dd></div>' +
+      '<div class="sc-order-confirm__row"><dt>工单生产状态</dt><dd>' +
+      App.escapeHtml(orderProgressWorkStatus(o)) +
+      '</dd></div>' +
+      '<div class="sc-order-confirm__row"><dt>发货日期</dt><dd>' +
+      App.escapeHtml(orderProgressShipDate(o)) +
+      '</dd></div>' +
+      '<div class="sc-order-confirm__row"><dt>业务员</dt><dd>' +
+      App.escapeHtml(orderProgressSalesperson(o)) +
+      '</dd></div>' +
+      '<div class="sc-order-confirm__row"><dt>备注</dt><dd>' +
+      App.escapeHtml(o.orderRemark || o.remark || '—') +
+      '</dd></div>' +
+      '<div class="sc-order-confirm__row"><dt>状态说明</dt><dd>' +
+      App.escapeHtml(o.statusDetail || '—') +
+      '</dd></div>' +
+      '</dl>' +
+      '<p class="sc-order-confirm__lines-title">订单明细（' +
+      lines.length +
+      ' 项）</p>' +
+      renderOrderProgressDetailTable(lines) +
+      '<p class="sc-progress-detail__timeline-title">进度时间轴</p>' +
+      renderOrderTimelineHtml(o) +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="progress-repick-order">重选订单</button></div>' +
+      '</div>'
+    );
+  }
+
+  function openOrderProgressDetail(oid, opts) {
+    opts = opts || {};
+    const o = DemoData.orders.find(function (x) {
+      return x.id === oid;
+    });
+    if (!o) {
+      App.toast('未找到订单');
+      return;
+    }
+    enterSkill('progress');
+    ctx().progressPickMode = false;
+    clearActivePickList();
+    if (opts.simulateUserMsg) {
+      simulateUserUtterance('查看订单 ' + o.no + ' 进度');
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">订单 <strong>' +
+        App.escapeHtml(o.no) +
+        '</strong> 进度详情如下：</p>' +
+        renderOrderProgressDetailCard(o)
+    );
+    rescanAnnotationPins();
+  }
+
+  function pushOrderProgressDetail(o) {
+    if (!o) return;
+    openOrderProgressDetail(o.id, { simulateUserMsg: true });
+  }

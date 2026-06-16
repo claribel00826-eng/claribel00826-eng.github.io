@@ -695,7 +695,7 @@ window.Annotation = (function () {
         html += '<p class="sc-spec-panel__sub">本版本文档：' + esc(docs) + '。仅范围内模块显示「标注」钉。</p>';
       }
     }
-    html += '<p>点击各模块右上角 <strong>标注</strong> 查看该卡片的业务说明（内容、查询、交互）。</p>';
+    html += '<p>点击各模块右上角 <strong>标注</strong> 查看该卡片的业务说明（一、展示与口径 · 二、范围 · 三、交互）。</p>';
     return html;
   }
 

@@ -1,0 +1,129 @@
+  function inventoryProductsForCustomer(c) {
+    const ids = new Set();
+    ordersForCustomer(c.id).forEach(function (o) {
+      (o.productIds || []).forEach(function (id) {
+        ids.add(id);
+      });
+      (o.lines || []).forEach(function (l) {
+        if (l.productId) ids.add(l.productId);
+      });
+    });
+    schemesForCustomer(c.id).forEach(function (s) {
+      (s.lines || []).forEach(function (l) {
+        if (l.productId) ids.add(l.productId);
+      });
+    });
+    quotesForCustomer(c.id).forEach(function (q) {
+      (q.lines || []).forEach(function (l) {
+        if (l.productId) ids.add(l.productId);
+      });
+    });
+    if (!ids.size) {
+      DemoData.products.slice(0, 6).forEach(function (p) {
+        ids.add(p.id);
+      });
+    }
+    return DemoData.products
+      .filter(function (p) {
+        return ids.has(p.id);
+      })
+      .sort(function (a, b) {
+        return a.name.localeCompare(b.name, 'zh-CN');
+      });
+  }
+
+  function formatInventoryQty(n, unit) {
+    return (Number(n) || 0).toLocaleString('zh-CN') + ' ' + (unit || '件');
+  }
+
+  function productSkusForInventory(product) {
+    if (product.skus && product.skus.length) return product.skus;
+    return [{ id: DemoData.defaultSkuId(product), label: product.spec || '默认' }];
+  }
+
+  function renderInventoryResultCard(c, products) {
+    let skuCount = 0;
+    products.forEach(function (p) {
+      skuCount += productSkusForInventory(p).length;
+    });
+    let bodyRows = '';
+    products.forEach(function (p) {
+      const skus = productSkusForInventory(p);
+      skus.forEach(function (sku, si) {
+        const stock = DemoData.skuInventoryStock(p, sku);
+        const low = stock.available <= 0;
+        const availCls = low
+          ? ' sc-inventory-stock__num--warn'
+          : ' sc-inventory-stock__num--avail';
+        bodyRows +=
+          '<tr class="sc-inventory-stock__row">' +
+          (si === 0
+            ? '<td class="sc-inventory-stock__product" rowspan="' +
+              skus.length +
+              '">' +
+              '<span class="sc-inventory-stock__name">' +
+              App.escapeHtml(p.name) +
+              '</span>' +
+              '<span class="sc-inventory-stock__code">' +
+              App.escapeHtml(p.inventoryCode || '—') +
+              '</span>' +
+              '<span class="sc-inventory-stock__unit">单位：' +
+              App.escapeHtml(p.salesUnit || '件') +
+              '</span></td>'
+            : '') +
+          '<td class="sc-inventory-stock__spec">' +
+          App.escapeHtml(sku.label || '默认') +
+          '</td>' +
+          '<td class="sc-inventory-stock__num' +
+          availCls +
+          '">' +
+          formatInventoryQty(stock.available, p.salesUnit) +
+          '</td>' +
+          '<td class="sc-inventory-stock__num">' +
+          formatInventoryQty(stock.onHand, p.salesUnit) +
+          '</td></tr>';
+      });
+    });
+    const emptyHint =
+      !products.length
+        ? '<p class="sc-card__meta sc-inventory-stock__empty">暂无关联货品，请先完成方案或订单。</p>'
+        : '';
+    const table =
+      products.length
+        ? '<div class="sc-inventory-stock__wrap">' +
+          '<table class="sc-inventory-stock__table">' +
+          '<thead><tr>' +
+          '<th>货品</th><th>规格</th><th>可用量</th><th>现存量</th>' +
+          '</tr></thead><tbody>' +
+          bodyRows +
+          '</tbody></table></div>'
+        : '';
+    return (
+      '<div class="sc-card sc-card--compact sc-card--inventory" data-spec-id="card-inventory">' +
+      '<div class="sc-card__head sc-card__head--compact">库存查询</div>' +
+      '<p class="sc-inventory-stock__meta">客户：<strong>' +
+      App.escapeHtml(c.name) +
+      '</strong> · ' +
+      products.length +
+      ' 个货品 · ' +
+      skuCount +
+      ' 个规格</p>' +
+      '<p class="sc-inventory-stock__hint">可用量 = 可承诺出库数量；现存量 = 账面在库数量（含已占用）。</p>' +
+      emptyHint +
+      table +
+      '</div>'
+    );
+  }
+
+  function runInventory() {
+    const c = requireCustomer();
+    if (!c) return;
+    const products = inventoryProductsForCustomer(c);
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为 <strong>' +
+        App.escapeHtml(c.name) +
+        '</strong> 查询各货品规格库存：</p>' +
+        renderInventoryResultCard(c, products)
+    );
+    rescanAnnotationPins();
+  }

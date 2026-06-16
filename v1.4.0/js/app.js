@@ -77,6 +77,21 @@
     );
   }
 
+  /** 按当前技能过滤选客户列表（仅客户往来单位；复制订单仅老客户） */
+  function customersForPickerInContext() {
+    const pool = customersForPicker().filter(function (c) {
+      const pt = c.partnerType || 'customer';
+      return pt === 'customer' || pt === 'both';
+    });
+    if (state.activeSkill === 'copy' && DemoData.isOldCustomer) {
+      const user = DemoData.demoSalesUser || DemoData.salesperson;
+      return pool.filter(function (c) {
+        return DemoData.isOldCustomer(c, user);
+      });
+    }
+    return pool;
+  }
+
   function partnerTypeMatchesPickerTab(c, tab) {
     const pt = c.partnerType || 'customer';
     if (tab === 'customer') return pt === 'customer' || pt === 'both';
@@ -742,11 +757,9 @@
 
   function filteredCustomersForPicker() {
     const q = (customerPickerQuery || '').trim();
-    const tab = customerPickerTab;
     const matchFn = window.DemoData && DemoData.customerMatchesQuery;
     const scoreFn = window.DemoData && DemoData.customerSearchScore;
-    const items = customersForPicker().filter((c) => {
-      if (!partnerTypeMatchesPickerTab(c, tab)) return false;
+    const items = customersForPickerInContext().filter((c) => {
       if (!q) return true;
       if (matchFn) return DemoData.customerMatchesQuery(c, q);
       const lower = q.toLowerCase();
@@ -800,19 +813,6 @@
   }
 
   function renderCustomerPickCardHtml() {
-    const tabs = CUSTOMER_PARTNER_TABS.map(function (chip) {
-      return (
-        '<button type="button" class="sc-filter-chip' +
-        (customerPickerTab === chip.id ? ' sc-filter-chip--active' : '') +
-        '" data-action="customer-tab" data-tab="' +
-        escapeHtml(chip.id) +
-        '" role="tab" aria-selected="' +
-        (customerPickerTab === chip.id ? 'true' : 'false') +
-        '">' +
-        escapeHtml(chip.label) +
-        '</button>'
-      );
-    }).join('');
     const items = filteredCustomersForPicker();
     return (
       '<div class="sc-card sc-card--compact sc-card--inline-form" data-spec-id="sheet-customer">' +
@@ -820,9 +820,6 @@
       '<input type="search" class="sc-search sc-card__search" data-action="customer-search" value="' +
       escapeHtml(customerPickerQuery) +
       '" placeholder="模糊搜索名称、编码（支持不连续关键字）" autocomplete="off" />' +
-      '<div class="sc-filter-row" role="tablist" aria-label="往来单位类型">' +
-      tabs +
-      '</div>' +
       '<div class="sc-customer-list sc-customer-list--card">' +
       buildCustomerListHtml(items) +
       '</div></div>'
@@ -1753,7 +1750,7 @@
     }
     setTimeout(() => {
       pushAiHtml(
-        '我可以帮你：<strong>待跟进</strong>、<strong>方案速配</strong>、<strong>报价</strong>、<strong>交期</strong>、<strong>下单</strong>、查进度与客服。试试底部 Skill 或说「配个方案」。'
+        '我可以帮你：<strong>待跟进</strong>、<strong>方案速配</strong>、<strong>报价</strong>、<strong>交期</strong>、<strong>下单</strong>、查进度。试试底部 Skill 或说「配个方案」。'
       );
     }, 300);
   }
@@ -2098,10 +2095,16 @@
       if (copyLineSku && window.Skills && Skills.onCopyLineSkuChange) Skills.onCopyLineSkuChange(copyLineSku);
       const orderSku = e.target.closest('[data-action="order-sku"]');
       if (orderSku && window.Skills) Skills.handleAction('order-sku', orderSku);
+      const pickFreeAttr = e.target.closest('[data-action="pick-free-attr"]');
+      if (pickFreeAttr && window.Skills && Skills.onPickFreeAttrChange) Skills.onPickFreeAttrChange(pickFreeAttr);
       const quoteLineProcess = e.target.closest('[data-action="quote-line-process"]');
       if (quoteLineProcess && window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
       const copyLineProcess = e.target.closest('[data-action="copy-line-process"]');
       if (copyLineProcess && window.Skills && Skills.syncOrderCopyLinesFromDom) Skills.syncOrderCopyLinesFromDom();
+      const orderConfirmProcess = e.target.closest('[data-action="order-confirm-line-process"]');
+      if (orderConfirmProcess && window.Skills && Skills.syncOrderConfirmLinesFromDom) {
+        Skills.syncOrderConfirmLinesFromDom();
+      }
       const sel = e.target.closest('[data-action="plan-sku"]');
       if (sel && window.Skills) Skills.handleAction('plan-sku', sel);
       const planQty = e.target.closest('[data-action="plan-qty"]');
@@ -2126,6 +2129,14 @@
         e.target.closest('[data-action="copy-line-tax"]')
       ) {
         if (window.Skills && Skills.syncOrderCopyLinesFromDom) Skills.syncOrderCopyLinesFromDom();
+      }
+      if (
+        e.target.closest('[data-action="order-confirm-line-price"]') ||
+        e.target.closest('[data-action="order-confirm-line-qty"]') ||
+        e.target.closest('[data-action="order-confirm-line-tax"]') ||
+        e.target.closest('[data-action="order-confirm-line-deliver"]')
+      ) {
+        if (window.Skills && Skills.syncOrderConfirmLinesFromDom) Skills.syncOrderConfirmLinesFromDom();
       }
       if (e.target.closest('[data-action="plan-qty"]') && window.Skills && Skills.syncPlanQtyFromDom) {
         Skills.syncPlanQtyFromDom();

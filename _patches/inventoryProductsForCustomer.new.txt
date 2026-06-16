@@ -1,0 +1,211 @@
+  function formatInventoryQty(n, unit) {
+    return (Number(n) || 0).toLocaleString('zh-CN') + ' ' + (unit || '件');
+  }
+
+  function parseInventoryUtteranceQuery(text) {
+    const t = (text || '').trim();
+    if (!t) return '';
+    let m = t.match(/(?:查|看看?|帮我查)(?:一下|下)?(.+?)(?:的)?库存/);
+    if (m && m[1]) {
+      let body = m[1].trim().replace(/^(一下|下)/, '').trim();
+      body = body.replace(/和|与|、/g, ' ');
+      if (body.length >= 2 && !/^库存/.test(body)) return body;
+    }
+    m = t.match(/库存(?:查询|情况)?[：:，,\s]+(.+)/);
+    if (m && m[1]) {
+      const body = m[1].trim().replace(/和|与|、/g, ' ');
+      if (body.length >= 2) return body;
+    }
+    return '';
+  }
+
+  function filterInventoryRows(rows, filter) {
+    let out = rows.slice();
+    if (filter.lowOnly) {
+      out = out.filter(function (r) {
+        return r.available <= 0;
+      });
+    }
+    const q = (filter.query || '').trim().toLowerCase();
+    if (q) {
+      const parts = q.split(/\s+/).filter(Boolean);
+      out = out.filter(function (r) {
+        const hay = (
+          r.productName +
+          ' ' +
+          r.inventoryCode +
+          ' ' +
+          r.skuLabel
+        ).toLowerCase();
+        return parts.every(function (p) {
+          return hay.indexOf(p) >= 0;
+        });
+      });
+    }
+    return out;
+  }
+
+  function inventorySnapshotSummary(allRows, filteredRows) {
+    const totalProducts = new Set(allRows.map(function (r) {
+      return r.productId;
+    })).size;
+    const zeroAvail = allRows.filter(function (r) {
+      return r.available <= 0;
+    }).length;
+    const productIds = new Set(
+      filteredRows.map(function (r) {
+        return r.productId;
+      })
+    );
+    return {
+      totalProducts: totalProducts,
+      totalSku: allRows.length,
+      zeroAvail: zeroAvail,
+      productCount: productIds.size,
+      skuCount: filteredRows.length
+    };
+  }
+
+  function renderInventoryResultCard(filter, allRows) {
+    filter = filter || { query: '', lowOnly: false };
+    const filtered = filterInventoryRows(allRows, filter);
+    const summary = inventorySnapshotSummary(allRows, filtered);
+    const groups = [];
+    filtered.forEach(function (row) {
+      let g = groups.find(function (x) {
+        return x.productId === row.productId;
+      });
+      if (!g) {
+        g = { productId: row.productId, rows: [] };
+        groups.push(g);
+      }
+      g.rows.push(row);
+    });
+    let bodyRows = '';
+    groups.forEach(function (g) {
+      g.rows.forEach(function (row, si) {
+        const low = row.available <= 0;
+        const availCls = low
+          ? ' sc-inventory-stock__num--warn'
+          : ' sc-inventory-stock__num--avail';
+        bodyRows +=
+          '<tr class="sc-inventory-stock__row">' +
+          (si === 0
+            ? '<td class="sc-inventory-stock__product" rowspan="' +
+              g.rows.length +
+              '">' +
+              '<span class="sc-inventory-stock__name">' +
+              App.escapeHtml(row.productName) +
+              '</span>' +
+              '<span class="sc-inventory-stock__code">' +
+              App.escapeHtml(row.inventoryCode || '—') +
+              '</span>' +
+              '<span class="sc-inventory-stock__unit">单位：' +
+              App.escapeHtml(row.salesUnit || '件') +
+              '</span></td>'
+            : '') +
+          '<td class="sc-inventory-stock__spec">' +
+          App.escapeHtml(row.skuLabel || '默认') +
+          '</td>' +
+          '<td class="sc-inventory-stock__num' +
+          availCls +
+          '">' +
+          formatInventoryQty(row.available, row.salesUnit) +
+          '</td>' +
+          '<td class="sc-inventory-stock__num">' +
+          formatInventoryQty(row.onHand, row.salesUnit) +
+          '</td></tr>';
+      });
+    });
+    const emptyHint =
+      !filtered.length
+        ? '<p class="sc-card__meta sc-inventory-stock__empty">当前筛选条件下暂无规格记录。</p>'
+        : '';
+    const table =
+      filtered.length
+        ? '<div class="sc-inventory-stock__wrap">' +
+          '<table class="sc-inventory-stock__table">' +
+          '<thead><tr>' +
+          '<th>货品</th><th>规格</th><th>可用量</th><th>现存量</th>' +
+          '</tr></thead><tbody>' +
+          bodyRows +
+          '</tbody></table></div>'
+        : '';
+    const lowCls = filter.lowOnly ? ' sc-filter-chip--active is-active' : '';
+    return (
+      '<div class="sc-card sc-card--compact sc-card--inventory" data-spec-id="card-inventory">' +
+      '<div class="sc-card__head sc-card__head--compact">库存查询</div>' +
+      '<p class="sc-inventory-stock__meta">全部仓库（合计）· ' +
+      summary.totalProducts +
+      ' 货品 · ' +
+      summary.totalSku +
+      ' 规格 · 可用为 0：<strong>' +
+      summary.zeroAvail +
+      '</strong> 个规格</p>' +
+      '<p class="sc-inventory-stock__hint">可用量 = 可承诺出库数量；现存量 = 账面在库数量（含已占用）。不足口径：可用量 = 0。</p>' +
+      '<div class="sc-inventory-stock__toolbar">' +
+      '<div class="sc-plan-query-row">' +
+      '<input type="search" class="sc-input sc-input--field" id="inventory-query-input" placeholder="编码 / 名称 / 规格" value="' +
+      App.escapeHtml(filter.query || '') +
+      '"/>' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="inventory-query-apply">筛选</button>' +
+      '</div>' +
+      '<button type="button" class="sc-filter-chip' +
+      lowCls +
+      '" data-action="inventory-filter-low">仅看可用为 0</button>' +
+      '</div>' +
+      (filtered.length
+        ? '<p class="sc-inventory-stock__filter-meta">当前显示 ' +
+          summary.productCount +
+          ' 货品 · ' +
+          summary.skuCount +
+          ' 规格</p>'
+        : '') +
+      emptyHint +
+      table +
+      '</div>'
+    );
+  }
+
+  function syncInventoryFilterFromDom(card) {
+    const filter = ctx().inventoryFilter || { query: '', lowOnly: false };
+    const input = card.querySelector('#inventory-query-input');
+    if (input) filter.query = input.value.trim();
+    const lowBtn = card.querySelector('[data-action="inventory-filter-low"]');
+    if (lowBtn) {
+      filter.lowOnly = lowBtn.classList.contains('is-active');
+    }
+    ctx().inventoryFilter = filter;
+    return filter;
+  }
+
+  function refreshLastInventoryCard() {
+    const cards = document.querySelectorAll('[data-spec-id="card-inventory"]');
+    const card = cards[cards.length - 1];
+    if (!card) return;
+    const rows = ctx().inventorySnapshotRows || DemoData.buildInventorySnapshotRows();
+    const filter = syncInventoryFilterFromDom(card);
+    card.outerHTML = renderInventoryResultCard(filter, rows);
+    rescanAnnotationPins();
+  }
+
+  function runInventory(opts) {
+    opts = opts || {};
+    const rows = DemoData.buildInventorySnapshotRows();
+    if (!rows.length) {
+      App.toast('暂无库存数据');
+      return;
+    }
+    const query = opts.query || '';
+    ctx().inventoryFilter = { query: query, lowOnly: false };
+    ctx().inventorySnapshotRows = rows;
+    const utterance = opts.utterance || '';
+    if (opts.simulateUserMsg && utterance) {
+      simulateUserUtteranceUnlessDuplicate(utterance);
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为您查询 <strong>全部货品</strong> 规格库存（全仓合计）：</p>' +
+        renderInventoryResultCard(ctx().inventoryFilter, rows)
+    );
+    rescanAnnotationPins();
+  }

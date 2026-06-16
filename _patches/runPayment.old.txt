@@ -1,0 +1,16 @@
+  function runPayment() {
+    const c = requireCustomer();
+    if (!c) return;
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为 <strong>' +
+        App.escapeHtml(c.name) +
+        '</strong> 汇总回款情况：</p>' +
+        renderInsightCard('回款分析', [
+          { label: '应收余额', value: '¥186,400' },
+          { label: '逾期', value: '¥42,000（逾期 18 天）' },
+          { label: '本月已回款', value: '¥96,400' },
+          { label: '最近回款日', value: '2026-05-12' },
+          { label: '信用建议', value: '逾期部分建议跟进对账后再下新单' }
+        ], 'card-insight-payment')
+    );
+  }

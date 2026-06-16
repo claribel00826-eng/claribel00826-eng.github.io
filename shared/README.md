@@ -18,5 +18,6 @@
 
 ## 版本入口
 
-- [版本索引](../index.html)  
-- 当前开发版本：[v1.2.0](../v1.2.0/index.html) · 基线版本：[v1.1.0](../v1.1.0/index.html)
+- [版本索引](../index.html)
+- 演示版本：[v1.1.0](../v1.1.0/index.html) · [v1.2.0](../v1.2.0/index.html) · [v1.3.0](../v1.3.0/index.html) · [v1.4.0](../v1.4.0/index.html)
+- Vue 前端（独立工程）：[frontend](../frontend/)

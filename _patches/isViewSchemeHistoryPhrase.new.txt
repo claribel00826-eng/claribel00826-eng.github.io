@@ -1,0 +1,27 @@
+          .find(function (o) {
+            return (
+              (o.no || '').toLowerCase().indexOf(k) >= 0 ||
+              (o.items || '').toLowerCase().indexOf(k) >= 0 ||
+              (pick.mode !== 'copy' && pick.mode !== 'change' && (o.status || '').toLowerCase().indexOf(k) >= 0)
+            );
+          });
+        if (hit) {
+          if (pick.mode === 'copy') {
+            copyOrderToConfirm(hit.id, { simulateUserMsg: true });
+            clearActivePickList();
+            return true;
+          }
+          if (pick.mode === 'change') {
+            simulateUserUtterance('变更订单 ' + hit.no);
+            openChangeSheet(hit.id);
+            clearActivePickList();
+            return true;
+          }
+          return viewOrderById(hit.id);
+        }
+      }
+    }
+    return false;
+  }
+
+  function isViewSchemeHistoryPhrase(t) {

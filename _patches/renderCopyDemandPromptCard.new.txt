@@ -1,0 +1,156 @@
+    App.pushAiHtml(lead + renderHistoricalOrderPickCard(c, list, { mode: 'change' }));
+    rescanAnnotationPins();
+  }
+
+  function ensureProgressPickState() {
+    if (!ctx().progressPick) {
+      ctx().progressPick = {
+        demandText: '',
+        filter: '',
+        visibleCount: COPY_ORDER_LIST_PAGE_SIZE
+      };
+    }
+    return ctx().progressPick;
+  }
+
+  function resetProgressPickState() {
+    ctx().progressPick = {
+      demandText: '',
+      filter: '',
+      visibleCount: COPY_ORDER_LIST_PAGE_SIZE
+    };
+  }
+
+  function syncProgressPickActiveList(list, visibleCount) {
+    const visible = list.slice(0, visibleCount);
+    ctx().activePickList = {
+      type: 'order',
+      mode: 'progress',
+      ids: visible.map(function (o) {
+        return o.id;
+      })
+    };
+  }
+
+  function pushProgressOrderPickCard(c, opts) {
+    opts = opts || {};
+    enterSkill('progress');
+    ctx().progressPickMode = true;
+    delete ctx().copyPickMode;
+    delete ctx().changePickMode;
+    const state = ensureProgressPickState();
+    const list = filterOrdersForCopyPick(c, state);
+    syncProgressPickActiveList(list, state.visibleCount);
+    const lead =
+      opts.leadHtml ||
+      '<p class="sc-reply-lead">请选择要<strong>查询进度</strong>的订单（点选一行）：</p>';
+    App.pushAiHtml(lead + renderHistoricalOrderPickCard(c, list, { mode: 'progress' }));
+    rescanAnnotationPins();
+  }
+
+  function renderProgressDemandPromptCard(c) {
+    return renderDemandPromptCard(c, {
+      specId: 'card-progress-demand',
+      allowSkip: true,
+      headTitle: '请描述要查询的订单特征（可跳过）',
+      promptMeta: '填写后用于筛选历史订单；跳过则按最近下单展示全部订单。',
+      skipLabel: '跳过，展示最近订单'
+    });
+  }
+
+  function maybeProgressDemandBeforePick(c, opts) {
+    opts = opts || {};
+    const lastUser = getLatestUserChatText();
+    if (
+      lastUser &&
+      isNaturalDemandText(lastUser) &&
+      !isPlainSkillPhrase(lastUser) &&
+      !isPlanDemandSkipPhrase(lastUser)
+    ) {
+      if (submitProgressDemand(lastUser, { simulateUserMsg: false })) return true;
+    }
+    if (opts.leadHtml) App.pushAiHtml(opts.leadHtml);
+    App.pushAiHtml(renderProgressDemandPromptCard(c));
+    rescanAnnotationPins();
+    return true;
+  }
+
+  function submitProgressDemand(text, opts) {
+    opts = opts || {};
+    const c = activeCustomer();
+    if (!c) return false;
+    const t = String(text || '').trim();
+    if (!t) {
+      App.toast('请描述要查询的订单特征，或点跳过');
+      return true;
+    }
+    const state = ensureProgressPickState();
+    state.demandText = t;
+    state.filter = '';
+    state.visibleCount = COPY_ORDER_LIST_PAGE_SIZE;
+    if (opts.simulateUserMsg) simulateUserUtterance(t);
+    pushProgressOrderPickCard(c, {
+      leadHtml:
+        '<p class="sc-reply-lead">已记录需求，请从匹配的历史订单中选择一笔：</p>'
+    });
+    return true;
+  }
+
+  function skipProgressDemandToPick(opts) {
+    opts = opts || {};
+    const c = activeCustomer();
+    if (!c) return false;
+    const state = ensureProgressPickState();
+    state.demandText = '';
+    state.filter = '';
+    state.visibleCount = COPY_ORDER_LIST_PAGE_SIZE;
+    pushProgressOrderPickCard(c, {
+      leadHtml:
+        '<p class="sc-reply-lead">已跳过需求，按<strong>最近下单</strong>展示历史订单：</p>'
+    });
+    if (opts.simulateUserMsg) simulateUserUtterance('跳过');
+    return true;
+  }
+
+  function openProgressDemandEdit(opts) {
+    opts = opts || {};
+    const c = activeCustomer();
+    if (!c) return;
+    enterSkill('progress');
+    ctx().progressPickMode = true;
+    pushNextAiCard(
+      renderDemandPromptCard(c, {
+        specId: 'card-progress-demand',
+        edit: true,
+        optional: true,
+        headTitle: '修改查询筛选需求',
+        promptMeta: '修改后将重新筛选历史订单列表。'
+      }),
+      opts.simulateUserMsg ? '修改需求' : null
+    );
+    rescanAnnotationPins();
+  }
+
+  function progressRepickOrder() {
+    const c = activeCustomer();
+    if (!c) return;
+    pushProgressOrderPickCard(c);
+  }
+
+  function tryResolveProgressOrderFromUtterance(text, c) {
+    if (!text || !c) return null;
+    const list = ordersForCustomer(c.id);
+    const t = text.trim();
+    const m =
+      t.match(/(?:进度|查订单|订单到哪|查看订单)\s*(.+)/i) ||
+      t.match(/^(SO[\w-]+)/i);
+    const needle = m ? String(m[1] || m[0]).trim() : '';
+    if (!needle || needle.length < 3) return null;
+    const hits = list.filter(function (o) {
+      return (o.no || '').toLowerCase().indexOf(needle.toLowerCase()) >= 0;
+    });
+    if (hits.length === 1) return hits[0];
+    return null;
+  }
+
+  function renderCopyDemandPromptCard(c) {

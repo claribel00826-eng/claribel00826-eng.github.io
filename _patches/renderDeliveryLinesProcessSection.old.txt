@@ -1,0 +1,26 @@
+  function renderDeliveryLinesProcessSection(lines) {
+    if (!lines || !lines.length) return '';
+    const rows = lines
+      .map(function (line, idx) {
+        const pr = productById(line.productId);
+        if (!pr) return '';
+        return (
+          '<tr><td>' +
+          (idx + 1) +
+          '</td><td><strong>' +
+          App.escapeHtml(line.inventoryName || '—') +
+          '</strong></td><td>' +
+          renderDeliveryLineProcessVersionField(pr, line, idx) +
+          '</td></tr>'
+        );
+      })
+      .join('');
+    return (
+      '<label class="sc-field-label">工艺版本（按货品）</label>' +
+      '<div class="sc-order-confirm__table-wrap sc-delivery-lines-process">' +
+      '<table class="sc-order-confirm__table sc-order-confirm__table--compact">' +
+      '<thead><tr><th>#</th><th>品名</th><th>工艺版本</th></tr></thead><tbody>' +
+      rows +
+      '</tbody></table></div>'
+    );
+  }

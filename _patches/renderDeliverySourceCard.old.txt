@@ -1,0 +1,81 @@
+  function renderDeliverySourceCard(c) {
+    const quotesList = c ? quotesForCustomer(c.id) : [];
+    const quotesCount = quotesList.length;
+    const ordersList = c ? deliveryOrdersForCustomer(c.id) : [];
+    const ordersCount = ordersList.length;
+    const quotesSub = quotesCount > 0 ? '共 ' + quotesCount + ' 份历史报价单' : '暂无历史报价单';
+    const ordersSub =
+      ordersCount > 0 ? '共 ' + ordersCount + ' 笔未排程订单' : '暂无未排程订单';
+    let quoteBtnExtra = '';
+    let orderBtnExtra = '';
+    let meta = '';
+    if (quotesCount === 1) {
+      quoteBtnExtra = ' data-quote-id="' + App.escapeHtml(quotesList[0].id) + '"';
+      meta +=
+        '<p class="sc-card__meta">本客户有 <strong>1</strong> 份报价单，点「按报价单」将直接进入评审表单。</p>';
+    } else if (quotesCount > 1) {
+      meta +=
+        '<p class="sc-card__meta">本客户共有 <strong>' +
+        quotesCount +
+        '</strong> 份报价单，按报价单评估时须先选择。</p>';
+    }
+    if (ordersCount === 1) {
+      orderBtnExtra = ' data-oid="' + App.escapeHtml(ordersList[0].id) + '"';
+      if (!meta) {
+        meta +=
+          '<p class="sc-card__meta">本客户有 <strong>1</strong> 笔未排程订单，点「按订单」将直接进入评审表单。</p>';
+      }
+    } else if (ordersCount > 1 && !meta) {
+      meta +=
+        '<p class="sc-card__meta">本客户共有 <strong>' +
+        ordersCount +
+        '</strong> 笔未排程订单，按订单评估时须先选择。</p>';
+    }
+
+    const quoteOption =
+      quotesCount > 0
+        ? '<button type="button" class="sc-plan-entry__option" data-action="delivery-source-quote"' +
+          quoteBtnExtra +
+          '>' +
+          '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">按报价单</span>' +
+          '<span class="sc-plan-entry__option-desc">' +
+          App.escapeHtml(quotesSub) +
+          '</span></span>' +
+          '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>'
+        : '<div class="sc-plan-entry__option sc-plan-entry__option--disabled" aria-disabled="true">' +
+          '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">按报价单</span>' +
+          '<span class="sc-plan-entry__option-desc">' +
+          App.escapeHtml(quotesSub) +
+          '</span></span></div>';
+
+    const orderOption =
+      ordersCount > 0
+        ? '<button type="button" class="sc-plan-entry__option" data-action="delivery-source-order"' +
+          orderBtnExtra +
+          '>' +
+          '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">按订单</span>' +
+          '<span class="sc-plan-entry__option-desc">' +
+          App.escapeHtml(ordersSub) +
+          '</span></span>' +
+          '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>'
+        : '<div class="sc-plan-entry__option sc-plan-entry__option--disabled" aria-disabled="true">' +
+          '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">按订单</span>' +
+          '<span class="sc-plan-entry__option-desc">' +
+          App.escapeHtml(ordersSub) +
+          '</span></span></div>';
+
+    return (
+      '<div class="sc-card sc-card--compact" data-spec-id="card-delivery-source">' +
+      '<div class="sc-card__head sc-card__head--compact">交期评审 · 选择来源</div>' +
+      '<div class="sc-plan-entry__actions" role="group" aria-label="交期评审选择来源">' +
+      quoteOption +
+      orderOption +
+      '<button type="button" class="sc-plan-entry__option sc-plan-entry__option--primary" data-action="delivery-source-lines">' +
+      '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">自选商品</span>' +
+      '<span class="sc-plan-entry__option-desc">直选品、规格与数量评审交期</span></span>' +
+      '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>' +
+      '</div>' +
+      meta +
+      '</div>'
+    );
+  }

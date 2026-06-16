@@ -1,0 +1,18 @@
+  function runProgress() {
+    const c = requireCustomer();
+    if (!c) return;
+    const list = ordersForCustomer(c.id);
+    if (!list.length) {
+      App.pushAiHtml('该客户暂无订单。');
+      return;
+    }
+    const lastUser = getLatestUserChatText();
+    const hit = tryResolveProgressOrderFromUtterance(lastUser, c);
+    if (hit) {
+      enterSkill('progress');
+      openOrderProgressDetail(hit.id, { simulateUserMsg: false });
+      return;
+    }
+    resetProgressPickState();
+    maybeProgressDemandBeforePick(c);
+  }

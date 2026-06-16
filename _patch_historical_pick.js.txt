@@ -1,0 +1,22 @@
+  function renderHistoricalOrderPickCard(c, list, opts) {
+    opts = opts || {};
+    const mode = opts.mode || 'copy';
+    const state =
+      mode === 'copy'
+        ? ensureCopyPickState()
+        : mode === 'progress'
+          ? ensureProgressPickState()
+          : ensureOrderListPickState('change');
+    const action =
+      mode === 'change'
+        ? 'change-pick'
+        : mode === 'progress'
+          ? 'progress-pick'
+          : 'copy-pick';
+    const head =
+      opts.headTitle ||
+      (mode === 'change'
+        ? '订单变更 · 选择历史单'
+        : mode === 'progress'
+          ? '订单进度 · 选择订单'
+          : '复制订单 · 选择历史单');

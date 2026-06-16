@@ -1,4 +1,4 @@
-/** v1.3.0 设计标注范围：文档 02～05（不含意图路由钉 chat-llm）。 */
+/** v1.3.0 设计标注范围：文档 02～06（不含意图路由钉 chat-llm）。 */
 window.AnnotationSpecScope = {
   version: 'v1.3.0',
   label: '1.3.0 版',
@@ -6,7 +6,8 @@ window.AnnotationSpecScope = {
     { id: '02', title: '方案报价下单' },
     { id: '03', title: '增量验收' },
     { id: '04', title: '数据填槽需求' },
-    { id: '05', title: '交期与订单运营' }
+    { id: '05', title: '交期与订单运营' },
+    { id: '06', title: '经营分析' }
   ],
   ids: [
     'data-rules-chat-flow',
@@ -44,15 +45,23 @@ window.AnnotationSpecScope = {
     'modal-pdf',
     'card-delivery-entry',
     'card-delivery-source',
+    'card-delivery-scheme-pick',
     'card-delivery-quote-pick',
     'card-delivery-order-pick',
     'card-delivery-demand',
     'sheet-delivery',
     'card-delivery',
-    'card-order-pick',
-    'sheet-change',
+    'card-copy-demand',
+    'card-progress-demand',
+    'card-order-copy',
+    'card-change-confirm',
     'card-change-success',
-    'card-order-progress-list',
-    'card-order-progress-detail'
+    'card-order-progress-detail',
+    'card-capacity',
+    'card-capacity-block-detail',
+    'card-biz-analysis',
+    'card-biz-analysis-insight',
+    'card-inventory',
+    'card-payment'
   ]
 };

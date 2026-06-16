@@ -181,6 +181,11 @@ window.DemoData = {
       salesReminderDays: 14
     }
   ],
+  /** 后台系统配置的自由项定义（演示：颜色、大小） */
+  systemFreeAttrDefs: [
+    { key: 'color', label: '颜色', options: ['标准银', '哑光黑', '工程蓝', '银灰', '黑色'] },
+    { key: 'size', label: '大小', options: ['小型', '标准', '大型'] }
+  ],
   products: [
     {
       id: 'p1',
@@ -194,9 +199,13 @@ window.DemoData = {
       latestPrice: 1320,
       minPrice: 1150,
       defaultTaxRate: 13,
+      customAttrs: [
+        { key: 'color', label: '颜色' },
+        { key: 'size', label: '大小' }
+      ],
       skus: [
-        { id: 'p1-s1', label: '标准型 Φ120', processVersion: 'V2024.1' },
-        { id: 'p1-s2', label: '加强型 Φ120', processVersion: 'V2024.2' }
+        { id: 'p1-s1', label: '标准型 Φ120', processVersion: 'V2024.1', customAttrValues: { color: '标准银', size: '标准' } },
+        { id: 'p1-s2', label: '加强型 Φ120', processVersion: 'V2024.2', customAttrValues: { color: '哑光黑', size: '大型' } }
       ]
     },
     {
@@ -210,9 +219,13 @@ window.DemoData = {
       unitPrice: 3680,
       latestPrice: 3680,
       minPrice: 3250,
+      customAttrs: [
+        { key: 'color', label: '颜色' },
+        { key: 'size', label: '大小' }
+      ],
       skus: [
-        { id: 'p2-s1', label: '卧式 M3' },
-        { id: 'p2-s2', label: '立式 M3' }
+        { id: 'p2-s1', label: '卧式 M3', customAttrValues: { color: '标准银', size: '标准' } },
+        { id: 'p2-s2', label: '立式 M3', customAttrValues: { color: '标准银', size: '大型' } }
       ],
       customItems: ['减速比1:30', '产线主传动']
     },
@@ -228,9 +241,13 @@ window.DemoData = {
       latestPrice: 2180,
       minPrice: 1920,
       defaultTaxRate: 13,
+      customAttrs: [
+        { key: 'color', label: '颜色' },
+        { key: 'size', label: '大小' }
+      ],
       skus: [
-        { id: 'p3-s1', label: '法兰安装', processVersion: 'V2025-A' },
-        { id: 'p3-s2', label: '底座安装', processVersion: 'V2025-A' }
+        { id: 'p3-s1', label: '法兰安装', processVersion: 'V2025-A', customAttrValues: { color: '银灰', size: '标准' } },
+        { id: 'p3-s2', label: '底座安装', processVersion: 'V2025-A', customAttrValues: { color: '黑色', size: '大型' } }
       ],
       customItems: ['750W伺服', '自动化产线标配']
     },
@@ -245,7 +262,16 @@ window.DemoData = {
       unitPrice: 560,
       latestPrice: 560,
       minPrice: 498,
-      skus: [{ id: 'p4-s1', label: '标准 20 件/套' }]
+      skus: [
+        {
+          id: 'p4-s1',
+          label: '标准 20 件/套',
+          color: '耐温灰',
+          size: '标准',
+          availableQty: 0,
+          onHandQty: 45
+        }
+      ]
     },
     {
       id: 'p5',
@@ -258,7 +284,16 @@ window.DemoData = {
       unitPrice: 4200,
       latestPrice: 4200,
       minPrice: 3720,
-      skus: [{ id: 'p5-s1', label: '32 点标准' }]
+      skus: [
+        {
+          id: 'p5-s1',
+          label: '32 点标准',
+          color: '标准',
+          size: '32 点',
+          availableQty: 86,
+          onHandQty: 120
+        }
+      ]
     },
     {
       id: 'p6',
@@ -271,7 +306,16 @@ window.DemoData = {
       unitPrice: 1890,
       latestPrice: 1950,
       minPrice: 1720,
-      skus: [{ id: 'p6-s1', label: '800mm 标准' }]
+      skus: [
+        {
+          id: 'p6-s1',
+          label: '800mm 标准',
+          color: '标准银',
+          size: '800mm',
+          availableQty: 0,
+          onHandQty: 12
+        }
+      ]
     },
     {
       id: 'p7',
@@ -297,7 +341,14 @@ window.DemoData = {
       unitPrice: 2860,
       latestPrice: 2900,
       minPrice: 2550,
-      skus: [{ id: 'p8-s1', label: '15kW 标准' }]
+      customAttrs: [
+        { key: 'color', label: '颜色' },
+        { key: 'size', label: '大小' }
+      ],
+      skus: [
+        { id: 'p8-s1', label: '15kW 标准', customAttrValues: { color: '银灰', size: '标准' } },
+        { id: 'p8-s2', label: '15kW 加强', customAttrValues: { color: '黑色', size: '大型' } }
+      ]
     },
     {
       id: 'p9',
@@ -541,12 +592,23 @@ window.DemoData = {
     { id: 'copy', name: '复制订单', enabled: true, needsCustomer: true },
     { id: 'change', name: '订单变更', enabled: true, needsCustomer: true },
     { id: 'progress', name: '订单进度', enabled: true, needsCustomer: true },
-    { id: 'capacity', name: '产能分析', enabled: true, needsCustomer: true },
-    { id: 'inventory', name: '库存查询', enabled: true, needsCustomer: true },
+    { id: 'capacity', name: '产能分析', enabled: true, needsCustomer: false },
+    { id: 'inventory', name: '库存查询', enabled: true, needsCustomer: false },
     { id: 'biz-analysis', name: '业务分析', enabled: true, needsCustomer: false },
-    { id: 'payment', name: '回款分析', enabled: true, needsCustomer: true },
-    { id: 'service', name: '客服工单', enabled: true, needsCustomer: true }
+    { id: 'payment', name: '回款分析', enabled: true, needsCustomer: false }
   ],
+  paymentAnalysis: {
+    customerTotal: 86,
+    customerWithReceivable: 64,
+    overdueCustomerCount: 12,
+    receivableBalance: 1864000,
+    overdueAmount: 420000,
+    overdueMaxDays: 18,
+    monthCollected: 964000,
+    monthLabel: '2026年6月',
+    lastPaymentDate: '2026-05-12',
+    asOfLabel: '截至今日'
+  },
   /** 欢迎区功能网格：6×2；文案统一四字 */
   welcomeFeatures: [
     { id: 'followup', label: '今日待跟' },
@@ -591,14 +653,13 @@ window.DemoData = {
     inventory: '库存查询',
     'biz-analysis': '业务分析',
     payment: '回款分析',
-    service: '客户投诉',
     'write-follow': '写跟进',
     'switch-customer': '切换客户',
     help: '帮助'
   },
   welcomeAi: '你好，我是销售助手。可点功能格或底部技能栏开始。',
   welcomeHelp:
-    '支持：待跟进、方案速配、报价、交期、下单、复制/变更/进度、产能/库存/业务/回款分析、客服工单等。',
+    '支持：待跟进、方案速配、报价、交期、下单、复制/变更/进度、产能/库存/业务/回款分析等。',
   templateFollowup: {
     channel: '服务号消息',
     title: '今日待跟进提醒',
@@ -775,7 +836,186 @@ window.DemoData = {
         else if (x && (x.label || x.value)) parts.push(x.label || x.value);
       });
     }
+    (product.customAttrs || []).forEach(function (a) {
+      if (!a) return;
+      if (typeof a === 'string') parts.push(a);
+      else {
+        if (a.label) parts.push(a.label);
+        (a.options || []).forEach(function (o) {
+          if (o) parts.push(o);
+        });
+      }
+    });
     return parts.filter(Boolean);
+  },
+
+  /** 产品适用的自由项定义（合并后台系统配置与产品主档） */
+  productCustomAttrDefs(product) {
+    if (!product || !Array.isArray(product.customAttrs) || !product.customAttrs.length) return [];
+    const system = DemoData.systemFreeAttrDefs || [];
+    return product.customAttrs.map(function (a) {
+      if (typeof a === 'string') {
+        const sys = system.find(function (s) {
+          return s.key === a || s.label === a;
+        });
+        const key = sys ? sys.key : a;
+        return {
+          key: key,
+          label: sys ? sys.label : a,
+          options: DemoData.freeAttrOptionsForProduct(product, key)
+        };
+      }
+      const key = a.key || a.label;
+      const sys = system.find(function (s) {
+        return s.key === key;
+      });
+      return {
+        key: key,
+        label: a.label || (sys && sys.label) || key,
+        options:
+          Array.isArray(a.options) && a.options.length
+            ? a.options
+            : DemoData.freeAttrOptionsForProduct(product, key)
+      };
+    });
+  },
+
+  /** 某产品在某自由项下的可选值（SKU 实际值优先，其次系统候选项） */
+  freeAttrOptionsForProduct(product, key) {
+    const set = new Set();
+    (product.skus || []).forEach(function (s) {
+      const v = s.customAttrValues && s.customAttrValues[key];
+      if (v) set.add(v);
+    });
+    const sys = (DemoData.systemFreeAttrDefs || []).find(function (s) {
+      return s.key === key;
+    });
+    if (sys && sys.options) sys.options.forEach(function (o) {
+      if (o) set.add(o);
+    });
+    return Array.from(set);
+  },
+
+  /** 按自由项取值匹配 SKU（支持部分匹配） */
+  findSkuByAttrValues(product, attrMap, opts) {
+    opts = opts || {};
+    const skus = product.skus || [];
+    if (!skus.length) return null;
+    const keys = Object.keys(attrMap || {}).filter(function (k) {
+      return attrMap[k];
+    });
+    if (!keys.length) return skus[0];
+    let exact = skus.find(function (s) {
+      const vals = s.customAttrValues || {};
+      return keys.every(function (k) {
+        return vals[k] === attrMap[k];
+      });
+    });
+    if (exact) return exact;
+    if (opts.strict) return null;
+    let best = null;
+    let bestScore = -1;
+    skus.forEach(function (s) {
+      const vals = s.customAttrValues || {};
+      let score = 0;
+      keys.forEach(function (k) {
+        if (vals[k] === attrMap[k]) score++;
+      });
+      if (score > bestScore) {
+        bestScore = score;
+        best = s;
+      }
+    });
+    return bestScore > 0 ? best : skus[0];
+  },
+
+  resolveSkuFromAttrValues(product, attrMap) {
+    const sk = DemoData.findSkuByAttrValues(product, attrMap);
+    return sk ? sk.id : DemoData.defaultSkuId(product);
+  },
+
+  skuLabelFromAttrs(product, attrsOrMap) {
+    const map = {};
+    if (Array.isArray(attrsOrMap)) {
+      attrsOrMap.forEach(function (a) {
+        if (a && a.key) map[a.key] = a.value;
+      });
+    } else if (attrsOrMap) {
+      Object.keys(attrsOrMap).forEach(function (k) {
+        map[k] = attrsOrMap[k];
+      });
+    }
+    const sk = DemoData.findSkuByAttrValues(product, map);
+    if (sk) return sk.label;
+    const defs = DemoData.productCustomAttrDefs(product);
+    const parts = defs
+      .map(function (d) {
+        const v = map[d.key];
+        return v ? d.label + '：' + v : '';
+      })
+      .filter(Boolean);
+    return parts.length ? parts.join(' · ') : '默认';
+  },
+
+  /** 语音/关键词匹配规格：SKU 标签或自由项取值 */
+  matchProductSpecKeyword(product, keyword) {
+    const kw = String(keyword || '').trim();
+    if (!kw || !product) return null;
+    const k = kw.toLowerCase();
+    const skus = product.skus || [];
+    const skLabel = skus.find(function (s) {
+      return s.label.toLowerCase().indexOf(k) >= 0 || s.id === kw;
+    });
+    if (skLabel) {
+      return {
+        skuId: skLabel.id,
+        attrs: DemoData.resolveLineCustomAttrs(product, skLabel.id)
+      };
+    }
+    const defs = DemoData.productCustomAttrDefs(product);
+    for (let i = 0; i < defs.length; i++) {
+      const d = defs[i];
+      const opt = (d.options || []).find(function (o) {
+        return o.toLowerCase().indexOf(k) >= 0 || k.indexOf(o.toLowerCase()) >= 0;
+      });
+      if (opt) {
+        const map = {};
+        map[d.key] = opt;
+        const sk = DemoData.findSkuByAttrValues(product, map);
+        const skuId = sk ? sk.id : DemoData.defaultSkuId(product);
+        const attrs = DemoData.resolveLineCustomAttrs(product, skuId);
+        attrs.forEach(function (a) {
+          if (a.key === d.key) a.value = opt;
+        });
+        return { skuId: skuId, attrs: attrs };
+      }
+    }
+    return null;
+  },
+
+  /** 按 SKU 解析行级自定义项（报价/下单行快照） */
+  resolveLineCustomAttrs(product, skuId, saved) {
+    const defs = DemoData.productCustomAttrDefs(product);
+    if (!defs.length) return [];
+    const sk = (product.skus || []).find(function (s) {
+      return s.id === skuId;
+    });
+    const skuVals = (sk && sk.customAttrValues) || {};
+    const savedMap = {};
+    if (Array.isArray(saved)) {
+      saved.forEach(function (x) {
+        if (x && x.key != null) savedMap[x.key] = x.value;
+      });
+    }
+    return defs.map(function (d) {
+      const fallback = skuVals[d.key] != null ? skuVals[d.key] : d.options[0] || '';
+      return {
+        key: d.key,
+        label: d.label,
+        value: savedMap[d.key] != null ? savedMap[d.key] : fallback,
+        options: d.options
+      };
+    });
   },
 
   productMatchBlob(product) {
@@ -1271,17 +1511,26 @@ window.DemoData = {
 
   settlementMethodOptions: ['月结 30 天', '月结 60 天', '预付 100%', '货到付款'],
   settlementCurrencyOptions: ['CNY（人民币）', 'USD（美元）', 'EUR（欧元）'],
+  transportMethodOptions: ['货运', '快递', '自提'],
+  paymentMethodOptions: ['现结', '月结'],
 
   /** 下单确认页 · 表头默认值（结算信息取自客户主档，发货日默认 +14 天） */
   defaultOrderHeader(customer) {
     const c = customer || {};
     const ship = new Date();
     ship.setDate(ship.getDate() + 14);
+    const shipDate = ship.toISOString().slice(0, 10);
     return {
       settlementCustomer: c.settlementCustomer || c.name || '',
       settlementMethod: c.settlementMethod || DemoData.settlementMethodOptions[0],
       settlementCurrency: c.settlementCurrency || DemoData.settlementCurrencyOptions[0],
-      shipDate: ship.toISOString().slice(0, 10)
+      paymentMethod: c.paymentMethod || DemoData.paymentMethodOptions[0],
+      shipDate: shipDate,
+      transportMethod: c.transportMethod || DemoData.transportMethodOptions[0],
+      shipAddress: c.shipAddress || c.address || '',
+      contactName: c.contactName || '',
+      contactPhone: c.contactPhone || c.phone || '',
+      headerRemark: ''
     };
   },
 
@@ -1321,6 +1570,48 @@ window.DemoData = {
     return { latestPrice: latest, minPrice: min };
   },
 
+  /** 库存查询 · 单规格可用量 / 现存量（演示；正式对接库存服务） */
+  skuInventoryStock(product, sku) {
+    if (!product || !sku) return { available: 0, onHand: 0 };
+    if (sku.availableQty != null && sku.onHandQty != null) {
+      return { available: sku.availableQty, onHand: sku.onHandQty };
+    }
+    var h = 0;
+    var sid = sku.id || '';
+    var pid = product.id || '';
+    for (var i = 0; i < sid.length; i++) h = (h * 31 + sid.charCodeAt(i)) | 0;
+    for (var j = 0; j < pid.length; j++) h = (h * 17 + pid.charCodeAt(j)) | 0;
+    var onHand = 120 + (Math.abs(h) % 900);
+    var reserved = 30 + (Math.abs(h >> 3) % 120);
+    var available = Math.max(0, onHand - reserved);
+    return { available: available, onHand: onHand };
+  },
+
+  buildInventorySnapshotRows() {
+    const rows = [];
+    (DemoData.products || []).forEach(function (p) {
+      const skus =
+        p.skus && p.skus.length
+          ? p.skus
+          : [{ id: DemoData.defaultSkuId(p), label: p.spec || '默认' }];
+      skus.forEach(function (sku) {
+        const stock = DemoData.skuInventoryStock(p, sku);
+        rows.push({
+          productId: p.id,
+          productName: p.name,
+          inventoryCode: p.inventoryCode || String(p.id).toUpperCase(),
+          skuLabel: sku.label || p.spec || '默认',
+          salesUnit: p.salesUnit || '件',
+          available: stock.available,
+          onHand: stock.onHand
+        });
+      });
+    });
+    return rows.sort(function (a, b) {
+      return (a.productName || '').localeCompare(b.productName || '', 'zh-CN');
+    });
+  },
+
   /** 由选品上下文生成订单行（报价后待提交订单用） */
   buildOrderLines(selection) {
     const ids = Object.keys(selection.selected || {}).filter((k) => selection.selected[k]);
@@ -1329,12 +1620,18 @@ window.DemoData = {
       if (!p) return null;
       const skuId = selection.sku[pid] || DemoData.defaultSkuId(p);
       const qty = selection.qty[pid] || 1;
+      const customAttrs =
+        selection.customAttrs && selection.customAttrs[pid]
+          ? selection.customAttrs[pid]
+          : DemoData.resolveLineCustomAttrs(p, skuId);
       return {
         productId: pid,
         inventoryCode: p.inventoryCode || pid.toUpperCase(),
         inventoryName: p.name,
         inventorySpec: p.spec,
-        skuLabel: DemoData.skuLabel(p, skuId),
+        skuId: skuId,
+        skuLabel: DemoData.skuLabelFromAttrs(p, customAttrs) || DemoData.skuLabel(p, skuId),
+        customAttrs: customAttrs,
         salesUnit: p.salesUnit || '件',
         qty,
         unitPrice: p.unitPrice,

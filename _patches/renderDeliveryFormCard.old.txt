@@ -1,0 +1,19 @@
+  function renderDeliveryFormCard() {
+    const meta = ctx().deliveryPending || {};
+    const lines = ensureDeliveryPendingLines(meta);
+    const procOpts = (DemoData.procurementPlanOptions || [
+      { value: 'yes', label: '是' },
+      { value: 'no', label: '否' }
+    ])
+      .map(function (o) {
+        return (
+          '<label class="sc-radio-pill"><input type="radio" name="delivery-procurement" value="' +
+          App.escapeHtml(o.value) +
+          '"' +
+          (o.value === 'yes' ? ' checked' : '') +
+          ' /> ' +
+          App.escapeHtml(o.label) +
+          '</label>'
+        );
+      })
+      .join('');

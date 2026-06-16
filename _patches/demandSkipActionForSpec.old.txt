@@ -1,0 +1,9 @@
+    if (specId === 'card-copy-demand') return 'copy-demand-submit';
+    return 'plan-demand-submit';
+  }
+
+  function demandSkipActionForSpec(specId) {
+    if (specId === 'card-quote-demand') return 'quote-skip-demand';
+    if (specId === 'card-delivery-demand') return 'delivery-skip-demand';
+    if (specId === 'card-copy-demand') return 'copy-skip-demand';
+    return 'plan-skip-demand';

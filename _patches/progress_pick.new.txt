@@ -1,0 +1,25 @@
+    if (
+      c &&
+      (action === 'copy-pick' || action === 'change-pick' || action === 'progress-pick')
+    ) {
+      const mode =
+        action === 'change-pick'
+          ? 'change'
+          : action === 'progress-pick'
+            ? 'progress'
+            : 'copy';
+      if (mode === 'copy') resetCopyPickState();
+      else if (mode === 'progress') resetProgressPickState();
+      else resetOrderListPickState('change');
+      const state =
+        mode === 'copy'
+          ? ensureCopyPickState()
+          : mode === 'progress'
+            ? ensureProgressPickState()
+            : ensureOrderListPickState('change');
+      const filtered = filterOrdersForCopyPick(c, state);
+      if (mode === 'copy') syncCopyPickActiveList(filtered, state.visibleCount);
+      else if (mode === 'progress') syncProgressPickActiveList(filtered, state.visibleCount);
+      else syncChangePickActiveList(filtered, state.visibleCount);
+      return renderHistoricalOrderPickCard(c, filtered, { mode: mode });
+    }

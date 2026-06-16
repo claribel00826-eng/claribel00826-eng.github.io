@@ -1,0 +1,80 @@
+  function formatDeliveryBlockerLine(blocker) {
+    blocker = blocker || {};
+    const reasons = blocker.reasons || [];
+    return (
+      '订单号【' +
+      (blocker.orderNo || '') +
+      '】,存货【' +
+      (blocker.inventoryCode || '') +
+      '】' +
+      JSON.stringify(reasons)
+    );
+  }
+
+  function renderDeliveryResultProcessLinesHtml(lines) {
+    if (!lines || !lines.length) return '—';
+    return (
+      '<ul class="sc-delivery-result__process-list">' +
+      lines
+        .map(function (l) {
+          const name = l.inventoryName || '—';
+          const ver = l.processVersion || '—';
+          return (
+            '<li><span class="sc-delivery-result__process-name">' +
+            App.escapeHtml(name) +
+            '</span><span class="sc-delivery-result__process-ver">' +
+            App.escapeHtml(ver) +
+            '</span></li>'
+          );
+        })
+        .join('') +
+      '</ul>'
+    );
+  }
+
+  function renderDeliveryResultSummaryHtml(d, procLabel, fmtDate) {
+    return (
+      '<dl class="sc-delivery-result__summary">' +
+      '<div class="sc-delivery-result__row sc-delivery-result__row--2col">' +
+      '<dt>开始时间</dt><dd>' +
+      fmtDate(d.planStartDate) +
+      '</dd>' +
+      '<dt>结束时间</dt><dd>' +
+      fmtDate(d.planEndDate) +
+      '</dd></div>' +
+      '<div class="sc-delivery-result__row">' +
+      '<dt>期望交期</dt><dd>' +
+      fmtDate(d.expectedDate) +
+      '</dd></div>' +
+      '<div class="sc-delivery-result__row sc-delivery-result__row--stack">' +
+      '<dt>工艺版本</dt><dd>' +
+      renderDeliveryResultProcessLinesHtml(d.lines) +
+      '</dd></div>' +
+      '<div class="sc-delivery-result__row">' +
+      '<dt>采购计划</dt><dd>' +
+      App.escapeHtml(procLabel) +
+      '</dd></div>' +
+      '</dl>'
+    );
+  }
+
+  function renderDeliveryBlockersHtml(blockers) {
+    if (!blockers || !blockers.length) return '';
+    const rows = blockers
+      .map(function (b) {
+        const text = b.formatted || formatDeliveryBlockerLine(b);
+        return (
+          '<li class="sc-delivery-result__blocker sc-delivery-result__blocker--full">' +
+          '<span class="sc-delivery-result__blocker-reason">' +
+          App.escapeHtml(text) +
+          '</span></li>'
+        );
+      })
+      .join('');
+    return (
+      '<div class="sc-delivery-result__blockers-wrap">' +
+      '<ul class="sc-delivery-result__blockers">' +
+      rows +
+      '</ul></div>'
+    );
+  }

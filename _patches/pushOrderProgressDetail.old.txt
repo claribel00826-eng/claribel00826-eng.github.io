@@ -1,0 +1,24 @@
+  function pushOrderProgressDetail(o) {
+    if (!o) return;
+    simulateUserUtterance('查看订单 ' + o.no + ' 进度');
+    App.pushAiHtml(
+      '<div class="sc-card" data-spec-id="card-order-progress-detail">' +
+      '<div class="sc-card__head sc-card__head--compact">订单 ' +
+      App.escapeHtml(o.no) +
+      ' ' +
+      orderStatusBadgeHtml(o.status) +
+      '</div>' +
+      '<div class="sc-card__row sc-card__row--compact">' +
+      '<p class="sc-card__meta">' +
+      App.escapeHtml(o.statusDetail || '') +
+      '</p>' +
+      '<p class="sc-card__meta">' +
+      App.escapeHtml(o.items || '') +
+      ' · ' +
+      App.escapeHtml(o.amount || '') +
+      '</p>' +
+      renderOrderTimelineHtml(o) +
+      '</div></div>'
+    );
+    rescanAnnotationPins();
+  }

@@ -1,0 +1,58 @@
+  function openChangeSheet(oid) {
+    ctx().changeOrderId = oid;
+    App.pushAiHtml(renderChangeFormCard(oid));
+    rescanAnnotationPins();
+  }
+
+  function renderChangeFormCard(oid) {
+    const o = DemoData.orders.find(function (x) {
+      return x.id === oid;
+    });
+    const reasons = (DemoData.changeReasons || [])
+      .map(function (r) {
+        return '<option value="' + App.escapeHtml(r) + '">' + App.escapeHtml(r) + '</option>';
+      })
+      .join('');
+    return (
+      '<div class="sc-card sc-card--compact sc-card--inline-form" data-spec-id="sheet-change" data-change-oid="' +
+      App.escapeHtml(oid) +
+      '">' +
+      '<div class="sc-card__head sc-card__head--compact">变更订单 — ' +
+      App.escapeHtml(o ? o.no : '') +
+      '</div>' +
+      '<label class="sc-field-label">变更原因</label>' +
+      '<select class="sc-input sc-input--field" data-field="change-reason">' +
+      reasons +
+      '</select>' +
+      '<label class="sc-field-label">备注</label>' +
+      '<textarea class="sc-textarea" data-field="change-remark" placeholder="请说明变更内容…"></textarea>' +
+      '<div class="sc-card__actions-inline"><button type="button" class="sc-btn sc-btn--primary" data-action="change-submit">提交变更</button></div>' +
+      '</div>'
+    );
+  }
+
+  function submitChange() {
+    const card = getActiveFormCard('sheet-change');
+    const oid = (card && card.getAttribute('data-change-oid')) || ctx().changeOrderId;
+    const o = DemoData.orders.find(function (x) {
+      return x.id === oid;
+    });
+    const reasonEl = card && card.querySelector('[data-field="change-reason"]');
+    const remarkEl = card && card.querySelector('[data-field="change-remark"]');
+    const reason = reasonEl ? reasonEl.value : '';
+    const remark = remarkEl ? remarkEl.value.trim() : '';
+    if (!remark) {
+      App.toast('请填写变更备注');
+      return;
+    }
+    App.closeOverlays();
+    App.pushAiHtml(
+      '变更申请已提交（订单 ' +
+        o.no +
+        '）。<br><span class="sc-card__meta">原因：' +
+        App.escapeHtml(reason) +
+        '；备注：' +
+        App.escapeHtml(remark) +
+        '</span>'
+    );
+  }

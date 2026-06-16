@@ -1,0 +1,21 @@
+  function renderDeliveryOrderPickCard(list) {
+    const rows = list
+      .map(function (o) {
+        return (
+          '<button type="button" class="sc-follow-row sc-follow-row--select" data-action="delivery-order-pick" data-oid="' +
+          App.escapeHtml(o.id) +
+          '"><span class="sc-follow-row__stack">' +
+          '<span class="sc-follow-row__name">' +
+          App.escapeHtml(o.no) +
+          '</span><span class="sc-follow-row__meta">' +
+          App.escapeHtml(o.date || '—') +
+          ' · ' +
+          App.escapeHtml(o.amount || '—') +
+          '</span><span class="sc-follow-row__meta">' +
+          App.escapeHtml(o.items || '—') +
+          '</span></span>' +
+          orderStatusBadgeHtml(o.status) +
+          '</button>'
+        );
+      })
+      .join('');

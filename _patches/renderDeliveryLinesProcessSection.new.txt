@@ -1,0 +1,70 @@
+  function deliveryLineQtyText(line) {
+    const qty = line && line.qty != null ? line.qty : 1;
+    const unit = (line && line.salesUnit) || '件';
+    return qty + unit;
+  }
+
+  function deliveryLinesQtySummary(lines) {
+    if (!lines || !lines.length) return '';
+    const totalQty = lines.reduce(function (s, l) {
+      return s + (Number(l.qty) || 0);
+    }, 0);
+    return lines.length + ' 项 · 合计 ' + totalQty + ' 件';
+  }
+
+  function deliveryDefaultExpectedDate(meta) {
+    if (meta && meta.requiredDeliveryDate) return meta.requiredDeliveryDate;
+    return '';
+  }
+
+  function renderDeliveryFormSourceBlock(meta, lines) {
+    const primary = deliverySummaryLabel(meta);
+    const secondaryParts = [];
+    if (meta && meta.sourceType === 'order' && meta.requiredDeliveryDate) {
+      secondaryParts.push(
+        '要求交期 ' + String(meta.requiredDeliveryDate).replace(/-/g, '/')
+      );
+    }
+    const qtyPart = deliveryLinesQtySummary(lines);
+    if (qtyPart) secondaryParts.push(qtyPart);
+    let html = '<p class="sc-card__meta">' + App.escapeHtml(primary) + '</p>';
+    if (secondaryParts.length) {
+      html +=
+        '<p class="sc-card__meta sc-delivery-form__meta-sub">' +
+        App.escapeHtml(secondaryParts.join(' · ')) +
+        '</p>';
+    }
+    return html;
+  }
+
+  function renderDeliveryLinesProcessSection(lines) {
+    if (!lines || !lines.length) return '';
+    const rows = lines
+      .map(function (line, idx) {
+        const pr = productById(line.productId);
+        if (!pr) return '';
+        const spec = line.skuLabel || line.inventorySpec || '—';
+        return (
+          '<tr><td class="sc-order-confirm__idx">' +
+          (idx + 1) +
+          '</td><td><strong>' +
+          App.escapeHtml(line.inventoryName || '—') +
+          '</strong></td><td>' +
+          App.escapeHtml(spec) +
+          '</td><td class="sc-order-confirm__num">' +
+          App.escapeHtml(deliveryLineQtyText(line)) +
+          '</td><td>' +
+          renderDeliveryLineProcessVersionField(pr, line, idx) +
+          '</td></tr>'
+        );
+      })
+      .join('');
+    return (
+      '<label class="sc-field-label">工艺版本（按货品）</label>' +
+      '<div class="sc-order-confirm__table-wrap sc-delivery-lines-process">' +
+      '<table class="sc-order-confirm__table sc-order-confirm__table--delivery">' +
+      '<thead><tr><th>#</th><th>品名</th><th>规格</th><th>数量</th><th>工艺版本</th></tr></thead><tbody>' +
+      rows +
+      '</tbody></table></div>'
+    );
+  }

@@ -1,0 +1,15 @@
+          .find(function (o) {
+            return (
+              (o.no || '').toLowerCase().indexOf(k) >= 0 ||
+              (o.status || '').toLowerCase().indexOf(k) >= 0
+            );
+          });
+        if (hit) {
+          return viewOrderById(hit.id);
+        }
+      }
+    }
+    return false;
+  }
+
+  function isViewSchemeHistoryPhrase(t) {

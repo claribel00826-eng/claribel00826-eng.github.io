@@ -1,0 +1,119 @@
+  function formatDeliveryBlockerLine(blocker, line) {
+    blocker = blocker || {};
+    line = line || {};
+    const reasons = blocker.reasons || [];
+    const name = line.inventoryName || blocker.inventoryCode || '—';
+    const reasonText = reasons.length ? reasons.join('；') : '产能或物料不足';
+    return name + '：' + reasonText;
+  }
+
+  function renderDeliveryResultProcessLinesHtml(lines) {
+    if (!lines || !lines.length) return '—';
+    return (
+      '<ul class="sc-delivery-result__process-list">' +
+      lines
+        .map(function (l, idx) {
+          const name = l.inventoryName || '—';
+          const spec = l.skuLabel || l.inventorySpec || '';
+          const ver = l.processVersion || '—';
+          const title = spec ? name + ' · ' + spec : name;
+          return (
+            '<li><span class="sc-delivery-result__process-idx">' +
+            (idx + 1) +
+            '.</span><span class="sc-delivery-result__process-name">' +
+            App.escapeHtml(title) +
+            '</span><span class="sc-delivery-result__process-ver">' +
+            App.escapeHtml(ver) +
+            '</span></li>'
+          );
+        })
+        .join('') +
+      '</ul>'
+    );
+  }
+
+  function renderDeliveryResultSummaryHtml(d, procLabel, fmtDate) {
+    return (
+      '<dl class="sc-delivery-result__summary">' +
+      '<div class="sc-delivery-result__dates">' +
+      '<div class="sc-delivery-result__date-item">' +
+      '<span class="sc-delivery-result__date-label">开始时间</span>' +
+      '<span class="sc-delivery-result__date-value">' +
+      fmtDate(d.planStartDate) +
+      '</span></div>' +
+      '<div class="sc-delivery-result__date-item">' +
+      '<span class="sc-delivery-result__date-label">结束时间</span>' +
+      '<span class="sc-delivery-result__date-value">' +
+      fmtDate(d.planEndDate) +
+      '</span></div></div>' +
+      '<div class="sc-delivery-result__row">' +
+      '<dt>期望交期</dt><dd class="sc-delivery-result__date-value">' +
+      fmtDate(d.expectedDate) +
+      '</dd></div>' +
+      '<div class="sc-delivery-result__row sc-delivery-result__row--stack">' +
+      '<dt>工艺版本</dt><dd>' +
+      renderDeliveryResultProcessLinesHtml(d.lines) +
+      '</dd></div>' +
+      '<div class="sc-delivery-result__row">' +
+      '<dt>采购计划</dt><dd>' +
+      App.escapeHtml(procLabel) +
+      '</dd></div>' +
+      '</dl>'
+    );
+  }
+
+  function renderDeliveryBlockersHtml(blockers, lines) {
+    if (!blockers || !blockers.length) return '';
+    lines = lines || [];
+    const orderNo = blockers[0] && blockers[0].orderNo;
+    const sameOrder =
+      orderNo &&
+      blockers.every(function (b) {
+        return b.orderNo === orderNo;
+      });
+    const rows = blockers
+      .map(function (b, idx) {
+        const line = lines[idx] || {};
+        const name = line.inventoryName || '—';
+        const spec = line.skuLabel || line.inventorySpec || '';
+        const title = spec ? name + ' · ' + spec : name;
+        const code = b.inventoryCode || line.inventoryCode || '';
+        const reasons = (b.reasons || []).filter(Boolean);
+        const reasonItems = reasons.length
+          ? reasons
+              .map(function (r) {
+                return '<li>' + App.escapeHtml(r) + '</li>';
+              })
+              .join('')
+          : '<li>产能或物料不足</li>';
+        return (
+          '<li class="sc-delivery-result__blocker">' +
+          '<p class="sc-delivery-result__blocker-head">' +
+          '<strong>' +
+          App.escapeHtml(title) +
+          '</strong>' +
+          (code
+            ? '<span class="sc-delivery-result__blocker-code">' + App.escapeHtml(code) + '</span>'
+            : '') +
+          '</p>' +
+          '<ul class="sc-delivery-result__blocker-reasons">' +
+          reasonItems +
+          '</ul></li>'
+        );
+      })
+      .join('');
+    const orderLine =
+      sameOrder && orderNo
+        ? '<p class="sc-delivery-result__blockers-order">评审单号 ' +
+          App.escapeHtml(orderNo) +
+          '</p>'
+        : '';
+    return (
+      '<div class="sc-delivery-result__blockers-wrap">' +
+      '<p class="sc-delivery-result__blockers-title">无法交付原因</p>' +
+      orderLine +
+      '<ul class="sc-delivery-result__blockers">' +
+      rows +
+      '</ul></div>'
+    );
+  }

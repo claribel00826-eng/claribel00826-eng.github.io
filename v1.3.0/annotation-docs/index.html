@@ -18,9 +18,11 @@
 </head>
 <body>
   <header>
-    <a href="../index.html">← 返回 H5 原型</a>
+    <a href="../../index.html">← 版本索引</a>
+    <span style="margin:0 8px;color:#a1a1aa">|</span>
+    <a href="../index.html">H5 原型</a>
     <h1 style="margin:8px 0 0;font-size:18px">标注文档 · v1.3.0</h1>
-    <p class="hint">本版标注文档 <strong>02～05</strong>（不含意图路由钉）。05 为交期与订单运营，产品源稿见 <a href="../功能描述-交期与订单运营-v1.3.0.md">功能描述</a>；话术见「意图识别说明」。</p>
+    <p class="hint">本版标注文档 <strong>02～06</strong>（不含意图路由钉）。05 交期与订单运营、06 经营分析；产品源稿见 <a href="../功能描述-交期与订单运营-v1.3.0.md">交期功能描述</a>、<a href="../功能描述-经营分析-v1.3.0.md">经营分析功能描述</a>。</p>
   </header>
   <main>
     <nav id="doc-nav">
@@ -28,6 +30,7 @@
       <a href="?doc=03" data-doc="03">03 · 增量验收</a>
       <a href="?doc=04" data-doc="04">04 · 数据填槽需求</a>
       <a href="?doc=05" data-doc="05">05 · 交期与订单运营</a>
+      <a href="?doc=06" data-doc="06">06 · 经营分析</a>
     </nav>
     <pre id="doc-body">加载中…</pre>
   </main>
@@ -37,6 +40,7 @@
       '03': '03-v1.2.0-增量验收.md',
       '04': '04-数据填槽需求.md',
       '05': '05-交期与订单运营.md',
+      '06': '06-经营分析.md',
     };
     const params = new URLSearchParams(location.search);
     const id = params.get('doc') || '02';

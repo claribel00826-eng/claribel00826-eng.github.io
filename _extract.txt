@@ -1,0 +1,615 @@
+  function formatPaymentMoney(n) {
+    var num = Number(n) || 0;
+    if (num >= 10000) {
+      var wan = num / 10000;
+      return (
+        '¥' +
+        (wan >= 100 ? wan.toFixed(0) : wan.toFixed(1).replace(/\.0$/, '')) +
+        ' 万'
+      );
+    }
+    return fmtMoney(num);
+  }
+
+  function formatPaymentDate(s) {
+    if (!s) return '—';
+    return String(s).replace(/-/g, '/');
+  }
+
+  function renderPaymentResultCard(data) {
+    var overdueCls =
+      data.overdueAmount > 0 ? ' sc-payment-metrics__value--warn' : '';
+    var overdueText =
+      formatPaymentMoney(data.overdueAmount) +
+      '（最长逾期 ' +
+      (data.overdueMaxDays || 0) +
+      ' 天）';
+    return (
+      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
+      '<div class="sc-card__head sc-card__head--compact">回款分析</div>' +
+      '<p class="sc-payment-meta">全部客户（企业）· ' +
+      App.escapeHtml(data.asOfLabel || '截至今日') +
+      ' · ' +
+      (data.customerWithReceivable || 0) +
+      ' 户有应收' +
+      (data.overdueCustomerCount
+        ? ' · 逾期 ' + data.overdueCustomerCount + ' 户'
+        : '') +
+      '</p>' +
+      '<div class="sc-payment-metrics">' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">应收余额</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentMoney(data.receivableBalance) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">逾期</span>' +
+      '<span class="sc-payment-metrics__value' +
+      overdueCls +
+      '">' +
+      App.escapeHtml(overdueText) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">本月已回款</span>' +
+      '<span class="sc-payment-metrics__value sc-payment-metrics__value--pos">' +
+      formatPaymentMoney(data.monthCollected) +
+      '</span>' +
+      '<span class="sc-payment-metrics__sub">' +
+      App.escapeHtml(data.monthLabel || '自然月') +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">最近回款日</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentDate(data.lastPaymentDate) +
+      '</span></div>' +
+      '</div>' +
+      '<p class="sc-payment-hint">应收余额来自账龄与往来对账；本月已回款来自收款单与银行流水。</p>' +
+      '</div>'
+    );
+  }
+
+  function runPayment(opts) {
+    opts = opts || {};
+    var data = DemoData.paymentAnalysis;
+    if (!data) {
+      App.toast('暂无回款数据');
+      return;
+    }
+    var utterance = opts.utterance || '';
+    if (opts.simulateUserMsg && utterance) {
+      simulateUserUtteranceUnlessDuplicate(utterance);
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为您汇总 <strong>全部客户</strong> 回款与应收：</p>' +
+        renderPaymentResultCard(data)
+    );
+    rescanAnnotationPins();
+  }
+
+===PAYMENT END===
+
+  function formatPaymentMoney(n) {
+    var num = Number(n) || 0;
+    if (num >= 10000) {
+      var wan = num / 10000;
+      return (
+        '¥' +
+        (wan >= 100 ? wan.toFixed(0) : wan.toFixed(1).replace(/\.0$/, '')) +
+        ' 万'
+      );
+    }
+    return fmtMoney(num);
+  }
+
+  function formatPaymentDate(s) {
+    if (!s) return '—';
+    return String(s).replace(/-/g, '/');
+  }
+
+  function renderPaymentResultCard(data) {
+    var overdueCls =
+      data.overdueAmount > 0 ? ' sc-payment-metrics__value--warn' : '';
+    var overdueText =
+      formatPaymentMoney(data.overdueAmount) +
+      '（最长逾期 ' +
+      (data.overdueMaxDays || 0) +
+      ' 天）';
+    return (
+      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
+      '<div class="sc-card__head sc-card__head--compact">回款分析</div>' +
+      '<p class="sc-payment-meta">全部客户（企业）· ' +
+      App.escapeHtml(data.asOfLabel || '截至今日') +
+      ' · ' +
+      (data.customerWithReceivable || 0) +
+      ' 户有应收' +
+      (data.overdueCustomerCount
+        ? ' · 逾期 ' + data.overdueCustomerCount + ' 户'
+        : '') +
+      '</p>' +
+      '<div class="sc-payment-metrics">' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">应收余额</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentMoney(data.receivableBalance) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">逾期</span>' +
+      '<span class="sc-payment-metrics__value' +
+      overdueCls +
+      '">' +
+      App.escapeHtml(overdueText) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">本月已回款</span>' +
+      '<span class="sc-payment-metrics__value sc-payment-metrics__value--pos">' +
+      formatPaymentMoney(data.monthCollected) +
+      '</span>' +
+      '<span class="sc-payment-metrics__sub">' +
+      App.escapeHtml(data.monthLabel || '自然月') +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">最近回款日</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentDate(data.lastPaymentDate) +
+      '</span></div>' +
+      '</div>' +
+      '<p class="sc-payment-hint">应收余额来自账龄与往来对账；本月已回款来自收款单与银行流水。</p>' +
+      '</div>'
+    );
+  }
+
+  function runPayment(opts) {
+    opts = opts || {};
+    var data = DemoData.paymentAnalysis;
+    if (!data) {
+      App.toast('暂无回款数据');
+      return;
+    }
+    var utterance = opts.utterance || '';
+    if (opts.simulateUserMsg && utterance) {
+      simulateUserUtteranceUnlessDuplicate(utterance);
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为您汇总 <strong>全部客户</strong> 回款与应收：</p>' +
+        renderPaymentResultCard(data)
+    );
+    rescanAnnotationPins();
+  }
+
+===RUN PAYMENT===
+
+.sc-inventory-stock__num--warn {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+/* 回款分析 · 全局指标卡 */
+.sc-card--payment {
+  padding-bottom: 8px;
+}
+
+.sc-payment-meta {
+  margin: 0 12px 10px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.sc-payment-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 8px 8px;
+}
+
+.sc-payment-metrics__item {
+  padding: 10px 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+  min-width: 0;
+}
+
+.sc-payment-metrics__label {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.sc-payment-metrics__value {
+  display: block;
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.sc-payment-metrics__value--warn {
+  color: var(--color-danger);
+}
+
+.sc-payment-metrics__value--pos {
+  color: var(--color-primary);
+}
+
+.sc-payment-metrics__sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.sc-payment-hint {
+  margin: 0 12px 4px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+===PAYMENT CSS===
+
+  function formatPaymentMoney(n) {
+    var num = Number(n) || 0;
+    if (num >= 10000) {
+      var wan = num / 10000;
+      return (
+        '¥' +
+        (wan >= 100 ? wan.toFixed(0) : wan.toFixed(1).replace(/\.0$/, '')) +
+        ' 万'
+      );
+    }
+    return fmtMoney(num);
+  }
+
+  function formatPaymentDate(s) {
+    if (!s) return '—';
+    return String(s).replace(/-/g, '/');
+  }
+
+  function renderPaymentResultCard(data) {
+    var overdueCls =
+      data.overdueAmount > 0 ? ' sc-payment-metrics__value--warn' : '';
+    var overdueText =
+      formatPaymentMoney(data.overdueAmount) +
+      '（最长逾期 ' +
+      (data.overdueMaxDays || 0) +
+      ' 天）';
+    return (
+      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
+      '<div class="sc-card__head sc-card__head--compact">回款分析</div>' +
+      '<p class="sc-payment-meta">全部客户（企业）· ' +
+      App.escapeHtml(data.asOfLabel || '截至今日') +
+      ' · ' +
+      (data.customerWithReceivable || 0) +
+      ' 户有应收' +
+      (data.overdueCustomerCount
+        ? ' · 逾期 ' + data.overdueCustomerCount + ' 户'
+        : '') +
+      '</p>' +
+      '<div class="sc-payment-metrics">' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">应收余额</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentMoney(data.receivableBalance) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">逾期</span>' +
+      '<span class="sc-payment-metrics__value' +
+      overdueCls +
+      '">' +
+      App.escapeHtml(overdueText) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">本月已回款</span>' +
+      '<span class="sc-payment-metrics__value sc-payment-metrics__value--pos">' +
+      formatPaymentMoney(data.monthCollected) +
+      '</span>' +
+      '<span class="sc-payment-metrics__sub">' +
+      App.escapeHtml(data.monthLabel || '自然月') +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">最近回款日</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentDate(data.lastPaymentDate) +
+      '</span></div>' +
+      '</div>' +
+      '<p class="sc-payment-hint">应收余额来自账龄与往来对账；本月已回款来自收款单与银行流水。</p>' +
+      '</div>'
+    );
+  }
+
+  function runPayment(opts) {
+    opts = opts || {};
+    var data = DemoData.paymentAnalysis;
+    if (!data) {
+      App.toast('暂无回款数据');
+      return;
+    }
+    var utterance = opts.utterance || '';
+    if (opts.simulateUserMsg && utterance) {
+      simulateUserUtteranceUnlessDuplicate(utterance);
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为您汇总 <strong>全部客户</strong> 回款与应收：</p>' +
+        renderPaymentResultCard(data)
+    );
+    rescanAnnotationPins();
+  }
+
+===PAYMENT END===
+
+  function formatPaymentMoney(n) {
+    var num = Number(n) || 0;
+    if (num >= 10000) {
+      var wan = num / 10000;
+      return (
+        '¥' +
+        (wan >= 100 ? wan.toFixed(0) : wan.toFixed(1).replace(/\.0$/, '')) +
+        ' 万'
+      );
+    }
+    return fmtMoney(num);
+  }
+
+  function formatPaymentDate(s) {
+    if (!s) return '—';
+    return String(s).replace(/-/g, '/');
+  }
+
+  function renderPaymentResultCard(data) {
+    var overdueCls =
+      data.overdueAmount > 0 ? ' sc-payment-metrics__value--warn' : '';
+    var overdueText =
+      formatPaymentMoney(data.overdueAmount) +
+      '（最长逾期 ' +
+      (data.overdueMaxDays || 0) +
+      ' 天）';
+    return (
+      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
+      '<div class="sc-card__head sc-card__head--compact">回款分析</div>' +
+      '<p class="sc-payment-meta">全部客户（企业）· ' +
+      App.escapeHtml(data.asOfLabel || '截至今日') +
+      ' · ' +
+      (data.customerWithReceivable || 0) +
+      ' 户有应收' +
+      (data.overdueCustomerCount
+        ? ' · 逾期 ' + data.overdueCustomerCount + ' 户'
+        : '') +
+      '</p>' +
+      '<div class="sc-payment-metrics">' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">应收余额</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentMoney(data.receivableBalance) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">逾期</span>' +
+      '<span class="sc-payment-metrics__value' +
+      overdueCls +
+      '">' +
+      App.escapeHtml(overdueText) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">本月已回款</span>' +
+      '<span class="sc-payment-metrics__value sc-payment-metrics__value--pos">' +
+      formatPaymentMoney(data.monthCollected) +
+      '</span>' +
+      '<span class="sc-payment-metrics__sub">' +
+      App.escapeHtml(data.monthLabel || '自然月') +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">最近回款日</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentDate(data.lastPaymentDate) +
+      '</span></div>' +
+      '</div>' +
+      '<p class="sc-payment-hint">应收余额来自账龄与往来对账；本月已回款来自收款单与银行流水。</p>' +
+      '</div>'
+    );
+  }
+
+  function runPayment(opts) {
+    opts = opts || {};
+    var data = DemoData.paymentAnalysis;
+    if (!data) {
+      App.toast('暂无回款数据');
+      return;
+    }
+    var utterance = opts.utterance || '';
+    if (opts.simulateUserMsg && utterance) {
+      simulateUserUtteranceUnlessDuplicate(utterance);
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为您汇总 <strong>全部客户</strong> 回款与应收：</p>' +
+        renderPaymentResultCard(data)
+    );
+    rescanAnnotationPins();
+  }
+
+===RUN PAYMENT===
+
+  function formatPaymentMoney(n) {
+    var num = Number(n) || 0;
+    if (num >= 10000) {
+      var wan = num / 10000;
+      return (
+        '¥' +
+        (wan >= 100 ? wan.toFixed(0) : wan.toFixed(1).replace(/\.0$/, '')) +
+        ' 万'
+      );
+    }
+    return fmtMoney(num);
+  }
+
+  function formatPaymentDate(s) {
+    if (!s) return '—';
+    return String(s).replace(/-/g, '/');
+  }
+
+  function renderPaymentResultCard(data) {
+    var overdueCls =
+      data.overdueAmount > 0 ? ' sc-payment-metrics__value--warn' : '';
+    var overdueText =
+      formatPaymentMoney(data.overdueAmount) +
+      '（最长逾期 ' +
+      (data.overdueMaxDays || 0) +
+      ' 天）';
+    return (
+      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
+      '<div class="sc-card__head sc-card__head--compact">回款分析</div>' +
+      '<div class="sc-biz-overview sc-payment__overview">' +
+      '<p class="sc-biz-overview__line sc-card-summary-line"><strong>客户总数：' +
+      (data.customerTotal || 0) +
+      '  应有 ' +
+      (data.customerWithReceivable || 0) +
+      '  逾期 ' +
+      (data.overdueCustomerCount || 0) +
+      '</strong></p></div>' +
+      '<div class="sc-payment-metrics">' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">应收余额</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentMoney(data.receivableBalance) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">逾期</span>' +
+      '<span class="sc-payment-metrics__value' +
+      overdueCls +
+      '">' +
+      App.escapeHtml(overdueText) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">本月已回款</span>' +
+      '<span class="sc-payment-metrics__value sc-payment-metrics__value--pos">' +
+      formatPaymentMoney(data.monthCollected) +
+      '</span>' +
+      '<span class="sc-payment-metrics__sub">' +
+      App.escapeHtml(data.monthLabel || '自然月') +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">最近回款日</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentDate(data.lastPaymentDate) +
+      '</span></div>' +
+      '</div>' +
+      '<p class="sc-payment-hint">应收余额来自账龄与往来对账；本月已回款来自收款单与银行流水。</p>' +
+      '</div>'
+    );
+  }
+
+  function runPayment(opts) {
+    opts = opts || {};
+    var data = DemoData.paymentAnalysis;
+    if (!data) {
+      App.toast('暂无回款数据');
+      return;
+    }
+    var utterance = opts.utterance || '';
+    if (opts.simulateUserMsg && utterance) {
+      simulateUserUtteranceUnlessDuplicate(utterance);
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为您汇总 <strong>全部客户</strong> 回款与应收：</p>' +
+        renderPaymentResultCard(data)
+    );
+    rescanAnnotationPins();
+  }
+
+  function run(skillId) {
+
+===PAYMENT END===
+
+  function formatPaymentMoney(n) {
+    var num = Number(n) || 0;
+    if (num >= 10000) {
+      var wan = num / 10000;
+      return (
+        '¥' +
+        (wan >= 100 ? wan.toFixed(0) : wan.toFixed(1).replace(/\.0$/, '')) +
+        ' 万'
+      );
+    }
+    return fmtMoney(num);
+  }
+
+  function formatPaymentDate(s) {
+    if (!s) return '—';
+    return String(s).replace(/-/g, '/');
+  }
+
+  function renderPaymentResultCard(data) {
+    var overdueCls =
+      data.overdueAmount > 0 ? ' sc-payment-metrics__value--warn' : '';
+    var overdueText =
+      formatPaymentMoney(data.overdueAmount) +
+      '（最长逾期 ' +
+      (data.overdueMaxDays || 0) +
+      ' 天）';
+    return (
+      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
+      '<div class="sc-card__head sc-card__head--compact">回款分析</div>' +
+      '<div class="sc-biz-overview sc-payment__overview">' +
+      '<p class="sc-biz-overview__line sc-card-summary-line"><strong>客户总数：' +
+      (data.customerTotal || 0) +
+      '  应有 ' +
+      (data.customerWithReceivable || 0) +
+      '  逾期 ' +
+      (data.overdueCustomerCount || 0) +
+      '</strong></p></div>' +
+      '<div class="sc-payment-metrics">' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">应收余额</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentMoney(data.receivableBalance) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">逾期</span>' +
+      '<span class="sc-payment-metrics__value' +
+      overdueCls +
+      '">' +
+      App.escapeHtml(overdueText) +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">本月已回款</span>' +
+      '<span class="sc-payment-metrics__value sc-payment-metrics__value--pos">' +
+      formatPaymentMoney(data.monthCollected) +
+      '</span>' +
+      '<span class="sc-payment-metrics__sub">' +
+      App.escapeHtml(data.monthLabel || '自然月') +
+      '</span></div>' +
+      '<div class="sc-payment-metrics__item">' +
+      '<span class="sc-payment-metrics__label">最近回款日</span>' +
+      '<span class="sc-payment-metrics__value">' +
+      formatPaymentDate(data.lastPaymentDate) +
+      '</span></div>' +
+      '</div>' +
+      '<p class="sc-payment-hint">应收余额来自账龄与往来对账；本月已回款来自收款单与银行流水。</p>' +
+      '</div>'
+    );
+  }
+
+  function runPayment(opts) {
+    opts = opts || {};
+    var data = DemoData.paymentAnalysis;
+    if (!data) {
+      App.toast('暂无回款数据');
+      return;
+    }
+    var utterance = opts.utterance || '';
+    if (opts.simulateUserMsg && utterance) {
+      simulateUserUtteranceUnlessDuplicate(utterance);
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为您汇总 <strong>全部客户</strong> 回款与应收：</p>' +
+        renderPaymentResultCard(data)
+    );
+    rescanAnnotationPins();
+  }
+
+  function run(skillId) {
+
+===RUN PAYMENT===
+

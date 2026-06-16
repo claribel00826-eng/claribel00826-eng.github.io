@@ -1,0 +1,21 @@
+  function runCopy() {
+    const c = requireCustomer();
+    if (!c) return;
+    const list = ordersForCustomer(c.id);
+    if (!list.length) {
+      App.pushAiHtml('该客户暂无历史订单可复制。');
+      return;
+    }
+    App.pushAiHtml('<p class="sc-reply-lead">选择要复制的订单：</p>' + renderOrderPickCard(list, 'copy-pick'));
+  }
+
+  function runChange() {
+    const c = requireCustomer();
+    if (!c) return;
+    const list = ordersForCustomer(c.id);
+    if (!list.length) {
+      App.pushAiHtml('该客户暂无订单可变更。');
+      return;
+    }
+    App.pushAiHtml('<p class="sc-reply-lead">选择要变更的订单：</p>' + renderOrderPickCard(list, 'change-pick'));
+  }

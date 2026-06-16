@@ -924,6 +924,34 @@ a.sc-demo-reset-btn--link {
   line-height: 1.4;
 }
 
+/* 交期结果卡 · 按期（对齐 v1.1.0 简洁样式） */
+.sc-card--delivery-result .sc-card__head--compact {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border, #e4e4e7);
+}
+
+.sc-card__row--delivery-result {
+  padding: 12px 14px;
+}
+
+.sc-delivery-result__lead {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-muted, #71717a);
+}
+
+.sc-card__actions-inline--delivery-result {
+  margin-top: 0;
+  gap: 10px;
+}
+
+.sc-card__actions-inline--delivery-result .sc-btn {
+  flex: 1;
+  min-width: 0;
+  border-radius: 8px;
+}
+
 .sc-delivery-result__verdict--ok {
   color: #059669;
 }
@@ -2885,6 +2913,154 @@ button.is-flow-stale,
   padding: 6px 8px;
 }
 
+.sc-plan-sku-row {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.sc-sheet--order .sc-order-confirm-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.sc-sheet--order__submit {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.sc-order-confirm__section {
+  margin-bottom: 12px;
+  padding: 12px;
+  background: var(--color-surface);
+  border-radius: var(--radius, 8px);
+  border: 1px solid var(--color-border, #e4e4e7);
+}
+
+.sc-order-confirm__section-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sc-order-confirm__header-more {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border, #e4e4e7);
+}
+
+.sc-order-confirm__header-more.sc-hidden {
+  display: none;
+}
+
+.sc-order-confirm__more-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 0 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-primary, #108482);
+  cursor: pointer;
+}
+
+.sc-order-confirm__more-toggle[aria-expanded='true'] .sc-order-confirm__more-chevron {
+  transform: rotate(90deg);
+}
+
+.sc-order-confirm__more-chevron {
+  transition: transform 0.15s ease;
+}
+
+.sc-order-confirm-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sc-order-confirm-line {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius, 8px);
+  background: var(--color-surface, #fff);
+  overflow: hidden;
+}
+
+.sc-order-confirm-line--open {
+  border-color: var(--color-primary-border, rgba(16, 132, 130, 0.35));
+}
+
+.sc-order-confirm-line--warn {
+  border-color: var(--color-warning, #f59e0b);
+}
+
+.sc-order-confirm-line__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.sc-order-confirm-line__idx {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--color-primary-soft, rgba(16, 132, 130, 0.1));
+  color: var(--color-primary, #108482);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sc-order-confirm-line__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.sc-order-confirm-line__name {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.sc-order-confirm-line__sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.sc-order-confirm-line__amount {
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary, #108482);
+}
+
+.sc-order-confirm-line__body {
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+}
+
 /* --- 产能分析 · 甘特 --- */
 .sc-card--capacity {
   position: relative;
@@ -3387,3 +3563,332 @@ button.is-flow-stale,
   color: var(--color-text-muted);
   line-height: 1.45;
 }
+
+
+/* --- 交期来源分组 --- */
+.sc-card--delivery-source .sc-plan-entry__group-label {
+  margin: 8px 12px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.sc-card--historical-order-pick .sc-copy-order-pick-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+/* --- 进度详情 --- */
+.sc-card--progress-detail {
+  padding-bottom: 10px;
+}
+.sc-progress-detail__hero {
+  margin: 0 8px 12px;
+  padding: 14px 12px 12px;
+  background: linear-gradient(180deg, #f0fdfa 0%, #fff 100%);
+  border: 1px solid #ccfbf1;
+  border-radius: 10px;
+}
+.sc-progress-detail__status-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e6fffa;
+}
+.sc-progress-detail__status-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.sc-progress-detail__status-value {
+  font-size: 15px;
+  color: var(--color-primary, #108482);
+}
+.sc-progress-detail__hero .sc-progress-detail__timeline-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.sc-progress-detail__hero .sc-timeline {
+  margin: 0;
+  padding-left: 12px;
+  border-left-width: 3px;
+  border-left-color: #99f6e4;
+}
+.sc-progress-detail__hero .sc-timeline__item {
+  padding-bottom: 18px;
+}
+.sc-progress-detail__hero .sc-timeline__item:last-child {
+  padding-bottom: 4px;
+}
+.sc-progress-detail__hero .sc-timeline__body strong {
+  font-size: 14px;
+}
+.sc-progress-detail__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 0 8px 12px;
+  padding: 10px 12px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+}
+.sc-progress-detail__meta-item {
+  display: grid;
+  grid-template-columns: 4.2em 1fr;
+  gap: 4px 8px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.sc-progress-detail__meta-item dt {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.sc-progress-detail__meta-item dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--color-text);
+}
+.sc-progress-detail__items {
+  margin: 0 8px 10px;
+}
+.sc-progress-detail__items-title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.sc-progress-detail__item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.sc-progress-detail__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid #f5f5f5;
+}
+.sc-progress-detail__item:last-child {
+  border-bottom: none;
+}
+.sc-progress-detail__item-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+}
+.sc-progress-detail__item-qty {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.sc-progress-detail__items-empty {
+  margin: 0 8px 10px;
+}
+.sc-progress-detail__note {
+  margin: 0 8px 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #b45309;
+  background: #fffbeb;
+  border-radius: 6px;
+  line-height: 1.45;
+}
+/* --- 库存列表 --- */
+.sc-inventory-list {
+  margin: 0 8px 10px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.sc-inventory-list__item {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.sc-inventory-list__line1 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+}
+.sc-inventory-list__code {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.sc-inventory-list__line2 {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sc-inventory-list__sku {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.sc-inventory-list__avail--warn {
+  color: #ea580c;
+  font-weight: 600;
+}
+/* --- 回款指标 --- */
+.sc-payment-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 8px 10px;
+}
+.sc-payment-metrics__item {
+  padding: 10px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+}
+.sc-payment-metrics__label {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+.sc-payment-metrics__value {
+  font-size: 15px;
+  font-weight: 600;
+}
+.sc-payment-metrics__value--warn { color: #ea580c; }
+.sc-payment-metrics__value--pos { color: #16a34a; }
+.sc-payment-metrics__sub {
+  display: block;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+.sc-payment-hint {
+  margin: 0 12px 8px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* v1.2 系统自由项（颜色/大小） */
+.sc-plan-sku-row--free {
+  align-items: flex-start;
+}
+.sc-plan-sku-row--free .sc-pick-spec-block {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.sc-pick-spec-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.sc-pick-free-attrs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  min-width: 0;
+}
+.sc-pick-free-attr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  min-width: 0;
+}
+.sc-pick-free-attr__label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.sc-pick-free-attr__control {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 12px;
+  box-sizing: border-box;
+  background: var(--color-surface, #fff);
+}
+.sc-pick-spec-block--quote-line {
+  flex: 1;
+  min-width: 0;
+}
+.sc-plan-cart-row--free {
+  align-items: flex-start;
+}
+.sc-plan-cart-row--free .sc-pick-spec-block {
+  flex: 1 1 100%;
+}
+.sc-plan-cart-row--free .sc-plan-cart-qty {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.sc-order-confirm-line__head--static {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: default;
+}
+.sc-order-confirm-line__fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+  margin-bottom: 8px;
+}
+.sc-order-confirm-line__fields-grid .sc-quote-line__field {
+  margin: 0;
+}
+.sc-order-confirm-line__fields-grid .sc-quote-line__field:first-child {
+  grid-column: 1 / -1;
+}
+.sc-order-confirm-line__info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--color-surface-hover, #f8fafc);
+}
+.sc-order-confirm-line__info-pair {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.sc-order-confirm-line__info-pair--full {
+  grid-column: 1 / -1;
+  align-items: flex-start;
+}
+.sc-order-confirm-line__info-pair dt {
+  flex-shrink: 0;
+  margin: 0;
+  color: var(--color-text-muted, #71717a);
+  font-weight: 500;
+}
+.sc-order-confirm-line__info-pair dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--color-text, #18181b);
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+.sc-order-confirm-line__info-pair--warn dd {
+  color: var(--color-warning, #d97706);
+  font-weight: 500;
+}
+

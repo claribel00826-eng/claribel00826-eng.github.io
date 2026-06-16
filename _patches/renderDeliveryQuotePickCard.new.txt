@@ -1,0 +1,30 @@
+      '</div></div>'
+    );
+  }
+
+  function renderDeliverySchemePickCard(list) {
+    const rows = list
+      .slice()
+      .reverse()
+      .map(function (s) {
+        return (
+          '<button type="button" class="sc-follow-row sc-follow-row--select" data-action="delivery-scheme-pick" data-scheme-id="' +
+          App.escapeHtml(s.id) +
+          '"><span class="sc-follow-row__name">' +
+          App.escapeHtml(s.templateName || '未命名方案') +
+          '</span><span class="sc-follow-row__meta">' +
+          App.escapeHtml(s.id) +
+          ' · ' +
+          App.escapeHtml(schemePickSummary(s)) +
+          '</span></button>'
+        );
+      })
+      .join('');
+    return (
+      '<div class="sc-card sc-card--compact" data-spec-id="card-delivery-scheme-pick"><div class="sc-card__head sc-card__head--compact">选择方案</div><div class="sc-follow-list">' +
+      rows +
+      '</div></div>'
+    );
+  }
+
+  function renderDeliveryQuotePickCard(list) {

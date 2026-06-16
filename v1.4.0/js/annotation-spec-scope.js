@@ -45,19 +45,23 @@ window.AnnotationSpecScope = {
     'modal-pdf',
     'card-delivery-entry',
     'card-delivery-source',
+    'card-delivery-scheme-pick',
     'card-delivery-quote-pick',
     'card-delivery-order-pick',
     'card-delivery-demand',
     'sheet-delivery',
     'card-delivery',
-    'card-order-pick',
-    'sheet-change',
+    'card-copy-demand',
+    'card-progress-demand',
+    'card-order-copy',
+    'card-change-confirm',
     'card-change-success',
-    'card-order-progress-list',
     'card-order-progress-detail',
     'card-capacity',
     'card-capacity-block-detail',
     'card-biz-analysis',
-    'card-biz-analysis-insight'
+    'card-biz-analysis-insight',
+    'card-inventory',
+    'card-payment'
   ]
 };

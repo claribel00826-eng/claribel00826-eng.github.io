@@ -1,0 +1,13 @@
+  function deliveryOpenFormForOrder(o) {
+    if (!o) return;
+    openDeliveryForm({
+      sourceType: 'order',
+      orderId: o.id,
+      orderNo: o.no,
+      orderStatus: o.status,
+      lines: (o.lines || []).length ? o.lines : null,
+      productIds: o.productIds
+    });
+  }
+
+  function beginDeliveryLines() {

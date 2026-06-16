@@ -1,0 +1,141 @@
+  function openChangeSheet(oid, opts) {
+    opts = opts || {};
+    const o = DemoData.orders.find(function (x) {
+      return x.id === oid;
+    });
+    if (!o) {
+      App.toast('未找到订单');
+      return;
+    }
+    if (o.status === '已完成') {
+      App.toast('已完成订单不可变更');
+      return;
+    }
+    enterSkill('change');
+    ctx().changeOrderId = oid;
+    ctx().changePickMode = false;
+    clearActivePickList();
+    if (opts.simulateUserMsg) {
+      simulateUserUtterance('变更订单 ' + o.no);
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">已选择订单 <strong>' +
+        App.escapeHtml(o.no) +
+        '</strong>，请确认是否发起变更：</p>' +
+        renderChangeConfirmCard(oid)
+    );
+    rescanAnnotationPins();
+  }
+
+  function renderChangeConfirmCard(oid) {
+    const o = DemoData.orders.find(function (x) {
+      return x.id === oid;
+    });
+    const c = o ? App.getCustomer(o.customerId) : null;
+    return (
+      '<div class="sc-card sc-card--compact sc-card--inline-form" data-spec-id="card-change-confirm" data-change-oid="' +
+      App.escapeHtml(oid) +
+      '">' +
+      '<div class="sc-card__head sc-card__head--compact">订单变更 · 确认变更</div>' +
+      (o
+        ? '<p class="sc-card__meta">订单 <strong>' +
+          App.escapeHtml(o.no) +
+          '</strong> · ' +
+          App.escapeHtml(o.date || '—') +
+          ' · ' +
+          App.escapeHtml(o.amount || '—') +
+          '</p><p class="sc-card__meta">' +
+          App.escapeHtml(o.items || '—') +
+          '</p>'
+        : '') +
+      '<p class="sc-card__meta">客户：<strong>' +
+      App.escapeHtml(c ? c.name : '—') +
+      '</strong></p>' +
+      '<p class="sc-card__meta">确认后将提交变更申请；已审核订单将回退至销售审核。</p>' +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="change-repick-order">重选订单</button>' +
+      '<button type="button" class="sc-btn sc-btn--primary" data-action="change-confirm-submit">确认变更</button></div>' +
+      '</div>'
+    );
+  }
+
+  function changeRepickOrder() {
+    const c = activeCustomer();
+    if (!c) return;
+    ctx().changeOrderId = null;
+    pushChangeOrderPickCard(c);
+  }
+
+  function getLatestChangeConfirmCard() {
+    const cards = document.querySelectorAll('[data-spec-id="card-change-confirm"]');
+    return cards.length ? cards[cards.length - 1] : null;
+  }
+
+  function submitChange(opts) {
+    opts = opts || {};
+    const confirmCard = getLatestChangeConfirmCard();
+    const formCard = getActiveFormCard('sheet-change');
+    const card = confirmCard || formCard;
+    const oid =
+      (card && card.getAttribute('data-change-oid')) || ctx().changeOrderId;
+    const o = DemoData.orders.find(function (x) {
+      return x.id === oid;
+    });
+    if (!o) {
+      App.toast('未找到订单');
+      return;
+    }
+    const fromConfirm = !!confirmCard && !formCard;
+    const reasonEl = card && card.querySelector('[data-field="change-reason"]');
+    const remarkField = card && card.querySelector('[data-field="change-remark"]');
+    const reason =
+      reasonEl && reasonEl.value
+        ? reasonEl.value
+        : (DemoData.changeReasons && DemoData.changeReasons[0]) || '客户要求变更';
+    const remark =
+      remarkField && remarkField.value.trim()
+        ? remarkField.value.trim()
+        : fromConfirm || opts.fromConfirm
+          ? '用户确认变更'
+          : '';
+    if (!fromConfirm && !opts.fromConfirm && !remark) {
+      App.toast('请填写变更备注');
+      return;
+    }
+    if (o.status === '已审核') {
+      o.status = '销售审核';
+      o.statusDetail = '变更申请已受理，重新进入销售审核';
+    } else {
+      o.statusDetail = (o.statusDetail || '') + '；变更申请已受理';
+    }
+    ctx().changeOrderId = null;
+    App.closeOverlays();
+    App.pushAiHtml(renderChangeSuccessCard(o, { fromConfirm: fromConfirm || opts.fromConfirm }));
+    rescanAnnotationPins();
+  }
+
+  function renderChangeSuccessCard(o, opts) {
+    opts = opts || {};
+    if (opts.fromConfirm) {
+      return (
+        '<div class="sc-card" data-spec-id="card-change-success"><div class="sc-card__head sc-card__head--compact">变更已提交</div>' +
+        '<div class="sc-card__row sc-card__row--compact"><p class="sc-card__meta">订单 <strong>' +
+        App.escapeHtml(o ? o.no : '—') +
+        '</strong></p><p class="sc-card__meta">变更申请已受理' +
+        (o && o.status === '销售审核' ? '，订单已回退至销售审核' : '') +
+        '。</p></div></div>'
+      );
+    }
+    const reason = opts.reason || '';
+    const remark = opts.remark || '';
+    return (
+      '<div class="sc-card" data-spec-id="card-change-success"><div class="sc-card__head sc-card__head--compact">变更已提交</div>' +
+      '<div class="sc-card__row sc-card__row--compact"><p class="sc-card__meta">订单 <strong>' +
+      App.escapeHtml(o ? o.no : '—') +
+      '</strong></p><p class="sc-card__meta">原因：' +
+      App.escapeHtml(reason) +
+      '；备注：' +
+      App.escapeHtml(remark) +
+      '</p></div></div>'
+    );
+  }

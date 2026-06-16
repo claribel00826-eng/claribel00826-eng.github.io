@@ -1,0 +1,42 @@
+  function runCopy() {
+    const c = requireCustomer();
+    if (!c) return;
+    if (!DemoData.isOldCustomer(c, DemoData.demoSalesUser)) {
+      App.pushAiHtml(
+        '<p class="sc-reply-lead">新客户暂无历史订单可复制，请先通过<strong>方案速配</strong>或<strong>产品报价</strong>完成首单。</p>'
+      );
+      App.toast('暂无历史订单可复制');
+      return;
+    }
+    const list = ordersForCustomer(c.id);
+    if (!list.length) {
+      App.pushAiHtml('该客户暂无历史订单可复制。');
+      return;
+    }
+    const lastUser = getLatestUserChatText();
+    const hit = tryResolveCopyOrderFromUtterance(lastUser, c);
+    if (hit) {
+      enterSkill('copy');
+      copyOrderToConfirm(hit.id, { simulateUserMsg: false });
+      return;
+    }
+    resetCopyPickState();
+    maybeCopyDemandBeforePick(c);
+  }
+
+  function runChange() {
+    const c = requireCustomer();
+    if (!c) return;
+    if (!DemoData.isOldCustomer(c, DemoData.demoSalesUser)) {
+      App.pushAiHtml('新客户暂无订单可变更。');
+      App.toast('暂无订单可变更');
+      return;
+    }
+    const list = ordersForCustomer(c.id);
+    if (!list.length) {
+      App.pushAiHtml('该客户暂无订单可变更。');
+      return;
+    }
+    resetOrderListPickState('change');
+    pushChangeOrderPickCard(c);
+  }

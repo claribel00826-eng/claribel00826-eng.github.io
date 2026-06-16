@@ -1,0 +1,7 @@
+    scheduleQuotePickLazyBind();
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
+    return true;
+  }
+
+  /** 老客户直选报价/下单：跳过需求录入，按最近订单进选品 */
+  function skipQuoteDemandToPick(opts) {

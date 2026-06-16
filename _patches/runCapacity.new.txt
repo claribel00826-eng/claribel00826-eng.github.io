@@ -1,0 +1,16 @@
+  function runCapacity(opts) {
+    opts = opts || {};
+    const utterance = opts.utterance || '';
+    if (opts.simulateUserMsg && utterance) {
+      simulateUserUtteranceUnlessDuplicate(utterance);
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为您汇总 <strong>全厂产线</strong> 近 30 日产能：</p>' +
+        renderInsightCard('产能分析', [
+          { label: '产线负荷', value: '82%（3 条线满负荷）' },
+          { label: '可承诺日产能', value: '轴承组件 120 件/日' },
+          { label: '瓶颈工序', value: '热处理 · 平均等待 1.5 天' },
+          { label: '建议', value: '交期 ≤14 天订单可优先排产' }
+        ], 'card-insight-capacity')
+    );
+  }

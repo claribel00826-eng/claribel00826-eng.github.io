@@ -1,0 +1,5 @@
+    App.pushAiHtml(lead + renderHistoricalOrderPickCard(c, list, { mode: 'change' }));
+    rescanAnnotationPins();
+  }
+
+  function renderCopyDemandPromptCard(c) {

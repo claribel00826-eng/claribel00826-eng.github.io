@@ -1,0 +1,10 @@
+  function runProgress() {
+    const c = requireCustomer();
+    if (!c) return;
+    const list = ordersForCustomer(c.id);
+    if (!list.length) {
+      App.pushAiHtml('该客户暂无订单。');
+      return;
+    }
+    App.pushAiHtml('<p class="sc-reply-lead">订单进度如下：</p>' + renderOrderListCard(list));
+  }

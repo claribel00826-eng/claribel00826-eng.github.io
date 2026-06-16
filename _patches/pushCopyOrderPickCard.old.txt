@@ -1,0 +1,22 @@
+    const dataAttr =
+      mode === 'copy' ? ' data-copy-pick="1"' : ' data-change-pick="1"';
+    return (
+      '<div class="sc-card sc-card--compact" data-spec-id="card-order-pick"' +
+      dataAttr +
+      '><div class="sc-card__head sc-card__head--compact">' +
+      head +
+      '</div><p class="sc-card__meta">' +
+      stats +
+      '</p>' +
+      demandHint +
+      renderCopyOrderQueryRow(state.filter) +
+      '<div class="sc-follow-list sc-copy-order-pick-list">' +
+      rows +
+      emptyHint +
+      '</div>' +
+      (moreBtn ? '<div class="sc-card__actions-inline">' + moreBtn + '</div>' : '') +
+      '</div>'
+    );
+  }
+
+  function pushCopyOrderPickCard(c, opts) {

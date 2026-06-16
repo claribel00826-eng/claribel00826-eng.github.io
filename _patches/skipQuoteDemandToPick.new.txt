@@ -1,0 +1,117 @@
+    scheduleQuotePickLazyBind();
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
+    return true;
+  }
+
+  function submitDeliveryDemand(text, opts) {
+    opts = opts || {};
+    const draft = ctx().orderDraft;
+    if (!draft || !draft.customerId) return false;
+    const t = (text || '').trim();
+    if (!t) {
+      App.toast('请在输入框或对话中描述采购需求');
+      return true;
+    }
+    if (isPlainSkillPhrase(t) && !/需要|电机|轴承|齿轮|伺服|导轨|PLC|产线|自动化|各\s*\d+|\d+\s*台/.test(t)) {
+      App.toast('请用一句话描述需要什么产品，例如：伺服电机和齿轮箱各2台');
+      return true;
+    }
+    const c = App.getCustomer(draft.customerId);
+    const hadDemand = !!(draft.demandText && draft.demandText.trim());
+    const revise = !!(opts.revise || hadDemand);
+    draft.demandText = t;
+    draft.awaitingDemand = false;
+    if (revise) resetOrderPickSelections(draft);
+    draft.filter = t;
+    const lead =
+      '<p class="sc-reply-lead">' +
+      (revise ? '已更新需求，为 ' : '已记录需求，为 ') +
+      '<strong>' +
+      App.escapeHtml(c.name) +
+      '</strong> ' +
+      (revise ? '重新匹配推荐商品' : '匹配推荐商品') +
+      '，请在选品卡中勾选产品。</p>' +
+      renderOrderProductPickCardForDelivery();
+    if (opts.forcePickCard || revise || opts.simulateUserMsg) {
+      pushNextAiCard(lead, opts.simulateUserMsg ? t : revise && !opts.simulateUserMsg ? t : null);
+    } else {
+      App.pushAiHtml(lead);
+    }
+    scheduleOrderPickLazyBind();
+    rescanAnnotationPins();
+    return true;
+  }
+
+  /** 老客户交期自选：跳过需求录入，按最近订单进选品 */
+  function skipDeliveryDemandToPick(opts) {
+    opts = opts || {};
+    const draft = ctx().orderDraft;
+    if (!draft || !draft.customerId) return false;
+    const c = App.getCustomer(draft.customerId);
+    if (!c) return false;
+    if (!DemoData.isOldCustomer(c, DemoData.demoSalesUser)) {
+      App.toast('新客户须先描述采购需求');
+      return true;
+    }
+    draft.awaitingDemand = false;
+    const lead =
+      '<p class="sc-reply-lead">已跳过需求录入，为 <strong>' +
+      App.escapeHtml(c.name) +
+      '</strong> 按最近订单推荐选品。</p>' +
+      renderOrderProductPickCardForDelivery();
+    if (opts.simulateUserMsg) {
+      pushNextAiCard(lead, '跳过');
+    } else {
+      App.pushAiHtml(lead);
+    }
+    scheduleOrderPickLazyBind();
+    rescanAnnotationPins();
+    return true;
+  }
+
+  /** 交期自选商品：新客户须先录入需求；已录入则返回 false，由调用方出选品卡 */
+  function maybeDeliveryDemandBeforePick(c, opts) {
+    opts = opts || {};
+    const draft = ensureOrderDraft(c);
+    if (!draft) return false;
+    if (draft.demandText && draft.demandText.trim()) {
+      draft.awaitingDemand = false;
+      return false;
+    }
+    const lastUser = getLatestUserChatText();
+    if (
+      lastUser &&
+      isNaturalDemandText(lastUser) &&
+      !isPlainSkillPhrase(lastUser) &&
+      !isPlanDemandSkipPhrase(lastUser)
+    ) {
+      if (submitDeliveryDemand(lastUser, { revise: false })) return true;
+    }
+    draft.awaitingDemand = true;
+    const isOld = DemoData.isOldCustomer(c, DemoData.demoSalesUser);
+    App.pushAiHtml(
+      (opts.leadHtml || '') + renderDeliveryDemandPromptCard(c, { allowSkip: isOld })
+    );
+    rescanAnnotationPins();
+    return true;
+  }
+
+  function openDeliveryDemandEdit(opts) {
+    opts = opts || {};
+    const c = activeCustomer() || (opts.customerId && App.getCustomer(opts.customerId));
+    if (!c) return;
+    ensureOrderDraft(c);
+    const draft = ctx().orderDraft;
+    const isNew = DemoData.isNewCustomer(c);
+    draft.awaitingDemand = isNew;
+    enterSkill('delivery');
+    ctx().deliveryLinesMode = true;
+    pushNextAiCard(
+      renderDeliveryDemandPromptCard(c, { edit: !!opts.edit, optional: !isNew }),
+      opts.simulateUserMsg ? (isNew ? '修改需求' : '补充需求') : null
+    );
+    rescanAnnotationPins();
+  }
+
+  /** 老客户直选报价/下单：跳过需求录入，按最近订单进选品 */
+  function skipQuoteDemandToPick(opts) {

@@ -1,0 +1,21 @@
+  function renderOrderPickCard(list, action) {
+    const rows = list
+      .map(
+        (o) =>
+          '<button type="button" class="sc-follow-row sc-follow-row--select" data-action="' +
+          action +
+          '" data-oid="' +
+          o.id +
+          '"><span class="sc-follow-row__name">' +
+          o.no +
+          '</span><span class="sc-follow-row__meta">' +
+          o.date +
+          ' · ' +
+          o.amount +
+          ' · ' +
+          o.status +
+          '</span></button>'
+      )
+      .join('');
+    return '<div class="sc-card sc-card--compact"><div class="sc-follow-list">' + rows + '</div></div>';
+  }

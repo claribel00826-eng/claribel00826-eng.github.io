@@ -1,0 +1,29 @@
+  function deliveryOpenFormForOrder(o) {
+    if (!o) return;
+    openDeliveryForm({
+      sourceType: 'order',
+      orderId: o.id,
+      orderNo: o.no,
+      orderStatus: o.status,
+      lines: (o.lines || []).length ? o.lines : null,
+      productIds: o.productIds
+    });
+  }
+
+  function deliveryOpenFormForScheme(scheme) {
+    if (!scheme) return;
+    persistScheme(scheme);
+    const lines = linesFromScheme(scheme);
+    if (!lines.length) {
+      App.toast('方案明细为空');
+      return;
+    }
+    openDeliveryForm({
+      sourceType: 'scheme',
+      schemeId: scheme.id,
+      schemeName: scheme.templateName || '',
+      lines: lines
+    });
+  }
+
+  function beginDeliveryLines() {

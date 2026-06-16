@@ -1,0 +1,82 @@
+  function openDeliveryForm(meta) {
+    meta = meta || {};
+    ensureDeliveryPendingLines(meta);
+    ctx().deliveryPending = meta;
+    App.pushAiHtml(renderDeliveryFormCard());
+    rescanAnnotationPins();
+  }
+
+  function buildDeliveryPendingFromResult(d) {
+    d = d || ctx().delivery;
+    if (!d || !d.lines || !d.lines.length) return null;
+    const c = activeCustomer();
+    const meta = {
+      sourceType: d.sourceType || 'quote',
+      schemeId: d.schemeId || null,
+      quoteId: d.quoteId || null,
+      orderId: d.orderId || null,
+      lines: d.lines.map(function (l) {
+        return Object.assign({}, l);
+      }),
+      generateProcurementPlan:
+        d.generateProcurementPlan != null ? d.generateProcurementPlan : true,
+      expectedDate: d.expectedDate || ''
+    };
+    if (meta.schemeId) {
+      const sch =
+        (c &&
+          schemesForCustomer(c.id).find(function (x) {
+            return x.id === meta.schemeId;
+          })) ||
+        (ctx().scheme && ctx().scheme.id === meta.schemeId ? ctx().scheme : null) ||
+        (DemoData.schemes || []).find(function (x) {
+          return x.id === meta.schemeId;
+        });
+      if (sch) meta.schemeName = sch.templateName || '';
+    }
+    if (meta.quoteId) {
+      const q =
+        (c &&
+          quotesForCustomer(c.id).find(function (x) {
+            return x.id === meta.quoteId;
+          })) ||
+        (DemoData.quotes || []).find(function (x) {
+          return x.id === meta.quoteId;
+        });
+      if (q) meta.total = q.total;
+    }
+    if (meta.orderId) {
+      const o = DemoData.orders.find(function (x) {
+        return x.id === meta.orderId;
+      });
+      if (o) {
+        meta.orderNo = o.no;
+        meta.requiredDeliveryDate = o.requiredDeliveryDate || null;
+      }
+    }
+    return meta;
+  }
+
+  function adjustDeliveryFromResult() {
+    const d = ctx().delivery;
+    if (!d || !d.confirmed) {
+      App.toast('暂无交期评审结果可调整');
+      return;
+    }
+    const meta = buildDeliveryPendingFromResult(d);
+    if (!meta) {
+      App.toast('评审数据缺失');
+      return;
+    }
+    enterSkill('delivery');
+    setDeliverySkillAtEntry(false);
+    ctx().deliveryLinesMode = meta.sourceType === 'lines';
+    ctx().deliveryPending = meta;
+    ensureDeliveryPendingLines(meta);
+    simulateUserUtterance('调整交期评审方案');
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">已打开交期评审表单，可修改期望交期、工艺版本或采购计划后重新提交。</p>' +
+        renderDeliveryFormCard()
+    );
+    rescanAnnotationPins();
+  }
