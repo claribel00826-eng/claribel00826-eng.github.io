@@ -1143,6 +1143,7 @@
       const options = DemoData.processVersionOptions(pr, line.skuId);
       line.processVersion = options[0] || '标准版';
     }
+    if (line.qty == null || line.qty < 1) line.qty = 1;
   }
 
   function deliveryLineFreeAttrsText(line, pr) {
@@ -1251,6 +1252,24 @@
     return html;
   }
 
+  function renderDeliveryLineQtyField(line, idx) {
+    const qty = line.qty != null ? line.qty : 1;
+    const unit = (line && line.salesUnit) || '件';
+    return (
+      '<div class="sc-delivery-line-card__qty-row">' +
+      '<label class="sc-field-label">数量</label>' +
+      '<div class="sc-delivery-line-card__qty-inline">' +
+      '<input class="sc-input sc-input--field sc-delivery-line__qty" data-field="delivery-line-qty" data-idx="' +
+      idx +
+      '" type="number" min="1" step="1" value="' +
+      App.escapeHtml(String(qty)) +
+      '" />' +
+      '<span class="sc-delivery-line-card__unit">' +
+      App.escapeHtml(unit) +
+      '</span></div></div>'
+    );
+  }
+
   function renderDeliveryLineReviewCard(line, idx, pr) {
     pr = pr || productById(line.productId);
     if (!pr) return '';
@@ -1262,6 +1281,7 @@
       '<p class="sc-delivery-line-card__attrs">' +
       App.escapeHtml(deliveryLineFreeAttrsText(line, pr)) +
       '</p>' +
+      renderDeliveryLineQtyField(line, idx) +
       '<div class="sc-delivery-line-card__date-row">' +
       '<label class="sc-field-label">期望交期<span class="sc-field-required">*</span></label>' +
       renderDeliveryLineExpectedDateField(line, idx) +
@@ -1300,6 +1320,13 @@
           '[data-spec-id="sheet-delivery"] [data-field="delivery-line-expected-date"][data-idx="' + idx + '"]'
         );
       if (dateInp) line.expectedDate = dateInp.value;
+      const qtyInp =
+        (el &&
+          el.querySelector('[data-field="delivery-line-qty"][data-idx="' + idx + '"]')) ||
+        document.querySelector(
+          '[data-spec-id="sheet-delivery"] [data-field="delivery-line-qty"][data-idx="' + idx + '"]'
+        );
+      if (qtyInp) line.qty = Math.max(1, parseInt(qtyInp.value, 10) || 1);
     });
   }
 
@@ -6674,6 +6701,7 @@ function deliveryOpenFormForOrder(o) {
     return {
       inventoryName: line.inventoryName || '—',
       freeAttrsText: deliveryLineFreeAttrsText(line),
+      qtyText: deliveryLineQtyText(line),
       expectedDate: expectedDate,
       onTime: onTime,
       status: onTime ? '按期' : '不齐套',
@@ -6744,6 +6772,10 @@ function deliveryOpenFormForOrder(o) {
           '</span></div>' +
           '<p class="sc-card__meta sc-delivery-result__line-meta">' +
           App.escapeHtml(r.freeAttrsText || '—') +
+          '</p>' +
+          '<p class="sc-card__meta sc-delivery-result__line-qty">' +
+          '数量 ' +
+          App.escapeHtml(r.qtyText || '—') +
           '</p>' +
           '<p class="sc-card__meta sc-delivery-result__line-date">' +
           '期望交期 ' +

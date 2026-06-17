@@ -1011,6 +1011,34 @@ a.sc-demo-reset-btn--link {
   color: var(--color-text-muted, #71717a);
 }
 
+.sc-delivery-line-card__qty-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.sc-delivery-line-card__qty-row .sc-field-label {
+  margin: 0;
+}
+
+.sc-delivery-line-card__qty-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sc-delivery-line-card__qty-inline .sc-delivery-line__qty {
+  flex: 1;
+  min-width: 0;
+}
+
+.sc-delivery-line-card__unit {
+  font-size: 13px;
+  color: var(--color-text-muted, #71717a);
+  white-space: nowrap;
+}
+
 .sc-delivery-line-card__date-row {
   display: flex;
   flex-direction: column;
@@ -1026,6 +1054,10 @@ a.sc-demo-reset-btn--link {
 }
 
 .sc-delivery-result__line-date {
+  margin-bottom: 4px !important;
+}
+
+.sc-delivery-result__line-qty {
   margin-bottom: 4px !important;
 }
 
