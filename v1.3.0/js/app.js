@@ -2101,6 +2101,10 @@
       if (quoteLineProcess && window.Skills && Skills.syncQuotePendingFromDom) Skills.syncQuotePendingFromDom();
       const copyLineProcess = e.target.closest('[data-action="copy-line-process"]');
       if (copyLineProcess && window.Skills && Skills.syncOrderCopyLinesFromDom) Skills.syncOrderCopyLinesFromDom();
+      const orderConfirmProcess = e.target.closest('[data-action="order-confirm-line-process"]');
+      if (orderConfirmProcess && window.Skills && Skills.syncOrderConfirmLinesFromDom) {
+        Skills.syncOrderConfirmLinesFromDom();
+      }
       const deliveryFormDate = e.target.closest('[data-field="delivery-expected-date"]');
       if (
         deliveryFormDate &&
@@ -2134,6 +2138,14 @@
         e.target.closest('[data-action="copy-line-tax"]')
       ) {
         if (window.Skills && Skills.syncOrderCopyLinesFromDom) Skills.syncOrderCopyLinesFromDom();
+      }
+      if (
+        e.target.closest('[data-action="order-confirm-line-price"]') ||
+        e.target.closest('[data-action="order-confirm-line-qty"]') ||
+        e.target.closest('[data-action="order-confirm-line-tax"]') ||
+        e.target.closest('[data-action="order-confirm-line-deliver"]')
+      ) {
+        if (window.Skills && Skills.syncOrderConfirmLinesFromDom) Skills.syncOrderConfirmLinesFromDom();
       }
       if (e.target.closest('[data-action="plan-qty"]') && window.Skills && Skills.syncPlanQtyFromDom) {
         Skills.syncPlanQtyFromDom();

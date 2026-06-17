@@ -7101,6 +7101,13 @@ function orderProgressSalesperson(o) {
     }
     enterSkill('order');
     const linesFromDelivery = d.lines && d.lines.length ? enrichOrderLines(d.lines) : null;
+    function applyDeliveryOrderPending(lines, meta) {
+      setOrderPending(lines, meta);
+      if (d.expectedDate && ctx().orderPending) {
+        ctx().orderPending.shipDate = d.expectedDate;
+      }
+      showOrderConfirm();
+    }
     if (d.sourceType === 'quote' && d.quoteId) {
       const q =
         (ctx().quote && ctx().quote.id === d.quoteId ? ctx().quote : null) ||
@@ -7109,7 +7116,7 @@ function orderProgressSalesperson(o) {
         });
       if (q) {
         const lines = linesFromDelivery || enrichOrderLines(q.lines || []);
-        setOrderPending(lines, {
+        applyDeliveryOrderPending(lines, {
           customerId: q.customerId,
           sourceType: 'quote',
           quoteId: q.id,
@@ -7117,12 +7124,15 @@ function orderProgressSalesperson(o) {
             return s + (l.sub || 0);
           }, q.total)
         });
-        showOrderConfirm();
         return;
       }
     }
-    if (d.sourceType === 'lines' && linesFromDelivery && linesFromDelivery.length) {
-      setOrderPending(linesFromDelivery, {
+    if (
+      (d.sourceType === 'lines' || d.sourceType === 'scheme') &&
+      linesFromDelivery &&
+      linesFromDelivery.length
+    ) {
+      applyDeliveryOrderPending(linesFromDelivery, {
         customerId: (activeCustomer() || {}).id,
         sourceType: 'direct',
         quoteId: null,
@@ -7130,7 +7140,6 @@ function orderProgressSalesperson(o) {
           return s + (l.sub || 0);
         }, 0)
       });
-      showOrderConfirm();
       return;
     }
     if (d.sourceType === 'order' && d.orderId) {
@@ -7151,7 +7160,7 @@ function orderProgressSalesperson(o) {
                 .filter(Boolean)
           );
         if (lines.length) {
-          setOrderPending(lines, {
+          applyDeliveryOrderPending(lines, {
             customerId: o.customerId,
             sourceType: 'direct',
             quoteId: o.quoteId || null,
@@ -7161,10 +7170,20 @@ function orderProgressSalesperson(o) {
                 return s + (l.sub || 0);
               }, 0)
           });
-          showOrderConfirm();
           return;
         }
       }
+    }
+    if (linesFromDelivery && linesFromDelivery.length) {
+      applyDeliveryOrderPending(linesFromDelivery, {
+        customerId: (activeCustomer() || {}).id,
+        sourceType: 'direct',
+        quoteId: null,
+        total: linesFromDelivery.reduce(function (s, l) {
+          return s + (l.sub || 0);
+        }, 0)
+      });
+      return;
     }
     showOrderSkillEntry();
   }
@@ -7452,7 +7471,7 @@ function orderProgressSalesperson(o) {
 
   function syncOrderConfirmFromDom() {
     const pending = ctx().orderPending;
-    const el = document.querySelector('[data-spec-id="sheet-order"]');
+    const el = orderConfirmRoot();
     if (!pending || !el) return;
     const method = el.querySelector('[data-field="settlement-method"]');
     const currency = el.querySelector('[data-field="settlement-currency"]');
@@ -8130,6 +8149,7 @@ function orderProgressSalesperson(o) {
   function submitOrder() {
     const pending = ctx().orderPending;
     if (!pending || !pending.lines.length) { App.toast('无订单明细'); return; }
+    syncOrderConfirmLinesFromDom();
     syncOrderConfirmFromDom();
     const c = App.getCustomer(pending.customerId);
     if (!c) {
@@ -11325,6 +11345,31 @@ function openChangeSheet(oid, opts) {
     return cards.length ? cards[cards.length - 1] : null;
   }
 
+  function renderOrderConfirmLineProcessField(pr, line, idx) {
+    const options = DemoData.processVersionOptions(pr, line.skuId);
+    const cur = line.processVersion || options[0] || '标准版';
+    const opts = options
+      .map(function (v) {
+        return (
+          '<option value="' +
+          App.escapeHtml(v) +
+          '"' +
+          (v === cur ? ' selected' : '') +
+          '>' +
+          App.escapeHtml(v) +
+          '</option>'
+        );
+      })
+      .join('');
+    return (
+      '<label class="sc-quote-line__field">工艺版本 <select class="sc-input sc-input--field sc-quote-line__select" data-action="order-confirm-line-process" data-idx="' +
+      idx +
+      '">' +
+      opts +
+      '</select></label>'
+    );
+  }
+
   function renderOrderConfirmLineInfoGrid(line) {
     const stockWarn = line.availableQty === 0;
     const availVal = stockWarn
@@ -11621,6 +11666,7 @@ function openChangeSheet(oid, opts) {
     onQuoteLineSkuChange,
     onCopyLineSkuChange,
     onDeliveryFormExpectedDateChange,
+    syncOrderConfirmLinesFromDom,
     refreshLastQuoteConfirmCard
   };
 })();
