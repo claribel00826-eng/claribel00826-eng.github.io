@@ -7874,6 +7874,60 @@ function orderProgressSalesperson(o) {
     );
   }
 
+  function renderCopyOrderLinePickCard(o, lines) {
+    if (!o || !lines || !lines.length) return '';
+    const c = App.getCustomer(o.customerId);
+    const selected = ctx().copyLineSelection || lines.map(function () { return true; });
+    const selectedCount = selected.filter(Boolean).length;
+    const selectedTotal = lines.reduce(function (sum, line, idx) {
+      if (!selected[idx]) return sum;
+      return sum + (line.sub || 0);
+    }, 0);
+    const allSelected = selectedCount === lines.length;
+
+    const rows = lines.map(function (line, idx) {
+      const isChecked = selected[idx];
+      const price = line.quotePrice != null ? line.quotePrice : line.unitPrice || 0;
+      return (
+        '<div class="sc-copy-line-pick__row' + (isChecked ? ' sc-copy-line-pick__row--selected' : '') + '" data-idx="' + idx + '">' +
+        '<label class="sc-copy-line-pick__checkbox">' +
+        '<input type="checkbox" data-action="copy-line-pick-item" data-idx="' + idx + '"' + (isChecked ? ' checked' : '') + '>' +
+        '<span class="sc-copy-line-pick__checkmark"></span>' +
+        '</label>' +
+        '<span class="sc-copy-line-pick__idx">' + (idx + 1) + '</span>' +
+        '<div class="sc-copy-line-pick__info">' +
+        '<span class="sc-copy-line-pick__name">' + App.escapeHtml(line.inventoryName || '—') + '</span>' +
+        '<span class="sc-copy-line-pick__spec">' + App.escapeHtml(line.skuLabel || '—') + ' · ' + (line.qty || 0) + App.escapeHtml(line.salesUnit || '件') + '</span>' +
+        '</div>' +
+        '<span class="sc-copy-line-pick__price">' + fmtMoney(price) + '</span>' +
+        '</div>'
+      );
+    }).join('');
+
+    return (
+      '<div class="sc-card sc-card--compact sc-card--inline-form sc-card--copy-line-pick" data-spec-id="card-order-copy-line-pick" data-oid="' +
+      App.escapeHtml(o.id) + '">' +
+      '<div class="sc-card__head sc-card__head--compact">复制订单 · 勾选货品</div>' +
+      '<div class="sc-copy-line-pick__header">' +
+      '<label class="sc-copy-line-pick__header-check">' +
+      '<input type="checkbox" data-action="copy-line-pick-all" ' + (allSelected ? ' checked' : '') + '>' +
+      '<span class="sc-copy-line-pick__checkmark"></span>' +
+      '<span class="sc-copy-line-pick__header-text">全选（共 ' + lines.length + ' 项）</span>' +
+      '</label>' +
+      '</div>' +
+      '<div class="sc-copy-line-pick__list">' + rows + '</div>' +
+      '<div class="sc-copy-line-pick__summary">' +
+      '<span>已选择：<strong>' + selectedCount + ' / ' + lines.length + '</strong> 项</span>' +
+      '<span>预计金额：<strong>' + fmtMoney(selectedTotal) + '</strong></span>' +
+      '</div>' +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="copy-line-pick-repick">重选订单</button>' +
+      '<button type="button" class="sc-btn sc-btn--primary" data-action="copy-line-pick-confirm">确认选择</button>' +
+      '</div>' +
+      '</div>'
+    );
+  }
+
   function renderOrderConfirmBody(pending, c) {
     if (!pending || !pending.lines || !pending.lines.length) return '';
     const del = ctx().delivery;
@@ -8807,7 +8861,7 @@ function orderProgressSalesperson(o) {
       .filter(Boolean);
   }
 
-  function copyOrderToConfirm(oid, opts) {
+  function pushCopyOrderLinePickCard(oid, opts) {
     opts = opts || {};
     const o = DemoData.orders.find(function (x) {
       return x.id === oid;
@@ -8816,8 +8870,6 @@ function orderProgressSalesperson(o) {
       App.toast('未找到订单');
       return;
     }
-    const c = App.getCustomer(o.customerId);
-    if (!c) return;
     enterSkill('copy');
     setOrderSkillAtEntry(false);
     const lines = linesFromHistoricalOrder(o);
@@ -8825,13 +8877,42 @@ function orderProgressSalesperson(o) {
       App.toast('该订单无可用明细');
       return;
     }
-    const total =
-      lines.reduce(function (s, l) {
-        return s + (l.sub || 0);
-      }, 0) ||
-      parseFloat(String(o.amount || '0').replace(/[^\d.]/g, '')) ||
-      0;
-    setOrderPending(lines, {
+    ctx().copyLinePickLines = lines;
+    ctx().copyLineSelection = lines.map(function () { return true; });
+    ctx().copyLinePickSourceOrderId = oid;
+
+    lines.forEach(function (line) {
+      const pr = productById(line.productId);
+      if (!pr) return;
+      const hints = DemoData.priceHints(pr, line.skuId);
+      if (line.quotePrice == null) line.quotePrice = hints.latestPrice;
+      if (line.sub == null) line.sub = (line.quotePrice || 0) * (line.qty || 1);
+    });
+    if (opts.simulateUserMsg) {
+      simulateUserUtterance('复制订单 ' + o.no);
+    }
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">请勾选要复制的货品（可多选），确认后进入明细修改：</p>' +
+        renderCopyOrderLinePickCard(o, lines)
+    );
+    rescanAnnotationPins();
+  }
+
+  function proceedFromLinePickToConfirm(o, opts) {
+    opts = opts || {};
+    const lines = ctx().copyLinePickLines;
+    const selected = ctx().copyLineSelection || lines.map(function () { return true; });
+    const filteredLines = lines.filter(function (_, idx) {
+      return selected[idx];
+    });
+    if (!filteredLines.length) {
+      App.toast('请至少选择一条货品');
+      return false;
+    }
+    const total = filteredLines.reduce(function (s, l) {
+      return s + (l.sub || 0);
+    }, 0);
+    setOrderPending(filteredLines, {
       customerId: o.customerId,
       sourceType: 'copy',
       copiedOrderId: o.id,
@@ -8848,16 +8929,27 @@ function orderProgressSalesperson(o) {
       if (line.sub == null) line.sub = (line.quotePrice || 0) * (line.qty || 1);
     });
     ctx().orderCopyExpandedIdx = 0;
-    if (opts.simulateUserMsg) {
-      simulateUserUtterance('复制订单 ' + o.no);
-    }
     App.pushAiHtml(
       '<p class="sc-reply-lead">已按订单 <strong>' +
         App.escapeHtml(o.no) +
-        '</strong> 带入明细，请核对并修改后确认下单：</p>' +
+        '</strong> 带入 ' +
+        filteredLines.length + ' 条明细，请核对并修改后确认下单：</p>' +
         renderOrderCopyCard(o)
     );
     rescanAnnotationPins();
+    return true;
+  }
+
+  function copyOrderToConfirm(oid, opts) {
+    opts = opts || {};
+    const o = DemoData.orders.find(function (x) {
+      return x.id === oid;
+    });
+    if (!o) {
+      App.toast('未找到订单');
+      return;
+    }
+    pushCopyOrderLinePickCard(oid, opts);
   }
 
 function openChangeSheet(oid, opts) {
@@ -10894,6 +10986,67 @@ function openChangeSheet(oid, opts) {
     }
     if (action === 'copy-pick' && oid) {
       copyOrderToConfirm(oid, { simulateUserMsg: true });
+      return true;
+    }
+    if (action === 'copy-line-pick-item') {
+      const idx = parseInt(btn.getAttribute('data-idx'), 10);
+      if (ctx().copyLineSelection && idx >= 0) {
+        ctx().copyLineSelection[idx] = !ctx().copyLineSelection[idx];
+        const card = btn.closest('[data-spec-id="card-order-copy-line-pick"]');
+        if (card) {
+          const oid = card.getAttribute('data-oid');
+          const o = DemoData.orders.find(function (x) { return x.id === oid; });
+          if (o && ctx().copyLinePickLines) {
+            card.outerHTML = renderCopyOrderLinePickCard(o, ctx().copyLinePickLines);
+            rescanAnnotationPins();
+          }
+        }
+      }
+      return true;
+    }
+    if (action === 'copy-line-pick-all') {
+      const lines = ctx().copyLinePickLines;
+      if (lines) {
+        const selectedCount = (ctx().copyLineSelection || []).filter(Boolean).length;
+        const allSelected = selectedCount === lines.length;
+        if (allSelected) {
+          ctx().copyLineSelection = lines.map(function () { return false; });
+        } else {
+          ctx().copyLineSelection = lines.map(function () { return true; });
+        }
+        const card = btn.closest('[data-spec-id="card-order-copy-line-pick"]');
+        if (card) {
+          const oid = card.getAttribute('data-oid');
+          const o = DemoData.orders.find(function (x) { return x.id === oid; });
+          if (o) {
+            card.outerHTML = renderCopyOrderLinePickCard(o, lines);
+            rescanAnnotationPins();
+          }
+        }
+      }
+      return true;
+    }
+    if (action === 'copy-line-pick-repick') {
+      simulateUserUtterance('重选订单');
+      pushCopyOrderPickCard(activeCustomer());
+      return true;
+    }
+    if (action === 'copy-line-pick-confirm') {
+      const lines = ctx().copyLinePickLines;
+      const selected = ctx().copyLineSelection || lines.map(function () { return true; });
+      const selectedCount = selected.filter(Boolean).length;
+      if (!selectedCount) {
+        App.toast('请至少选择一条货品');
+        return true;
+      }
+      const card = btn.closest('[data-spec-id="card-order-copy-line-pick"]');
+      if (card) {
+        const oid = card.getAttribute('data-oid');
+        const o = DemoData.orders.find(function (x) { return x.id === oid; });
+        if (o) {
+          proceedFromLinePickToConfirm(o);
+        }
+      }
       return true;
     }
     if (action === 'copy-line-toggle') {
