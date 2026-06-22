@@ -502,6 +502,10 @@ window.DemoData = {
       date: '2026-05-10',
       items: '轴承组件×20、齿轮箱×2',
       productIds: ['p1', 'p1', 'p2'],
+      lines: [
+        { productId: 'p1', inventoryName: '轴承组件 A型', inventorySpec: '30mm × 50mm', qty: 20, salesUnit: '件', productionStatus: '待排程' },
+        { productId: 'p2', inventoryName: '齿轮箱', inventorySpec: '标准型', qty: 2, salesUnit: '件', productionStatus: '已排程' }
+      ],
       timeline: [
         { label: '未审核', at: '2026-05-10 09:12', done: true },
         { label: '销售审核', at: '2026-05-10 10:05', done: false, current: true },
@@ -519,6 +523,10 @@ window.DemoData = {
       date: '2026-04-02',
       items: '伺服电机×10、密封件×5',
       productIds: ['p3', 'p3', 'p4'],
+      lines: [
+        { productId: 'p3', inventoryName: '伺服电机', inventorySpec: '1.5kW', qty: 10, salesUnit: '台', productionStatus: '已生产' },
+        { productId: 'p4', inventoryName: '密封件', inventorySpec: 'O型圈 φ20', qty: 5, salesUnit: '件', productionStatus: '已生产' }
+      ],
       timeline: [
         { label: '未审核', at: '2026-04-02 08:30', done: true },
         { label: '销售审核', at: '2026-04-02 11:00', done: true },
@@ -536,6 +544,10 @@ window.DemoData = {
       date: '2026-05-14',
       items: '齿轮箱×4、密封件×8',
       productIds: ['p2', 'p4', 'p4'],
+      lines: [
+        { productId: 'p2', inventoryName: '齿轮箱', inventorySpec: '标准型', qty: 4, salesUnit: '件', productionStatus: '待排程' },
+        { productId: 'p4', inventoryName: '密封件', inventorySpec: 'O型圈 φ20', qty: 8, salesUnit: '件', productionStatus: '待排程' }
+      ],
       timeline: [
         { label: '未审核', at: '2026-05-14 14:22', done: false, current: true },
         { label: '销售审核', at: '', done: false },
@@ -553,6 +565,9 @@ window.DemoData = {
       date: '2026-05-08',
       items: '密封件×12',
       productIds: ['p4', 'p4'],
+      lines: [
+        { productId: 'p4', inventoryName: '密封件', inventorySpec: 'O型圈 φ20', qty: 12, salesUnit: '件', productionStatus: '待发料' }
+      ],
       timeline: [
         { label: '未审核', at: '2026-05-08 10:00', done: true },
         { label: '销售审核', at: '2026-05-08 15:30', done: true },
@@ -570,6 +585,9 @@ window.DemoData = {
       date: '2026-05-01',
       items: '轴承组件×30',
       productIds: ['p1', 'p1', 'p1'],
+      lines: [
+        { productId: 'p1', inventoryName: '轴承组件 A型', inventorySpec: '30mm × 50mm', qty: 30, salesUnit: '件', productionStatus: '已发料' }
+      ],
       timeline: [
         { label: '未审核', at: '2026-05-01 09:00', done: true },
         { label: '销售审核', at: '2026-05-01 14:00', done: true },

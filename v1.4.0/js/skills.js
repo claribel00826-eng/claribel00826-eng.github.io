@@ -1,4 +1,4 @@
-﻿window.Skills = (function () {
+window.Skills = (function () {
   let App;
   const PLAN_MORE_PAGE_SIZE = 5;
   const COPY_ORDER_LIST_PAGE_SIZE = 10;
@@ -6928,17 +6928,68 @@ function orderProgressSalesperson(o) {
     return o.shipDate || o.requiredDeliveryDate || o.date || '—';
   }
 
-  function orderProgressItemLines(o) {
+  function orderProgressDetailLines(o) {
     const base =
       o && o.lines && o.lines.length ? o.lines.slice() : linesFromHistoricalOrder(o);
     return base.map(function (line, idx) {
       return {
         idx: idx + 1,
         inventoryName: line.inventoryName || '—',
+        inventorySpec: line.inventorySpec || line.skuLabel || formatOrderLineSpec(line) || '—',
         qty: line.qty || 1,
-        salesUnit: line.salesUnit || '件'
+        salesUnit: line.salesUnit || '件',
+        productionStatus: line.productionStatus || '待排程'
       };
     });
+  }
+
+  function renderOrderProgressStatusBadge(status) {
+    const statusClass = {
+      '待排程': 'sc-badge--default',
+      '已排程': 'sc-badge--primary',
+      '待发料': 'sc-badge--warning',
+      '已发料': 'sc-badge--info',
+      '已生产': 'sc-badge--success'
+    }[status] || 'sc-badge--default';
+    return '<span class="sc-badge ' + statusClass + '">' + App.escapeHtml(status) + '</span>';
+  }
+
+  function renderOrderProgressStatusSummary(lines) {
+    const statusCounts = {
+      '待排程': 0,
+      '已排程': 0,
+      '待发料': 0,
+      '已发料': 0,
+      '已生产': 0
+    };
+    lines.forEach(function (line) {
+      const status = line.productionStatus || '待排程';
+      if (statusCounts[status] != null) {
+        statusCounts[status]++;
+      }
+    });
+    const total = lines.length;
+    const statusItems = ['待排程', '已排程', '待发料', '已发料', '已生产']
+      .map(function (status) {
+        const count = statusCounts[status];
+        const isActive = count > 0;
+        return (
+          '<div class="sc-progress-detail__summary-item' + (isActive ? ' sc-progress-detail__summary-item--active' : '') + '">' +
+          '<span class="sc-progress-detail__summary-label">' + App.escapeHtml(status) + '</span>' +
+          '<span class="sc-progress-detail__summary-count">' + count + '</span>' +
+          '</div>'
+        );
+      })
+      .join('');
+    return (
+      '<div class="sc-progress-detail__summary">' +
+      '<p class="sc-progress-detail__summary-title">生产进度概览</p>' +
+      '<p class="sc-progress-detail__summary-total">总货品数：' + total + ' 项</p>' +
+      '<div class="sc-progress-detail__summary-stats">' +
+      statusItems +
+      '</div>' +
+      '</div>'
+    );
   }
 
   function renderOrderProgressItemList(lines) {
@@ -6949,18 +7000,28 @@ function orderProgressSalesperson(o) {
       .map(function (row) {
         return (
           '<li class="sc-progress-detail__item">' +
+          '<span class="sc-progress-detail__item-idx">' + row.idx + '</span>' +
+          '<div class="sc-progress-detail__item-info">' +
           '<span class="sc-progress-detail__item-name">' +
           App.escapeHtml(row.inventoryName) +
-          '</span><span class="sc-progress-detail__item-qty">' +
-          row.qty +
-          App.escapeHtml(row.salesUnit) +
-          '</span></li>'
+          '</span>' +
+          '<span class="sc-progress-detail__item-spec">' +
+          App.escapeHtml(row.inventorySpec) +
+          '</span>' +
+          '</div>' +
+          '<span class="sc-progress-detail__item-qty">' +
+          row.qty + App.escapeHtml(row.salesUnit) +
+          '</span>' +
+          '<span class="sc-progress-detail__item-status">' +
+          renderOrderProgressStatusBadge(row.productionStatus) +
+          '</span>' +
+          '</li>'
         );
       })
       .join('');
     return (
       '<div class="sc-progress-detail__items">' +
-      '<p class="sc-progress-detail__items-title">货品（' +
+      '<p class="sc-progress-detail__items-title">货品生产状态（' +
       lines.length +
       ' 项）</p>' +
       '<ul class="sc-progress-detail__item-list">' +
@@ -6971,14 +7032,7 @@ function orderProgressSalesperson(o) {
 
   function renderOrderProgressDetailCard(o) {
     if (!o) return '';
-    const c = App.getCustomer(o.customerId);
-    const lines = orderProgressItemLines(o);
-    const customerCode = c && c.code ? c.code : '';
-    const customerLabel = c
-      ? c.name + (customerCode ? '（' + customerCode + '）' : '')
-      : '—';
-    const workStatus = orderProgressWorkStatus(o);
-    const statusNote = (o.statusDetail || o.orderRemark || o.remark || '').trim();
+    const lines = orderProgressDetailLines(o);
     return (
       '<div class="sc-card sc-card--compact sc-card--progress-detail" data-spec-id="card-order-progress-detail" data-oid="' +
       App.escapeHtml(o.id) +
@@ -6988,33 +7042,8 @@ function orderProgressSalesperson(o) {
       ' ' +
       orderStatusBadgeHtml(o.status) +
       '</div>' +
-      '<div class="sc-progress-detail__hero">' +
-      '<div class="sc-progress-detail__status-row">' +
-      '<span class="sc-progress-detail__status-label">工单生产状态</span>' +
-      '<strong class="sc-progress-detail__status-value">' +
-      App.escapeHtml(workStatus) +
-      '</strong></div>' +
-      '<p class="sc-progress-detail__timeline-title">进度时间轴</p>' +
-      renderOrderTimelineHtml(o) +
-      '</div>' +
-      '<dl class="sc-progress-detail__meta">' +
-      '<div class="sc-progress-detail__meta-item"><dt>客户</dt><dd>' +
-      App.escapeHtml(customerLabel) +
-      '</dd></div>' +
-      '<div class="sc-progress-detail__meta-item"><dt>单据日期</dt><dd>' +
-      App.escapeHtml(o.date || '—') +
-      '</dd></div>' +
-      '<div class="sc-progress-detail__meta-item"><dt>发货日期</dt><dd>' +
-      App.escapeHtml(orderProgressShipDate(o)) +
-      '</dd></div>' +
-      '<div class="sc-progress-detail__meta-item"><dt>业务员</dt><dd>' +
-      App.escapeHtml(orderProgressSalesperson(o)) +
-      '</dd></div>' +
-      '</dl>' +
+      renderOrderProgressStatusSummary(lines) +
       renderOrderProgressItemList(lines) +
-      (statusNote
-        ? '<p class="sc-progress-detail__note">' + App.escapeHtml(statusNote) + '</p>'
-        : '') +
       '<div class="sc-card__actions-inline">' +
       '<button type="button" class="sc-btn sc-btn--ghost" data-action="progress-repick-order">重选订单</button></div>' +
       '</div>'
