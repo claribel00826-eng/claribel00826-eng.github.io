@@ -1767,6 +1767,84 @@ function renderDeliveryFormCard() {
     );
   }
 
+  function renderDeliveryLinePickCard(sourceLabel, lines) {
+    if (!lines || !lines.length) return '';
+    var selected = ctx().deliveryLineSelection || lines.map(function () { return true; });
+    var selectedCount = selected.filter(Boolean).length;
+    var allSelected = selectedCount === lines.length;
+
+    var rows = lines.map(function (line, idx) {
+      var isChecked = selected[idx];
+      return (
+        '<div class="sc-copy-line-pick__row' + (isChecked ? ' sc-copy-line-pick__row--selected' : '') + '" data-idx="' + idx + '">' +
+        '<label class="sc-copy-line-pick__checkbox">' +
+        '<input type="checkbox" data-action="delivery-line-pick-item" data-idx="' + idx + '"' + (isChecked ? ' checked' : '') + '>' +
+        '<span class="sc-copy-line-pick__checkmark"></span>' +
+        '</label>' +
+        '<span class="sc-copy-line-pick__idx">' + (idx + 1) + '</span>' +
+        '<div class="sc-copy-line-pick__info">' +
+        '<span class="sc-copy-line-pick__name">' + App.escapeHtml(line.inventoryName || '—') + '</span>' +
+        '<span class="sc-copy-line-pick__spec">' + App.escapeHtml(line.skuLabel || '—') + ' · ' + (line.qty || 0) + App.escapeHtml(line.salesUnit || '件') + '</span>' +
+        '</div>' +
+        '</div>'
+      );
+    }).join('');
+
+    return (
+      '<div class="sc-card sc-card--compact sc-card--inline-form sc-card--copy-line-pick" data-spec-id="card-delivery-line-pick">' +
+      '<div class="sc-card__head sc-card__head--compact">交期评审 · 勾选货品</div>' +
+      '<p class="sc-card__meta">来源 ' + App.escapeHtml(sourceLabel) + '</p>' +
+      '<div class="sc-copy-line-pick__header">' +
+      '<label class="sc-copy-line-pick__header-check">' +
+      '<input type="checkbox" data-action="delivery-line-pick-all" ' + (allSelected ? ' checked' : '') + '>' +
+      '<span class="sc-copy-line-pick__checkmark"></span>' +
+      '<span class="sc-copy-line-pick__header-text">全选（共 ' + lines.length + ' 项）</span>' +
+      '</label>' +
+      '</div>' +
+      '<div class="sc-copy-line-pick__list">' + rows + '</div>' +
+      '<div class="sc-copy-line-pick__summary">' +
+      '<span>已选择：<strong>' + selectedCount + ' / ' + lines.length + '</strong> 项</span>' +
+      '</div>' +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="delivery-line-pick-repick">重选来源</button>' +
+      '<button type="button" class="sc-btn sc-btn--primary" data-action="delivery-line-pick-confirm">确认选择</button>' +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  function pushDeliveryLinePickCard(sourceLabel, lines, proceedFn) {
+    if (!lines || !lines.length) {
+      App.toast('暂无可用货品');
+      return;
+    }
+    ctx().deliveryLinePickLines = lines;
+    ctx().deliveryLineSelection = lines.map(function () { return true; });
+    ctx().deliveryLinePickSourceLabel = sourceLabel;
+    ctx().deliveryLinePickProceed = proceedFn;
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">请勾选要评估的货品（可多选），确认后进入评审表单：</p>' +
+        renderDeliveryLinePickCard(sourceLabel, lines)
+    );
+    rescanAnnotationPins();
+  }
+
+  function proceedFromDeliveryLinePickToForm() {
+    var lines = ctx().deliveryLinePickLines;
+    var selected = ctx().deliveryLineSelection || lines.map(function () { return true; });
+    var filteredLines = lines.filter(function (_, idx) {
+      return selected[idx];
+    });
+    if (!filteredLines.length) {
+      App.toast('请至少选择一条货品');
+      return;
+    }
+    var proceed = ctx().deliveryLinePickProceed;
+    if (typeof proceed === 'function') {
+      proceed(filteredLines);
+    }
+  }
+
 
   function beginDeliveryFromQuote(quoteId) {
     setDeliverySkillAtEntry(false);
@@ -1800,11 +1878,19 @@ function renderDeliveryFormCard() {
       return;
     }
     persistQuote(quote);
-    openDeliveryForm({
-      sourceType: 'quote',
-      quoteId: quote.id,
-      total: quote.total,
-      lines: quote.lines || []
+    var lines = quote.lines || [];
+    if (!lines.length) {
+      App.toast('报价单无可用明细');
+      return;
+    }
+    var sourceLabel = '报价单 ' + App.escapeHtml(quote.id);
+    pushDeliveryLinePickCard(sourceLabel, lines, function (filteredLines) {
+      openDeliveryForm({
+        sourceType: 'quote',
+        quoteId: quote.id,
+        total: quote.total,
+        lines: filteredLines
+      });
     });
   }
 
@@ -1842,14 +1928,27 @@ function renderDeliveryFormCard() {
 
 function deliveryOpenFormForOrder(o) {
     if (!o) return;
-    openDeliveryForm({
-      sourceType: 'order',
-      orderId: o.id,
-      orderNo: o.no,
-      orderStatus: o.status,
-      requiredDeliveryDate: o.requiredDeliveryDate || o.shipDate || null,
-      lines: (o.lines || []).length ? o.lines : null,
-      productIds: o.productIds
+    var lines = (o.lines || []).length ? o.lines.slice() : linesFromHistoricalOrder(o);
+    if (!lines.length) {
+      App.toast('该订单无可用明细');
+      return;
+    }
+    var sourceLabel = '订单 ' + App.escapeHtml(o.no);
+    var orderId = o.id;
+    var orderNo = o.no;
+    var orderStatus = o.status;
+    var requiredDeliveryDate = o.requiredDeliveryDate || o.shipDate || null;
+    var productIds = o.productIds;
+    pushDeliveryLinePickCard(sourceLabel, lines, function (filteredLines) {
+      openDeliveryForm({
+        sourceType: 'order',
+        orderId: orderId,
+        orderNo: orderNo,
+        orderStatus: orderStatus,
+        requiredDeliveryDate: requiredDeliveryDate,
+        lines: filteredLines,
+        productIds: productIds
+      });
     });
   }
 
@@ -1890,16 +1989,21 @@ function deliveryOpenFormForOrder(o) {
   function deliveryOpenFormForScheme(scheme) {
     if (!scheme) return;
     persistScheme(scheme);
-    const lines = linesFromScheme(scheme);
+    var lines = linesFromScheme(scheme);
     if (!lines.length) {
       App.toast('方案明细为空');
       return;
     }
-    openDeliveryForm({
-      sourceType: 'scheme',
-      schemeId: scheme.id,
-      schemeName: scheme.templateName || '',
-      lines: lines
+    var sourceLabel = '方案 ' + App.escapeHtml(scheme.templateName || scheme.id);
+    var schemeId = scheme.id;
+    var schemeName = scheme.templateName || '';
+    pushDeliveryLinePickCard(sourceLabel, lines, function (filteredLines) {
+      openDeliveryForm({
+        sourceType: 'scheme',
+        schemeId: schemeId,
+        schemeName: schemeName,
+        lines: filteredLines
+      });
     });
   }
 
@@ -10807,11 +10911,21 @@ function openChangeSheet(oid, opts) {
       });
       if (q) {
         persistQuote(q);
-        openDeliveryForm({
-          sourceType: 'quote',
-          quoteId: q.id,
-          total: q.total,
-          lines: q.lines || []
+        var lines = q.lines || [];
+        if (!lines.length) {
+          App.toast('报价单无可用明细');
+          return true;
+        }
+        var sourceLabel = '报价单 ' + App.escapeHtml(q.id);
+        var quoteId = q.id;
+        var total = q.total;
+        pushDeliveryLinePickCard(sourceLabel, lines, function (filteredLines) {
+          openDeliveryForm({
+            sourceType: 'quote',
+            quoteId: quoteId,
+            total: total,
+            lines: filteredLines
+          });
         });
       }
       return true;
@@ -10823,6 +10937,54 @@ function openChangeSheet(oid, opts) {
       });
       if (o) simulateUserUtterance('按订单 ' + o.no);
       deliveryOpenFormForOrder(o);
+      return true;
+    }
+    if (action === 'delivery-line-pick-item') {
+      var idx = parseInt(btn.getAttribute('data-idx'), 10);
+      if (ctx().deliveryLineSelection && idx >= 0) {
+        ctx().deliveryLineSelection[idx] = !ctx().deliveryLineSelection[idx];
+        var card = btn.closest('[data-spec-id="card-delivery-line-pick"]');
+        if (card && ctx().deliveryLinePickLines) {
+          card.outerHTML = renderDeliveryLinePickCard(ctx().deliveryLinePickSourceLabel || '', ctx().deliveryLinePickLines);
+          rescanAnnotationPins();
+        }
+      }
+      return true;
+    }
+    if (action === 'delivery-line-pick-all') {
+      var lines = ctx().deliveryLinePickLines;
+      if (lines) {
+        var selectedCount = (ctx().deliveryLineSelection || []).filter(Boolean).length;
+        var allSelected = selectedCount === lines.length;
+        if (allSelected) {
+          ctx().deliveryLineSelection = lines.map(function () { return false; });
+        } else {
+          ctx().deliveryLineSelection = lines.map(function () { return true; });
+        }
+        var card = btn.closest('[data-spec-id="card-delivery-line-pick"]');
+        if (card) {
+          card.outerHTML = renderDeliveryLinePickCard(ctx().deliveryLinePickSourceLabel || '', lines);
+          rescanAnnotationPins();
+        }
+      }
+      return true;
+    }
+    if (action === 'delivery-line-pick-repick') {
+      simulateUserUtterance('重选来源');
+      var c2 = activeCustomer();
+      if (c2) App.pushAiHtml(renderDeliverySourceCard(c2));
+      rescanAnnotationPins();
+      return true;
+    }
+    if (action === 'delivery-line-pick-confirm') {
+      var selLines = ctx().deliveryLinePickLines;
+      var selSelected = ctx().deliveryLineSelection || selLines.map(function () { return true; });
+      var selCount = selSelected.filter(Boolean).length;
+      if (!selCount) {
+        App.toast('请至少选择一条货品');
+        return true;
+      }
+      proceedFromDeliveryLinePickToForm();
       return true;
     }
     if (action === 'delivery-lines-confirm') {
