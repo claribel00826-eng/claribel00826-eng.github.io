@@ -9772,6 +9772,18 @@ function openChangeSheet(oid, opts) {
     return fmtMoney(num);
   }
 
+  function formatPaymentMoneyShort(n) {
+    var num = Number(n) || 0;
+    if (num >= 10000) {
+      var wan = num / 10000;
+      return (wan >= 100 ? wan.toFixed(0) : wan.toFixed(1).replace(/\.0$/, '')) + '万';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return String(num);
+  }
+
   function renderPaymentResultCard(data) {
     return (
       '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
@@ -9809,15 +9821,21 @@ function openChangeSheet(oid, opts) {
     maxVal = maxVal || 1;
 
     var bars = monthlyDetails.map(function (d) {
-      var recH = Math.max((d.receivable / maxVal) * 100, 2);
+      var recH = Math.max((d.receivable / maxVal) * 100, 0);
       var unrecH = Math.max((d.unreceived / maxVal) * 100, 0);
       var isFuture = d.receivable === 0 && d.unreceived === 0;
       var futureCls = isFuture ? ' sc-payment-chart__col--future' : '';
       return (
         '<div class="sc-payment-chart__col' + futureCls + '">' +
-        '<div class="sc-payment-chart__bars">' +
-        '<div class="sc-payment-chart__bar sc-payment-chart__bar--receivable" style="height:' + recH.toFixed(1) + '%" title="应收 ' + formatPaymentMoney(d.receivable) + '"></div>' +
-        '<div class="sc-payment-chart__bar sc-payment-chart__bar--unreceived" style="height:' + unrecH.toFixed(1) + '%" title="未收 ' + formatPaymentMoney(d.unreceived) + '"></div>' +
+        '<div class="sc-payment-chart__col-bars">' +
+        '<div class="sc-payment-chart__bar-group">' +
+        (d.receivable > 0 ? '<span class="sc-payment-chart__bar-amount">' + formatPaymentMoneyShort(d.receivable) + '</span>' : '<span class="sc-payment-chart__bar-amount"></span>') +
+        '<div class="sc-payment-chart__bar sc-payment-chart__bar--receivable" style="height:' + Math.max(recH, d.receivable > 0 ? 3 : 0).toFixed(1) + '%;"></div>' +
+        '</div>' +
+        '<div class="sc-payment-chart__bar-group">' +
+        (d.unreceived > 0 ? '<span class="sc-payment-chart__bar-amount">' + formatPaymentMoneyShort(d.unreceived) + '</span>' : '<span class="sc-payment-chart__bar-amount"></span>') +
+        '<div class="sc-payment-chart__bar sc-payment-chart__bar--unreceived" style="height:' + Math.max(unrecH, d.unreceived > 0 ? 3 : 0).toFixed(1) + '%;"></div>' +
+        '</div>' +
         '</div>' +
         '<span class="sc-payment-chart__label">' + App.escapeHtml(d.month) + '</span>' +
         '</div>'
