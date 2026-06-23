@@ -7036,13 +7036,46 @@ function orderProgressSalesperson(o) {
     const base =
       o && o.lines && o.lines.length ? o.lines.slice() : linesFromHistoricalOrder(o);
     return base.map(function (line, idx) {
+      const status = line.productionStatus || '待排程';
+      const workProcesses = generateWorkProcessesForLine(status, line.qty || 1);
       return {
         idx: idx + 1,
         inventoryName: line.inventoryName || '—',
         inventorySpec: line.inventorySpec || line.skuLabel || formatOrderLineSpec(line) || '—',
         qty: line.qty || 1,
         salesUnit: line.salesUnit || '件',
-        productionStatus: line.productionStatus || '待排程'
+        productionStatus: status,
+        workProcesses: workProcesses
+      };
+    });
+  }
+
+  function generateWorkProcessesForLine(status, qty) {
+    const processes = [
+      { name: 'CNC工序', key: 'cnc' },
+      { name: '组装工序', key: 'assemble' },
+      { name: '质检工序', key: 'qc' },
+      { name: '包装工序', key: 'pack' }
+    ];
+    const progressMap = {
+      '待排程': { cnc: 0, assemble: 0, qc: 0, pack: 0 },
+      '已排程': { cnc: 30, assemble: 0, qc: 0, pack: 0 },
+      '待发料': { cnc: 50, assemble: 0, qc: 0, pack: 0 },
+      '已发料': { cnc: 100, assemble: 60, qc: 0, pack: 0 },
+      '已生产': { cnc: 100, assemble: 100, qc: 100, pack: 80 }
+    };
+    const progress = progressMap[status] || { cnc: 0, assemble: 0, qc: 0, pack: 0 };
+    return processes.map(function (p) {
+      const rate = progress[p.key] || 0;
+      const dispatched = Math.round(qty * (rate / 100) * 1.2);
+      const reported = Math.round(qty * (rate / 100));
+      return {
+        name: p.name,
+        key: p.key,
+        totalQty: qty,
+        dispatchedQty: Math.min(dispatched, qty),
+        reportedQty: Math.min(reported, qty),
+        rate: rate
       };
     });
   }
@@ -7056,6 +7089,56 @@ function orderProgressSalesperson(o) {
       '已生产': 'sc-badge--success'
     }[status] || 'sc-badge--default';
     return '<span class="sc-badge ' + statusClass + '">' + App.escapeHtml(status) + '</span>';
+  }
+
+  function renderWorkProcessFlow(workProcesses) {
+    if (!workProcesses || !workProcesses.length) {
+      return '';
+    }
+    const nodes = workProcesses.map(function (process, idx) {
+      const rate = process.rate || 0;
+      return (
+        '<div class="sc-progress-workflow__node">' +
+        '<div class="sc-progress-workflow__node-header">' +
+        App.escapeHtml(process.name) +
+        '</div>' +
+        '<div class="sc-progress-workflow__node-body">' +
+        '<div class="sc-progress-workflow__item">生产总量: ' + process.totalQty + '</div>' +
+        '<div class="sc-progress-workflow__item">已派工: ' + process.dispatchedQty + '</div>' +
+        '<div class="sc-progress-workflow__item">已汇报: ' + process.reportedQty + '</div>' +
+        '<div class="sc-progress-workflow__item">完成率: ' + rate + '%</div>' +
+        '</div>' +
+        '<div class="sc-progress-workflow__progress" style="width:' + rate + '%"></div>' +
+        '</div>' +
+        (idx < workProcesses.length - 1 ? '<div class="sc-progress-workflow__arrow">→</div>' : '')
+      );
+    }).join('');
+    return (
+      '<div class="sc-progress-workflow">' +
+      '<div class="sc-progress-workflow__start">' +
+      '<div class="sc-progress-workflow__start-label">开始</div>' +
+      '</div>' +
+      '<div class="sc-progress-workflow__arrow">→</div>' +
+      '<div class="sc-progress-workflow__nodes">' +
+      nodes +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  function toggleProgressWorkflow(idx) {
+    const workflow = document.getElementById('workflow-' + idx);
+    const toggleBtn = document.querySelector('[data-action="progress-workflow-toggle"][data-item-idx="' + idx + '"]');
+    if (workflow && toggleBtn) {
+      const icon = toggleBtn.querySelector('.sc-progress-detail__toggle-icon');
+      if (workflow.classList.contains('sc-progress-detail__item-workflow--expanded')) {
+        workflow.classList.remove('sc-progress-detail__item-workflow--expanded');
+        if (icon) icon.textContent = '▶';
+      } else {
+        workflow.classList.add('sc-progress-detail__item-workflow--expanded');
+        if (icon) icon.textContent = '▼';
+      }
+    }
   }
 
   function renderOrderProgressStatusSummary(lines) {
@@ -7102,8 +7185,10 @@ function orderProgressSalesperson(o) {
     }
     const rows = lines
       .map(function (row) {
+        const flowContent = renderWorkProcessFlow(row.workProcesses);
         return (
           '<li class="sc-progress-detail__item">' +
+          '<div class="sc-progress-detail__item-row">' +
           '<span class="sc-progress-detail__item-idx">' + row.idx + '</span>' +
           '<div class="sc-progress-detail__item-info">' +
           '<span class="sc-progress-detail__item-name">' +
@@ -7119,6 +7204,13 @@ function orderProgressSalesperson(o) {
           '<span class="sc-progress-detail__item-status">' +
           renderOrderProgressStatusBadge(row.productionStatus) +
           '</span>' +
+          '<button type="button" class="sc-progress-detail__item-toggle" data-action="progress-workflow-toggle" data-item-idx="' + row.idx + '">' +
+          '<span class="sc-progress-detail__toggle-icon">▶</span>' +
+          '</button>' +
+          '</div>' +
+          '<div class="sc-progress-detail__item-workflow" id="workflow-' + row.idx + '">' +
+          flowContent +
+          '</div>' +
           '</li>'
         );
       })
@@ -11267,6 +11359,11 @@ function openChangeSheet(oid, opts) {
     if (action === 'progress-repick-order') {
       simulateUserUtterance('重选订单');
       progressRepickOrder();
+      return true;
+    }
+    if (action === 'progress-workflow-toggle') {
+      const idx = btn.getAttribute('data-item-idx');
+      toggleProgressWorkflow(idx);
       return true;
     }
     if (action === 'change-confirm-submit') {
