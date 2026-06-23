@@ -9813,31 +9813,30 @@ function openChangeSheet(oid, opts) {
 
   function renderPaymentMonthlyChart(monthlyDetails) {
     if (!monthlyDetails.length) return '';
-    var maxVal = 0;
+    var maxTotal = 0;
     monthlyDetails.forEach(function (d) {
-      if (d.receivable > maxVal) maxVal = d.receivable;
-      if (d.unreceived > maxVal) maxVal = d.unreceived;
+      var total = (d.receivable || 0) + (d.unreceived || 0);
+      if (total > maxTotal) maxTotal = total;
     });
-    maxVal = maxVal || 1;
+    maxTotal = maxTotal || 1;
 
-    var bars = monthlyDetails.map(function (d) {
-      var recH = Math.max((d.receivable / maxVal) * 100, 0);
-      var unrecH = Math.max((d.unreceived / maxVal) * 100, 0);
+    var rows = monthlyDetails.map(function (d) {
+      var total = (d.receivable || 0) + (d.unreceived || 0);
+      var recW = Math.max((d.receivable / maxTotal) * 100, d.receivable > 0 ? 2 : 0);
+      var unrecW = Math.max((d.unreceived / maxTotal) * 100, d.unreceived > 0 ? 2 : 0);
       var isFuture = d.receivable === 0 && d.unreceived === 0;
-      var futureCls = isFuture ? ' sc-payment-chart__col--future' : '';
+      var futureCls = isFuture ? ' sc-payment-chart__row--future' : '';
       return (
-        '<div class="sc-payment-chart__col' + futureCls + '">' +
-        '<div class="sc-payment-chart__col-bars">' +
-        '<div class="sc-payment-chart__bar-group">' +
-        (d.receivable > 0 ? '<span class="sc-payment-chart__bar-amount">' + formatPaymentMoneyShort(d.receivable) + '</span>' : '<span class="sc-payment-chart__bar-amount"></span>') +
-        '<div class="sc-payment-chart__bar sc-payment-chart__bar--receivable" style="height:' + Math.max(recH, d.receivable > 0 ? 3 : 0).toFixed(1) + '%;"></div>' +
+        '<div class="sc-payment-chart__row' + futureCls + '">' +
+        '<span class="sc-payment-chart__row-label">' + App.escapeHtml(d.month) + '</span>' +
+        '<div class="sc-payment-chart__row-bar">' +
+        (d.receivable > 0
+          ? '<div class="sc-payment-chart__seg sc-payment-chart__seg--receivable" style="width:' + recW.toFixed(1) + '%"><span class="sc-payment-chart__seg-amount">' + formatPaymentMoneyShort(d.receivable) + '</span></div>'
+          : '') +
+        (d.unreceived > 0
+          ? '<div class="sc-payment-chart__seg sc-payment-chart__seg--unreceived" style="width:' + unrecW.toFixed(1) + '%"><span class="sc-payment-chart__seg-amount">' + formatPaymentMoneyShort(d.unreceived) + '</span></div>'
+          : '') +
         '</div>' +
-        '<div class="sc-payment-chart__bar-group">' +
-        (d.unreceived > 0 ? '<span class="sc-payment-chart__bar-amount">' + formatPaymentMoneyShort(d.unreceived) + '</span>' : '<span class="sc-payment-chart__bar-amount"></span>') +
-        '<div class="sc-payment-chart__bar sc-payment-chart__bar--unreceived" style="height:' + Math.max(unrecH, d.unreceived > 0 ? 3 : 0).toFixed(1) + '%;"></div>' +
-        '</div>' +
-        '</div>' +
-        '<span class="sc-payment-chart__label">' + App.escapeHtml(d.month) + '</span>' +
         '</div>'
       );
     }).join('');
@@ -9854,7 +9853,7 @@ function openChangeSheet(oid, opts) {
       '<p class="sc-payment-chart__title">月度应收与未收趋势</p>' +
       legend +
       '<div class="sc-payment-chart__body">' +
-      bars +
+      rows +
       '</div>' +
       '</div>'
     );
