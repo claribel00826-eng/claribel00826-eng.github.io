@@ -9736,71 +9736,71 @@ function openChangeSheet(oid, opts) {
     return fmtMoney(num);
   }
 
-  function formatPaymentDate(s) {
-    if (!s) return '—';
-    return String(s).replace(/-/g, '/');
-  }
-
-  function renderPaymentCard(data, month) {
-    var m = month || {};
+  function renderPaymentResultCard(data) {
     return (
       '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
-      '<div class="sc-card__head sc-card__head--compact sc-payment__head">' +
-      '<span>回款分析 · ' + App.escapeHtml(month.label || data.currentMonth || '') + '</span>' +
-      '<button type="button" class="sc-btn sc-btn--ghost sc-payment__month-btn" data-action="payment-month-pick">切换月份</button>' +
+      '<div class="sc-card__head sc-card__head--compact">回款分析</div>' +
+      '<div class="sc-payment-overview">' +
+      '<div class="sc-payment-overview__item">' +
+      '<span class="sc-payment-overview__label">本年销售金额</span>' +
+      '<span class="sc-payment-overview__value">' + formatPaymentMoney(data.annualSalesAmount) + '</span>' +
       '</div>' +
-      '<div class="sc-payment-metrics">' +
-      '<div class="sc-payment-metrics__item">' +
-      '<span class="sc-payment-metrics__label">销售金额</span>' +
-      '<span class="sc-payment-metrics__value">' + formatPaymentMoney(m.salesAmount) + '</span>' +
+      '<div class="sc-payment-overview__item">' +
+      '<span class="sc-payment-overview__label">计划收款额</span>' +
+      '<span class="sc-payment-overview__value">' + formatPaymentMoney(data.plannedCollectionAmount) + '</span>' +
       '</div>' +
-      '<div class="sc-payment-metrics__item">' +
-      '<span class="sc-payment-metrics__label">计划收款额</span>' +
-      '<span class="sc-payment-metrics__value">' + formatPaymentMoney(m.plannedCollection) + '</span>' +
+      '<div class="sc-payment-overview__item">' +
+      '<span class="sc-payment-overview__label">应收金额</span>' +
+      '<span class="sc-payment-overview__value">' + formatPaymentMoney(data.receivableBalance) + '</span>' +
       '</div>' +
-      '<div class="sc-payment-metrics__item">' +
-      '<span class="sc-payment-metrics__label">应收金额</span>' +
-      '<span class="sc-payment-metrics__value">' + formatPaymentMoney(m.receivableBalance) + '</span>' +
-      '</div>' +
-      '<div class="sc-payment-metrics__item">' +
-      '<span class="sc-payment-metrics__label">未收金额</span>' +
-      '<span class="sc-payment-metrics__value">' + formatPaymentMoney(m.unreceivedAmount) + '</span>' +
+      '<div class="sc-payment-overview__item">' +
+      '<span class="sc-payment-overview__label">未收金额</span>' +
+      '<span class="sc-payment-overview__value sc-payment-overview__value--warn">' + formatPaymentMoney(data.unreceivedAmount) + '</span>' +
       '</div>' +
       '</div>' +
+      renderPaymentMonthlyChart(data.monthlyDetails || []) +
       '</div>'
     );
   }
 
-  function renderPaymentMonthPicker(data, selectedLabel) {
-    var months = data.months || [];
-    var rows = months.map(function (m) {
-      var isActive = m.label === selectedLabel;
+  function renderPaymentMonthlyChart(monthlyDetails) {
+    if (!monthlyDetails.length) return '';
+    var maxVal = 0;
+    monthlyDetails.forEach(function (d) {
+      if (d.receivable > maxVal) maxVal = d.receivable;
+      if (d.unreceived > maxVal) maxVal = d.unreceived;
+    });
+    maxVal = maxVal || 1;
+
+    var bars = monthlyDetails.map(function (d) {
+      var recH = Math.max((d.receivable / maxVal) * 100, 2);
+      var unrecH = Math.max((d.unreceived / maxVal) * 100, 0);
+      var isFuture = d.receivable === 0 && d.unreceived === 0;
+      var futureCls = isFuture ? ' sc-payment-chart__col--future' : '';
       return (
-        '<label class="sc-payment-month-picker__option' +
-        (isActive ? ' is-active' : '') +
-        '">' +
-        '<input type="radio" name="payment-month" value="' +
-        App.escapeHtml(m.label) +
-        '"' +
-        (isActive ? ' checked' : '') +
-        '>' +
-        '<span class="sc-payment-month-picker__dot"></span>' +
-        '<span class="sc-payment-month-picker__label">' +
-        App.escapeHtml(m.label) +
-        '</span>' +
-        (isActive ? '<span class="sc-payment-month-picker__tag">当前</span>' : '') +
-        '</label>'
+        '<div class="sc-payment-chart__col' + futureCls + '">' +
+        '<div class="sc-payment-chart__bars">' +
+        '<div class="sc-payment-chart__bar sc-payment-chart__bar--receivable" style="height:' + recH.toFixed(1) + '%" title="应收 ' + formatPaymentMoney(d.receivable) + '"></div>' +
+        '<div class="sc-payment-chart__bar sc-payment-chart__bar--unreceived" style="height:' + unrecH.toFixed(1) + '%" title="未收 ' + formatPaymentMoney(d.unreceived) + '"></div>' +
+        '</div>' +
+        '<span class="sc-payment-chart__label">' + App.escapeHtml(d.month) + '</span>' +
+        '</div>'
       );
     }).join('');
+
+    var legend = (
+      '<div class="sc-payment-chart__legend">' +
+      '<span class="sc-payment-chart__legend-item"><span class="sc-payment-chart__dot sc-payment-chart__dot--receivable"></span>应收金额</span>' +
+      '<span class="sc-payment-chart__legend-item"><span class="sc-payment-chart__dot sc-payment-chart__dot--unreceived"></span>未收金额</span>' +
+      '</div>'
+    );
+
     return (
-      '<div class="sc-card sc-card--compact" data-spec-id="card-payment-month-pick">' +
-      '<div class="sc-card__head sc-card__head--compact">选择月份</div>' +
-      '<div class="sc-payment-month-picker__list">' +
-      rows +
-      '</div>' +
-      '<div class="sc-card__actions-inline">' +
-      '<button type="button" class="sc-btn sc-btn--ghost" data-action="payment-month-cancel">取消</button>' +
-      '<button type="button" class="sc-btn sc-btn--primary" data-action="payment-month-confirm">确认</button>' +
+      '<div class="sc-payment-chart">' +
+      '<p class="sc-payment-chart__title">月度应收与未收趋势</p>' +
+      legend +
+      '<div class="sc-payment-chart__body">' +
+      bars +
       '</div>' +
       '</div>'
     );
@@ -9813,15 +9813,13 @@ function openChangeSheet(oid, opts) {
       App.toast('暂无回款数据');
       return;
     }
-    var selectedLabel = ctx().paymentMonth || data.currentMonth;
-    var month = (data.months || []).find(function (m) { return m.label === selectedLabel; }) || data.months[0] || {};
     var utterance = opts.utterance || '';
     if (opts.simulateUserMsg && utterance) {
       simulateUserUtteranceUnlessDuplicate(utterance);
     }
     App.pushAiHtml(
       '<p class="sc-reply-lead">为您汇总 <strong>全部客户</strong> 回款与应收：</p>' +
-        renderPaymentCard(data, month)
+        renderPaymentResultCard(data)
     );
     rescanAnnotationPins();
   }
@@ -10630,40 +10628,6 @@ function openChangeSheet(oid, opts) {
     }
     if (action === 'biz-metric') {
       switchBizMetric(btn.closest('[data-spec-id="card-biz-analysis"]'), btn.getAttribute('data-metric'));
-      return true;
-    }
-    if (action === 'payment-month-pick') {
-      var data = DemoData.paymentAnalysis;
-      if (!data) return true;
-      var selectedLabel = ctx().paymentMonth || data.currentMonth;
-      pushNextAiCard(renderPaymentMonthPicker(data, selectedLabel));
-      rescanAnnotationPins();
-      return true;
-    }
-    if (action === 'payment-month-cancel') {
-      var picker = document.querySelector('[data-spec-id="card-payment-month-pick"]');
-      if (picker) picker.remove();
-      return true;
-    }
-    if (action === 'payment-month-confirm') {
-      var picker = document.querySelector('[data-spec-id="card-payment-month-pick"]');
-      if (!picker) return true;
-      var radio = picker.querySelector('input[name="payment-month"]:checked');
-      if (!radio) {
-        App.toast('请选择月份');
-        return true;
-      }
-      ctx().paymentMonth = radio.value;
-      picker.remove();
-      var card = document.querySelector('[data-spec-id="card-payment"]');
-      if (card) {
-        var data = DemoData.paymentAnalysis;
-        if (data) {
-          var month = (data.months || []).find(function (m) { return m.label === ctx().paymentMonth; }) || data.months[0] || {};
-          card.outerHTML = renderPaymentCard(data, month);
-          rescanAnnotationPins();
-        }
-      }
       return true;
     }
     if (action === 'delivery-submit') {
