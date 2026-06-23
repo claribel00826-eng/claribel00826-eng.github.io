@@ -598,16 +598,19 @@ window.DemoData = {
     { id: 'payment', name: '回款分析', enabled: true, needsCustomer: false }
   ],
   paymentAnalysis: {
-    customerTotal: 86,
-    customerWithReceivable: 64,
-    overdueCustomerCount: 12,
-    receivableBalance: 1864000,
-    overdueAmount: 420000,
-    overdueMaxDays: 18,
-    monthCollected: 964000,
+    monthlySales: 2186000,
+    plannedCollection: 1520000,
+    receivableAmount: 1864000,
+    uncollectedAmount: 344000,
     monthLabel: '2026年6月',
-    lastPaymentDate: '2026-05-12',
-    asOfLabel: '截至今日'
+    monthlyData: {
+      '2026-06': { monthlySales: 2186000, plannedCollection: 1520000, receivableAmount: 1864000, uncollectedAmount: 344000 },
+      '2026-05': { monthlySales: 1950000, plannedCollection: 1400000, receivableAmount: 1720000, uncollectedAmount: 320000 },
+      '2026-04': { monthlySales: 2100000, plannedCollection: 1480000, receivableAmount: 1800000, uncollectedAmount: 320000 },
+      '2026-03': { monthlySales: 1780000, plannedCollection: 1250000, receivableAmount: 1650000, uncollectedAmount: 400000 },
+      '2026-02': { monthlySales: 1650000, plannedCollection: 1150000, receivableAmount: 1580000, uncollectedAmount: 430000 },
+      '2026-01': { monthlySales: 2300000, plannedCollection: 1600000, receivableAmount: 2000000, uncollectedAmount: 400000 }
+    }
   },
   /** 欢迎区功能网格：6×2；文案统一四字 */
   welcomeFeatures: [

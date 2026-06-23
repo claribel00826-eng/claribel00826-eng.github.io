@@ -9772,58 +9772,70 @@ function openChangeSheet(oid, opts) {
     return fmtMoney(num);
   }
 
-  function formatPaymentDate(s) {
-    if (!s) return '—';
-    return String(s).replace(/-/g, '/');
+  function getPaymentMonthLabel(key) {
+    if (!key) return '';
+    var parts = key.split('-');
+    return parts[0] + '年' + parseInt(parts[1], 10) + '月';
   }
 
-  function renderPaymentResultCard(data) {
-    var overdueCls =
-      data.overdueAmount > 0 ? ' sc-payment-metrics__value--warn' : '';
-    var overdueText =
-      formatPaymentMoney(data.overdueAmount) +
-      '（最长逾期 ' +
-      (data.overdueMaxDays || 0) +
-      ' 天）';
+  function renderPaymentResultCard(data, monthKey) {
+    monthKey = monthKey || '2026-06';
+    var monthLabel = getPaymentMonthLabel(monthKey);
+    var d = data.monthlyData && data.monthlyData[monthKey] ? data.monthlyData[monthKey] : data;
     return (
-      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
-      '<div class="sc-card__head sc-card__head--compact">回款分析</div>' +
-      '<div class="sc-biz-overview sc-payment__overview">' +
-      '<p class="sc-biz-overview__line sc-card-summary-line"><strong>客户总数：' +
-      (data.customerTotal || 0) +
-      '  应有 ' +
-      (data.customerWithReceivable || 0) +
-      '  逾期 ' +
-      (data.overdueCustomerCount || 0) +
-      '</strong></p></div>' +
+      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment" data-payment-month="' + monthKey + '">' +
+      '<div class="sc-card__head sc-card__head--compact sc-payment__head-row">' +
+      '<span>回款分析</span>' +
+      '</div>' +
+      '<div class="sc-payment-monthbar">' +
+      '<span class="sc-payment-monthbar__label">统计月份：<strong>' + App.escapeHtml(monthLabel) + '</strong></span>' +
+      '<button type="button" class="sc-btn sc-btn--ghost sc-btn--sm" data-action="payment-month-pick">切换月份</button>' +
+      '</div>' +
       '<div class="sc-payment-metrics">' +
       '<div class="sc-payment-metrics__item">' +
-      '<span class="sc-payment-metrics__label">应收余额</span>' +
-      '<span class="sc-payment-metrics__value">' +
-      formatPaymentMoney(data.receivableBalance) +
+      '<span class="sc-payment-metrics__label">销售金额</span>' +
+      '<span class="sc-payment-metrics__value sc-payment-metrics__value--sales">' +
+      formatPaymentMoney(d.monthlySales) +
       '</span></div>' +
       '<div class="sc-payment-metrics__item">' +
-      '<span class="sc-payment-metrics__label">逾期</span>' +
-      '<span class="sc-payment-metrics__value' +
-      overdueCls +
-      '">' +
-      App.escapeHtml(overdueText) +
+      '<span class="sc-payment-metrics__label">计划收款</span>' +
+      '<span class="sc-payment-metrics__value sc-payment-metrics__value--plan">' +
+      formatPaymentMoney(d.plannedCollection) +
       '</span></div>' +
       '<div class="sc-payment-metrics__item">' +
-      '<span class="sc-payment-metrics__label">本月已回款</span>' +
-      '<span class="sc-payment-metrics__value sc-payment-metrics__value--pos">' +
-      formatPaymentMoney(data.monthCollected) +
-      '</span>' +
-      '<span class="sc-payment-metrics__sub">' +
-      App.escapeHtml(data.monthLabel || '自然月') +
+      '<span class="sc-payment-metrics__label">应收金额</span>' +
+      '<span class="sc-payment-metrics__value sc-payment-metrics__value--receivable">' +
+      formatPaymentMoney(d.receivableAmount) +
       '</span></div>' +
       '<div class="sc-payment-metrics__item">' +
-      '<span class="sc-payment-metrics__label">最近回款日</span>' +
-      '<span class="sc-payment-metrics__value">' +
-      formatPaymentDate(data.lastPaymentDate) +
+      '<span class="sc-payment-metrics__label">未收金额</span>' +
+      '<span class="sc-payment-metrics__value sc-payment-metrics__value--uncollected">' +
+      formatPaymentMoney(d.uncollectedAmount) +
       '</span></div>' +
       '</div>' +
-      '<p class="sc-payment-hint">应收余额来自账龄与往来对账；本月已回款来自收款单与银行流水。</p>' +
+      '</div>'
+    );
+  }
+
+  function renderPaymentMonthPickerCard(data, currentMonthKey) {
+    currentMonthKey = currentMonthKey || '2026-06';
+    var months = data.monthlyData ? Object.keys(data.monthlyData).sort().reverse() : [];
+    if (!months.length) return '';
+    var btns = months.map(function (key) {
+      var label = getPaymentMonthLabel(key);
+      var isActive = key === currentMonthKey;
+      return (
+        '<button type="button" class="sc-payment-month-picker__btn' +
+        (isActive ? ' sc-payment-month-picker__btn--active' : '') +
+        '" data-action="payment-month-select" data-month="' + key + '">' +
+        App.escapeHtml(label) +
+        '</button>'
+      );
+    }).join('');
+    return (
+      '<div class="sc-card sc-card--compact" data-spec-id="card-payment-month-picker">' +
+      '<div class="sc-card__head sc-card__head--compact">选择统计月份</div>' +
+      '<div class="sc-payment-month-picker">' + btns + '</div>' +
       '</div>'
     );
   }
@@ -9835,13 +9847,16 @@ function openChangeSheet(oid, opts) {
       App.toast('暂无回款数据');
       return;
     }
+    var monthKey = opts.monthKey || '2026-06';
+    var monthLabel = getPaymentMonthLabel(monthKey);
     var utterance = opts.utterance || '';
     if (opts.simulateUserMsg && utterance) {
       simulateUserUtteranceUnlessDuplicate(utterance);
     }
+    enterSkill('payment');
     App.pushAiHtml(
-      '<p class="sc-reply-lead">为您汇总 <strong>全部客户</strong> 回款与应收：</p>' +
-        renderPaymentResultCard(data)
+      '<p class="sc-reply-lead"><strong>' + App.escapeHtml(monthLabel) + '</strong> 回款统计如下：</p>' +
+        renderPaymentResultCard(data, monthKey)
     );
     rescanAnnotationPins();
   }
@@ -10650,6 +10665,27 @@ function openChangeSheet(oid, opts) {
     }
     if (action === 'biz-metric') {
       switchBizMetric(btn.closest('[data-spec-id="card-biz-analysis"]'), btn.getAttribute('data-metric'));
+      return true;
+    }
+    if (action === 'payment-month-pick') {
+      var data = DemoData.paymentAnalysis;
+      var card = btn.closest('[data-spec-id="card-payment"]');
+      var currentMonth = card ? card.getAttribute('data-payment-month') : '2026-06';
+      App.pushAiHtml(renderPaymentMonthPickerCard(data, currentMonth));
+      rescanAnnotationPins();
+      return true;
+    }
+    if (action === 'payment-month-select') {
+      var monthKey = btn.getAttribute('data-month');
+      if (!monthKey) return true;
+      var paymentData = DemoData.paymentAnalysis;
+      var paymentCard = document.querySelector('[data-spec-id="card-payment"]');
+      if (paymentCard) {
+        paymentCard.outerHTML = renderPaymentResultCard(paymentData, monthKey);
+      }
+      var pickerCard = btn.closest('[data-spec-id="card-payment-month-picker"]');
+      if (pickerCard) pickerCard.remove();
+      rescanAnnotationPins();
       return true;
     }
     if (action === 'delivery-submit') {
