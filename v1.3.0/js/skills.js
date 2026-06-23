@@ -9158,23 +9158,6 @@ function openChangeSheet(oid, opts) {
   var CAPACITY_HOUR_WIDTH = 18;
   var CAPACITY_ROW_HEIGHT = 34;
   var CAPACITY_WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  var CAPACITY_DETAIL_FIELDS = [
-    { key: 'orderNo', label: '订单号' },
-    { key: 'customerName', label: '客户名称' },
-    { key: 'orderTime', label: '下单时间' },
-    { key: 'deliveryTime', label: '交货时间' },
-    { key: 'productCode', label: '产品编码' },
-    { key: 'productName', label: '产品名称' },
-    { key: 'processVersion', label: '工艺版本' },
-    { key: 'productionQty', label: '生产数量' },
-    { key: 'completedQty', label: '完工数量' },
-    { key: 'plannedStart', label: '计划开始时间' },
-    { key: 'plannedEnd', label: '计划结束时间' },
-    { key: 'lineName', label: '产线' },
-    { key: 'processStep', label: '工序' },
-    { key: 'mold', label: '模具' },
-    { key: 'durationMinutes', label: '生产时长(分钟)' }
-  ];
 
   function parseCapacityTs(value) {
     if (!value) return NaN;
@@ -9317,10 +9300,8 @@ function openChangeSheet(oid, opts) {
     if (occ.locked) badges += '<span class="sc-capacity-block__lock" aria-hidden="true">🔒</span>';
     if (status === 'pre') badges += '<span class="sc-capacity-block__pre">预</span>';
     return (
-      '<button type="button" class="sc-capacity-block sc-capacity-block--' +
+      '<div class="sc-capacity-block sc-capacity-block--' +
       App.escapeHtml(status) +
-      '" data-action="capacity-open-block" data-occ-id="' +
-      App.escapeHtml(occ.id) +
       '" style="left:' +
       left +
       'px;width:' +
@@ -9330,7 +9311,7 @@ function openChangeSheet(oid, opts) {
       '">' +
       badges +
       (width >= 36 ? '<span class="sc-capacity-block__label">' + App.escapeHtml(label) + '</span>' : '') +
-      '</button>'
+      '</div>'
     );
   }
 
@@ -9398,122 +9379,18 @@ function openChangeSheet(oid, opts) {
       gridRows +
       '</div>' +
       nowLine +
-      '</div></div></div></div>' +
-      '<p class="sc-capacity-gantt__hint">点击占用块查看订单详情；点「甘特图」继续浏览</p>'
-    );
-  }
-
-  function renderCapacityTabs() {
-    return (
-      '<div class="sc-capacity-tabs" role="tablist">' +
-      '<button type="button" class="sc-capacity-tabs__btn is-active" role="tab" data-action="capacity-tab" data-tab="gantt" aria-selected="true">甘特图</button>' +
-      '<button type="button" class="sc-capacity-tabs__btn" role="tab" data-action="capacity-tab" data-tab="detail" aria-selected="false">' +
-      '订单详情<span class="sc-capacity-tabs__badge sc-hidden" data-capacity-tab-badge></span></button>' +
-      '</div>'
-    );
-  }
-
-  function renderCapacityDetailPane() {
-    var rows = CAPACITY_DETAIL_FIELDS.map(function (f) {
-      return (
-        '<div class="sc-capacity-detail__row">' +
-        '<span class="sc-capacity-detail__label">' +
-        App.escapeHtml(f.label) +
-        '</span>' +
-        '<span class="sc-capacity-detail__value" data-capacity-field="' +
-        f.key +
-        '">—</span></div>'
-      );
-    }).join('');
-    return (
-      '<div class="sc-capacity-pane sc-capacity-pane--detail sc-hidden" data-capacity-pane="detail" data-spec-id="card-capacity-block-detail">' +
-      '<p class="sc-capacity-detail__context" data-capacity-context>请点击甘特图中的占用块查看订单信息</p>' +
-      '<div class="sc-capacity-detail__body">' +
-      rows +
-      '</div></div>'
+      '</div></div></div></div>'
     );
   }
 
   function renderCapacityCard(data) {
     return (
-      '<div class="sc-card sc-card--capacity" data-spec-id="card-capacity" data-capacity-tab="gantt">' +
+      '<div class="sc-card sc-card--capacity" data-spec-id="card-capacity">' +
       '<div class="sc-card__head sc-card__head--compact">产能分析</div>' +
       renderCapacitySummary(data) +
-      renderCapacityTabs() +
-      '<div class="sc-capacity-pane sc-capacity-pane--gantt" data-capacity-pane="gantt">' +
       renderCapacityGantt(data) +
-      '</div>' +
-      renderCapacityDetailPane() +
       '</div>'
     );
-  }
-
-  function findCapacityOccupancy(occId) {
-    var data = DemoData.capacitySchedule;
-    if (!data || !data.occupancies) return null;
-    return data.occupancies.find(function (o) {
-      return o.id === occId;
-    });
-  }
-
-  function switchCapacityTab(card, tab) {
-    if (!card) return;
-    card.dataset.capacityTab = tab;
-    card.querySelectorAll('[data-capacity-pane]').forEach(function (pane) {
-      var show = pane.getAttribute('data-capacity-pane') === tab;
-      pane.classList.toggle('sc-hidden', !show);
-    });
-    card.querySelectorAll('[data-action="capacity-tab"]').forEach(function (btn) {
-      var active = btn.getAttribute('data-tab') === tab;
-      btn.classList.toggle('is-active', active);
-      btn.setAttribute('aria-selected', active ? 'true' : 'false');
-    });
-    if (tab === 'gantt') {
-      var occId = card.dataset.capacityLastOcc;
-      if (occId) {
-        var block = card.querySelector('.sc-capacity-block[data-occ-id="' + occId + '"]');
-        if (block) {
-          block.classList.add('is-flash');
-          setTimeout(function () {
-            block.classList.remove('is-flash');
-          }, 2000);
-        }
-      }
-    }
-  }
-
-  function openCapacityBlockDetail(card, occId) {
-    if (!card) return;
-    var occ = findCapacityOccupancy(occId);
-    if (!occ || !occ.detail) return;
-    var detail = occ.detail;
-    CAPACITY_DETAIL_FIELDS.forEach(function (f) {
-      var el = card.querySelector('[data-capacity-field="' + f.key + '"]');
-      if (!el) return;
-      var val = detail[f.key];
-      el.textContent = val == null || val === '' ? '—' : String(val);
-    });
-    card.querySelectorAll('.sc-capacity-block.is-selected').forEach(function (b) {
-      b.classList.remove('is-selected');
-    });
-    var block = card.querySelector('.sc-capacity-block[data-occ-id="' + occId + '"]');
-    if (block) block.classList.add('is-selected');
-    card.dataset.capacityLastOcc = occId;
-    var ctx = card.querySelector('[data-capacity-context]');
-    if (ctx) {
-      ctx.textContent =
-        '当前查看：' +
-        (detail.orderNo || '—') +
-        ' · ' +
-        (detail.lineName || '—');
-    }
-    var badge = card.querySelector('[data-capacity-tab-badge]');
-    if (badge) {
-      var shortNo = detail.orderNo ? detail.orderNo.slice(-6) : '';
-      badge.textContent = shortNo;
-      badge.classList.toggle('sc-hidden', !shortNo);
-    }
-    switchCapacityTab(card, 'detail');
   }
 
   var BIZ_METRICS = [
@@ -10767,14 +10644,6 @@ function openChangeSheet(oid, opts) {
       return true;
     }
 
-    if (action === 'capacity-tab') {
-      switchCapacityTab(btn.closest('[data-spec-id="card-capacity"]'), btn.getAttribute('data-tab'));
-      return true;
-    }
-    if (action === 'capacity-open-block') {
-      openCapacityBlockDetail(btn.closest('[data-spec-id="card-capacity"]'), btn.getAttribute('data-occ-id'));
-      return true;
-    }
     if (action === 'biz-tab') {
       switchBizTab(btn.closest('[data-spec-id="card-biz-analysis"]'), btn.getAttribute('data-tab'));
       return true;
