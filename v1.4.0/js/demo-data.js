@@ -616,19 +616,15 @@ window.DemoData = {
     { id: 'payment', name: '回款分析', enabled: true, needsCustomer: false }
   ],
   paymentAnalysis: {
-    monthlySales: 2186000,
-    plannedCollection: 1520000,
-    receivableAmount: 1864000,
-    uncollectedAmount: 344000,
-    monthLabel: '2026年6月',
-    monthlyData: {
-      '2026-06': { monthlySales: 2186000, plannedCollection: 1520000, receivableAmount: 1864000, uncollectedAmount: 344000 },
-      '2026-05': { monthlySales: 1950000, plannedCollection: 1400000, receivableAmount: 1720000, uncollectedAmount: 320000 },
-      '2026-04': { monthlySales: 2100000, plannedCollection: 1480000, receivableAmount: 1800000, uncollectedAmount: 320000 },
-      '2026-03': { monthlySales: 1780000, plannedCollection: 1250000, receivableAmount: 1650000, uncollectedAmount: 400000 },
-      '2026-02': { monthlySales: 1650000, plannedCollection: 1150000, receivableAmount: 1580000, uncollectedAmount: 430000 },
-      '2026-01': { monthlySales: 2300000, plannedCollection: 1600000, receivableAmount: 2000000, uncollectedAmount: 400000 }
-    }
+    currentMonth: '2026年6月',
+    months: [
+      { label: '2026年6月', salesAmount: 964000, plannedCollection: 720000, receivableBalance: 1864000, unreceivedAmount: 900000 },
+      { label: '2026年5月', salesAmount: 880000, plannedCollection: 650000, receivableBalance: 1720000, unreceivedAmount: 840000 },
+      { label: '2026年4月', salesAmount: 920000, plannedCollection: 680000, receivableBalance: 1680000, unreceivedAmount: 760000 },
+      { label: '2026年3月', salesAmount: 850000, plannedCollection: 610000, receivableBalance: 1550000, unreceivedAmount: 700000 },
+      { label: '2026年2月', salesAmount: 780000, plannedCollection: 550000, receivableBalance: 1420000, unreceivedAmount: 640000 },
+      { label: '2026年1月', salesAmount: 810000, plannedCollection: 580000, receivableBalance: 1380000, unreceivedAmount: 570000 }
+    ]
   },
   /** 欢迎区功能网格：6×2；文案统一四字 */
   welcomeFeatures: [

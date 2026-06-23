@@ -9772,70 +9772,72 @@ function openChangeSheet(oid, opts) {
     return fmtMoney(num);
   }
 
-  function getPaymentMonthLabel(key) {
-    if (!key) return '';
-    var parts = key.split('-');
-    return parts[0] + '年' + parseInt(parts[1], 10) + '月';
+  function formatPaymentDate(s) {
+    if (!s) return '—';
+    return String(s).replace(/-/g, '/');
   }
 
-  function renderPaymentResultCard(data, monthKey) {
-    monthKey = monthKey || '2026-06';
-    var monthLabel = getPaymentMonthLabel(monthKey);
-    var d = data.monthlyData && data.monthlyData[monthKey] ? data.monthlyData[monthKey] : data;
+  function renderPaymentCard(data, month) {
+    var m = month || {};
     return (
-      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment" data-payment-month="' + monthKey + '">' +
-      '<div class="sc-card__head sc-card__head--compact sc-payment__head-row">' +
-      '<span>回款分析</span>' +
-      '</div>' +
-      '<div class="sc-payment-monthbar">' +
-      '<span class="sc-payment-monthbar__label">统计月份：<strong>' + App.escapeHtml(monthLabel) + '</strong></span>' +
-      '<button type="button" class="sc-btn sc-btn--ghost sc-btn--sm" data-action="payment-month-pick">切换月份</button>' +
+      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
+      '<div class="sc-card__head sc-card__head--compact sc-payment__head">' +
+      '<span>回款分析 · ' + App.escapeHtml(month.label || data.currentMonth || '') + '</span>' +
+      '<button type="button" class="sc-btn sc-btn--ghost sc-payment__month-btn" data-action="payment-month-pick">切换月份</button>' +
       '</div>' +
       '<div class="sc-payment-metrics">' +
       '<div class="sc-payment-metrics__item">' +
       '<span class="sc-payment-metrics__label">销售金额</span>' +
-      '<span class="sc-payment-metrics__value sc-payment-metrics__value--sales">' +
-      formatPaymentMoney(d.monthlySales) +
-      '</span></div>' +
+      '<span class="sc-payment-metrics__value">' + formatPaymentMoney(m.salesAmount) + '</span>' +
+      '</div>' +
       '<div class="sc-payment-metrics__item">' +
-      '<span class="sc-payment-metrics__label">计划收款</span>' +
-      '<span class="sc-payment-metrics__value sc-payment-metrics__value--plan">' +
-      formatPaymentMoney(d.plannedCollection) +
-      '</span></div>' +
+      '<span class="sc-payment-metrics__label">计划收款额</span>' +
+      '<span class="sc-payment-metrics__value">' + formatPaymentMoney(m.plannedCollection) + '</span>' +
+      '</div>' +
       '<div class="sc-payment-metrics__item">' +
       '<span class="sc-payment-metrics__label">应收金额</span>' +
-      '<span class="sc-payment-metrics__value sc-payment-metrics__value--receivable">' +
-      formatPaymentMoney(d.receivableAmount) +
-      '</span></div>' +
+      '<span class="sc-payment-metrics__value">' + formatPaymentMoney(m.receivableBalance) + '</span>' +
+      '</div>' +
       '<div class="sc-payment-metrics__item">' +
       '<span class="sc-payment-metrics__label">未收金额</span>' +
-      '<span class="sc-payment-metrics__value sc-payment-metrics__value--uncollected">' +
-      formatPaymentMoney(d.uncollectedAmount) +
-      '</span></div>' +
+      '<span class="sc-payment-metrics__value">' + formatPaymentMoney(m.unreceivedAmount) + '</span>' +
+      '</div>' +
       '</div>' +
       '</div>'
     );
   }
 
-  function renderPaymentMonthPickerCard(data, currentMonthKey) {
-    currentMonthKey = currentMonthKey || '2026-06';
-    var months = data.monthlyData ? Object.keys(data.monthlyData).sort().reverse() : [];
-    if (!months.length) return '';
-    var btns = months.map(function (key) {
-      var label = getPaymentMonthLabel(key);
-      var isActive = key === currentMonthKey;
+  function renderPaymentMonthPicker(data, selectedLabel) {
+    var months = data.months || [];
+    var rows = months.map(function (m) {
+      var isActive = m.label === selectedLabel;
       return (
-        '<button type="button" class="sc-payment-month-picker__btn' +
-        (isActive ? ' sc-payment-month-picker__btn--active' : '') +
-        '" data-action="payment-month-select" data-month="' + key + '">' +
-        App.escapeHtml(label) +
-        '</button>'
+        '<label class="sc-payment-month-picker__option' +
+        (isActive ? ' is-active' : '') +
+        '">' +
+        '<input type="radio" name="payment-month" value="' +
+        App.escapeHtml(m.label) +
+        '"' +
+        (isActive ? ' checked' : '') +
+        '>' +
+        '<span class="sc-payment-month-picker__dot"></span>' +
+        '<span class="sc-payment-month-picker__label">' +
+        App.escapeHtml(m.label) +
+        '</span>' +
+        (isActive ? '<span class="sc-payment-month-picker__tag">当前</span>' : '') +
+        '</label>'
       );
     }).join('');
     return (
-      '<div class="sc-card sc-card--compact" data-spec-id="card-payment-month-picker">' +
-      '<div class="sc-card__head sc-card__head--compact">选择统计月份</div>' +
-      '<div class="sc-payment-month-picker">' + btns + '</div>' +
+      '<div class="sc-card sc-card--compact" data-spec-id="card-payment-month-pick">' +
+      '<div class="sc-card__head sc-card__head--compact">选择月份</div>' +
+      '<div class="sc-payment-month-picker__list">' +
+      rows +
+      '</div>' +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="payment-month-cancel">取消</button>' +
+      '<button type="button" class="sc-btn sc-btn--primary" data-action="payment-month-confirm">确认</button>' +
+      '</div>' +
       '</div>'
     );
   }
@@ -9847,16 +9849,15 @@ function openChangeSheet(oid, opts) {
       App.toast('暂无回款数据');
       return;
     }
-    var monthKey = opts.monthKey || '2026-06';
-    var monthLabel = getPaymentMonthLabel(monthKey);
+    var selectedLabel = ctx().paymentMonth || data.currentMonth;
+    var month = (data.months || []).find(function (m) { return m.label === selectedLabel; }) || data.months[0] || {};
     var utterance = opts.utterance || '';
     if (opts.simulateUserMsg && utterance) {
       simulateUserUtteranceUnlessDuplicate(utterance);
     }
-    enterSkill('payment');
     App.pushAiHtml(
-      '<p class="sc-reply-lead"><strong>' + App.escapeHtml(monthLabel) + '</strong> 回款统计如下：</p>' +
-        renderPaymentResultCard(data, monthKey)
+      '<p class="sc-reply-lead">为您汇总 <strong>全部客户</strong> 回款与应收：</p>' +
+        renderPaymentCard(data, month)
     );
     rescanAnnotationPins();
   }
@@ -10669,23 +10670,36 @@ function openChangeSheet(oid, opts) {
     }
     if (action === 'payment-month-pick') {
       var data = DemoData.paymentAnalysis;
-      var card = btn.closest('[data-spec-id="card-payment"]');
-      var currentMonth = card ? card.getAttribute('data-payment-month') : '2026-06';
-      App.pushAiHtml(renderPaymentMonthPickerCard(data, currentMonth));
+      if (!data) return true;
+      var selectedLabel = ctx().paymentMonth || data.currentMonth;
+      pushNextAiCard(renderPaymentMonthPicker(data, selectedLabel));
       rescanAnnotationPins();
       return true;
     }
-    if (action === 'payment-month-select') {
-      var monthKey = btn.getAttribute('data-month');
-      if (!monthKey) return true;
-      var paymentData = DemoData.paymentAnalysis;
-      var paymentCard = document.querySelector('[data-spec-id="card-payment"]');
-      if (paymentCard) {
-        paymentCard.outerHTML = renderPaymentResultCard(paymentData, monthKey);
+    if (action === 'payment-month-cancel') {
+      var picker = document.querySelector('[data-spec-id="card-payment-month-pick"]');
+      if (picker) picker.remove();
+      return true;
+    }
+    if (action === 'payment-month-confirm') {
+      var picker = document.querySelector('[data-spec-id="card-payment-month-pick"]');
+      if (!picker) return true;
+      var radio = picker.querySelector('input[name="payment-month"]:checked');
+      if (!radio) {
+        App.toast('请选择月份');
+        return true;
       }
-      var pickerCard = btn.closest('[data-spec-id="card-payment-month-picker"]');
-      if (pickerCard) pickerCard.remove();
-      rescanAnnotationPins();
+      ctx().paymentMonth = radio.value;
+      picker.remove();
+      var card = document.querySelector('[data-spec-id="card-payment"]');
+      if (card) {
+        var data = DemoData.paymentAnalysis;
+        if (data) {
+          var month = (data.months || []).find(function (m) { return m.label === ctx().paymentMonth; }) || data.months[0] || {};
+          card.outerHTML = renderPaymentCard(data, month);
+          rescanAnnotationPins();
+        }
+      }
       return true;
     }
     if (action === 'delivery-submit') {
