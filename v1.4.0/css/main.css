@@ -1039,10 +1039,26 @@ a.sc-demo-reset-btn--link {
   white-space: nowrap;
 }
 
+.sc-delivery-line-card__process-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sc-delivery-line-card__process-row .sc-field-label {
+  margin: 0;
+}
+
+.sc-delivery-line-card__process-row .sc-delivery-line__process {
+  width: 100%;
+}
+
 .sc-delivery-line-card__date-row {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-top: 8px;
 }
 
 .sc-delivery-line-card__date-row .sc-field-label {
@@ -1053,12 +1069,61 @@ a.sc-demo-reset-btn--link {
   width: 100%;
 }
 
+.sc-delivery-result__line-qty {
+  margin-bottom: 4px !important;
+}
+
+.sc-delivery-result__line-process {
+  margin-bottom: 4px !important;
+}
+
 .sc-delivery-result__line-date {
   margin-bottom: 4px !important;
 }
 
-.sc-delivery-result__line-qty {
-  margin-bottom: 4px !important;
+/* 详情说明区域样式 */
+.sc-delivery-result__line-detail {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.sc-delivery-result__line-detail--warning {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+}
+
+.sc-delivery-result__line-detail--success {
+  background: #ecfdf5;
+  border: 1px solid #10b981;
+}
+
+/* 状态标签样式 */
+.sc-delivery-result__status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+.sc-delivery-result__status-tag--ok {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.sc-delivery-result__status-tag--material {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.sc-delivery-result__status-tag--capacity {
+  background: #fecaca;
+  color: #dc2626;
 }
 
 .sc-delivery-result__verdict--ok {
@@ -3239,6 +3304,35 @@ button.is-flow-stale,
   border-radius: 8px;
   background: #fafafa;
   overflow: hidden;
+  min-width: 0;
+}
+
+.sc-capacity-gantt__scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.sc-capacity-gantt__scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.sc-capacity-gantt__scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.sc-capacity-gantt__scroll::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.sc-capacity-gantt__canvas {
+  min-width: 100%;
+  width: max-content;
 }
 
 .sc-capacity-gantt__left {
@@ -3276,17 +3370,6 @@ button.is-flow-stale,
 .sc-capacity-gantt__line-label {
   height: 34px;
   color: var(--color-text);
-}
-
-.sc-capacity-gantt__scroll {
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
-}
-
-.sc-capacity-gantt__canvas {
-  min-width: 100%;
 }
 
 .sc-capacity-gantt__timeline {
@@ -3791,16 +3874,12 @@ button.is-flow-stale,
   padding: 0;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  overflow: hidden;
   background: #fff;
 }
 
 .sc-progress-detail__item {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  font-size: 13px;
+  flex-direction: column;
   border-bottom: 1px solid #f3f4f6;
 }
 
@@ -4214,16 +4293,12 @@ button.is-flow-stale,
   padding: 0;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  overflow: hidden;
   background: #fff;
 }
 
 .sc-progress-detail__item {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  font-size: 13px;
+  flex-direction: column;
   border-bottom: 1px solid #f3f4f6;
 }
 
@@ -4303,6 +4378,12 @@ button.is-flow-stale,
 }
 
 /* 订单进度 - 货品行 */
+.sc-progress-detail__item {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid #f3f4f6;
+}
+
 .sc-progress-detail__item-row {
   display: flex;
   align-items: center;
@@ -4322,18 +4403,16 @@ button.is-flow-stale,
   border: none;
   cursor: pointer;
   padding: 0;
+  color: #9ca3af;
 }
 
 .sc-progress-detail__toggle-icon {
-  font-size: 10px;
-  color: #9ca3af;
-  transition: transform 0.2s ease;
+  font-size: 12px;
 }
 
 /* 工序流转图 */
 .sc-progress-detail__item-workflow {
   display: none;
-  padding: 12px;
   background: #f9fafb;
   border-top: 1px solid #f3f4f6;
 }
@@ -4342,18 +4421,45 @@ button.is-flow-stale,
   display: block;
 }
 
+.sc-progress-workflow-wrapper {
+  overflow-x: auto;
+  padding: 12px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.sc-progress-workflow-wrapper::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.sc-progress-workflow-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.sc-progress-workflow-wrapper::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.sc-progress-workflow-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
 .sc-progress-workflow {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 8px;
+  align-items: stretch;
+  gap: 10px;
+  min-width: max-content;
+  width: fit-content;
 }
 
 .sc-progress-workflow__start {
   flex-shrink: 0;
-  width: 50px;
-  height: 50px;
+  width: 55px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4365,36 +4471,41 @@ button.is-flow-stale,
   color: #fff;
   font-size: 12px;
   font-weight: 600;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
 }
 
 .sc-progress-workflow__arrow {
   flex-shrink: 0;
   color: #9ca3af;
-  font-size: 14px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
 }
 
 .sc-progress-workflow__nodes {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: stretch;
+  gap: 10px;
 }
 
 .sc-progress-workflow__node {
   flex-shrink: 0;
-  width: 100px;
+  width: 95px;
   background: #d1fae5;
   border-radius: 8px;
   padding: 8px;
   position: relative;
-  overflow: hidden;
 }
 
 .sc-progress-workflow__node-header {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: #059669;
-  margin-bottom: 6px;
   text-align: center;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #a7f3d0;
+  padding-bottom: 3px;
 }
 
 .sc-progress-workflow__node-body {
@@ -4404,18 +4515,17 @@ button.is-flow-stale,
 }
 
 .sc-progress-workflow__item {
-  font-size: 9px;
+  font-size: 8px;
   color: #374151;
-  white-space: nowrap;
+  text-align: center;
 }
 
 .sc-progress-workflow__progress {
   position: absolute;
   bottom: 0;
   left: 0;
-  height: 3px;
+  height: 2px;
   background: #059669;
-  transition: width 0.3s ease;
 }
 
 /* --- 复制订单明细 样式优化 --- */

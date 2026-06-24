@@ -1282,6 +1282,10 @@ window.Skills = (function () {
       App.escapeHtml(deliveryLineFreeAttrsText(line, pr)) +
       '</p>' +
       renderDeliveryLineQtyField(line, idx) +
+      '<div class="sc-delivery-line-card__process-row">' +
+      '<label class="sc-field-label">工艺版本</label>' +
+      renderDeliveryLineProcessVersionField(pr, line, idx) +
+      '</div>' +
       '<div class="sc-delivery-line-card__date-row">' +
       '<label class="sc-field-label">期望交期<span class="sc-field-required">*</span></label>' +
       renderDeliveryLineExpectedDateField(line, idx) +
@@ -1327,6 +1331,13 @@ window.Skills = (function () {
           '[data-spec-id="sheet-delivery"] [data-field="delivery-line-qty"][data-idx="' + idx + '"]'
         );
       if (qtyInp) line.qty = Math.max(1, parseInt(qtyInp.value, 10) || 1);
+      const processInp =
+        (el &&
+          el.querySelector('[data-action="delivery-line-process"][data-idx="' + idx + '"]')) ||
+        document.querySelector(
+          '[data-spec-id="sheet-delivery"] [data-action="delivery-line-process"][data-idx="' + idx + '"]'
+        );
+      if (processInp) line.processVersion = processInp.value;
     });
   }
 
@@ -6801,17 +6812,43 @@ function deliveryOpenFormForOrder(o) {
     const fmt = function (d) {
       return (d || '').replace(/-/g, '/');
     };
+    
+    // 判断异常类型 - 只有明确标记为异常时才认为有问题
+    const hasMaterialIssue = line.materialStatus === 'shortage' || line.materialReady === false;
+    const hasCapacityIssue = line.capacityStatus === 'overload' || line.capacityReady === false;
     const onTime = expectedDate && new Date(expectedDate) >= new Date(compareDate);
+    
+    // 生成详情说明文案
+    let detail = '';
+    if (onTime) {
+      // status = 按期：直接显示评估通过
+      detail = '【评估通过】起止时间满足客户交期，物料充足、产能空闲，可锁定排程按期投产。';
+    } else {
+      // status = 交期异常：根据异常原因展示
+      if (hasMaterialIssue && !hasCapacityIssue) {
+        // 仅物料异常
+        detail = '【物料异常】部分核心物料缺货，导致实际开始时间被迫推迟至' + fmt(planDates.end) + '，建议调整方案';
+      } else if (!hasMaterialIssue && hasCapacityIssue) {
+        // 仅产能异常
+        detail = '【产能异常】物料已全部齐套，但产线当前时段超负荷，预计实际结束时间为' + fmt(planDates.end) + '，建议调整方案';
+      } else if (hasMaterialIssue && hasCapacityIssue) {
+        // 双重异常
+        detail = '【物料异常】【产能异常】：存在物料缺货，且产线当前超负荷，预计实际结束时间' + fmt(planDates.end) + '超出客户要求交期，建议调整方案';
+      } else {
+        // 无明确异常标记（兜底）
+        detail = '【物料异常】部分核心物料缺货，导致实际开始时间被迫推迟至' + fmt(planDates.end) + '，建议调整方案';
+      }
+    }
+    
     return {
       inventoryName: line.inventoryName || '—',
       freeAttrsText: deliveryLineFreeAttrsText(line),
       qtyText: deliveryLineQtyText(line),
+      processVersion: line.processVersion || '标准版',
       expectedDate: expectedDate,
       onTime: onTime,
-      status: onTime ? '按期' : '不齐套',
-      detail: onTime
-        ? '预计 ' + fmt(expectedDate) + ' 可交付'
-        : '部分物料缺货，建议延后至 ' + fmt(planDates.end) + ' 或调整方案'
+      status: onTime ? '按期' : '交期异常',
+      detail: detail
     };
   }
 
@@ -6846,7 +6883,7 @@ function deliveryOpenFormForOrder(o) {
 
     return {
       onTime: onTime,
-      status: onTime ? '按期' : '不齐套',
+      status: onTime ? '按期' : '交期异常',
       verdict: onTime ? '可以按时交付' : '无法按时交付',
       detail: detail,
       lineResults: lineResults
@@ -6856,13 +6893,34 @@ function deliveryOpenFormForOrder(o) {
   function renderDeliveryResultLinesHtml(lineResults) {
     lineResults = lineResults || [];
     if (!lineResults.length) return '';
+    
+    // 状态标签样式化处理
+    const formatDetail = function(detail) {
+      if (!detail) return '';
+      // 替换状态标签为带样式的span
+      let formatted = detail
+        .replace(/【评估通过】/g, '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--ok">评估通过</span>')
+        .replace(/【物料异常】/g, '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--material">物料异常</span>')
+        .replace(/【产能异常】/g, '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--capacity">产能异常</span>');
+      return formatted;
+    };
+    
     const rows = lineResults
       .map(function (r) {
         const badge = r.onTime ? 'sc-badge--new' : 'sc-badge--old';
-        const status = r.status || (r.onTime ? '按期' : '不齐套');
+        const status = r.status || (r.onTime ? '按期' : '交期异常');
         const fmt = function (v) {
           return App.escapeHtml((v || '').replace(/-/g, '/'));
         };
+        
+        // 判断详情区域样式
+        let detailClass = 'sc-delivery-result__line-detail';
+        if (r.detail && r.detail.includes('评估通过')) {
+          detailClass += ' sc-delivery-result__line-detail--success';
+        } else if (r.detail && (r.detail.includes('物料异常') || r.detail.includes('产能异常'))) {
+          detailClass += ' sc-delivery-result__line-detail--warning';
+        }
+        
         return (
           '<div class="sc-delivery-result__line">' +
           '<div class="sc-delivery-result__line-head">' +
@@ -6881,13 +6939,17 @@ function deliveryOpenFormForOrder(o) {
           '数量 ' +
           App.escapeHtml(r.qtyText || '—') +
           '</p>' +
+          '<p class="sc-card__meta sc-delivery-result__line-process">' +
+          '工艺版本 ' +
+          App.escapeHtml(r.processVersion || '标准版') +
+          '</p>' +
           '<p class="sc-card__meta sc-delivery-result__line-date">' +
           '期望交期 ' +
           fmt(r.expectedDate) +
           '</p>' +
-          '<p class="sc-card__meta">' +
-          App.escapeHtml(r.detail || '') +
-          '</p></div>'
+          '<div class="' + detailClass + '">' +
+          formatDetail(r.detail || '') +
+          '</div></div>'
         );
       })
       .join('');
@@ -7114,6 +7176,7 @@ function orderProgressSalesperson(o) {
       );
     }).join('');
     return (
+      '<div class="sc-progress-workflow-wrapper">' +
       '<div class="sc-progress-workflow">' +
       '<div class="sc-progress-workflow__start">' +
       '<div class="sc-progress-workflow__start-label">开始</div>' +
@@ -7121,6 +7184,7 @@ function orderProgressSalesperson(o) {
       '<div class="sc-progress-workflow__arrow">→</div>' +
       '<div class="sc-progress-workflow__nodes">' +
       nodes +
+      '</div>' +
       '</div>' +
       '</div>'
     );
