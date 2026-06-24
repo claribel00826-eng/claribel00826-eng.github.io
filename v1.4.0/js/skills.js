@@ -6827,16 +6827,16 @@ function deliveryOpenFormForOrder(o) {
       // status = 交期异常：根据异常原因展示
       if (hasMaterialIssue && !hasCapacityIssue) {
         // 仅物料异常
-        detail = '【物料异常】部分核心物料缺货，导致实际开始时间被迫推迟至' + fmt(planDates.end) + '，建议调整方案';
+        detail = '【物料异常】部分核心物料缺货，预计实际结束时间时间为' + fmt(planDates.end) + '，建议调整方案';
       } else if (!hasMaterialIssue && hasCapacityIssue) {
         // 仅产能异常
-        detail = '【产能异常】物料已全部齐套，但产线当前时段超负荷，预计实际结束时间为' + fmt(planDates.end) + '，建议调整方案';
+        detail = '【产能异常】产线当前时段超负荷，预计实际结束时间为' + fmt(planDates.end) + '，建议调整方案';
       } else if (hasMaterialIssue && hasCapacityIssue) {
         // 双重异常
         detail = '【物料异常】【产能异常】：存在物料缺货，且产线当前超负荷，预计实际结束时间' + fmt(planDates.end) + '超出客户要求交期，建议调整方案';
       } else {
         // 无明确异常标记（兜底）
-        detail = '【物料异常】部分核心物料缺货，导致实际开始时间被迫推迟至' + fmt(planDates.end) + '，建议调整方案';
+        detail = '【物料异常】部分核心物料缺货，预计实际结束时间时间为' + fmt(planDates.end) + '，建议调整方案';
       }
     }
     
