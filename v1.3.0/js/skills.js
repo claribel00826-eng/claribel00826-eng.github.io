@@ -1282,6 +1282,10 @@ window.Skills = (function () {
       App.escapeHtml(deliveryLineFreeAttrsText(line, pr)) +
       '</p>' +
       renderDeliveryLineQtyField(line, idx) +
+      '<div class="sc-delivery-line-card__process-row">' +
+      '<label class="sc-field-label">工艺版本</label>' +
+      renderDeliveryLineProcessVersionField(pr, line, idx) +
+      '</div>' +
       '<div class="sc-delivery-line-card__date-row">' +
       '<label class="sc-field-label">期望交期<span class="sc-field-required">*</span></label>' +
       renderDeliveryLineExpectedDateField(line, idx) +
@@ -1327,6 +1331,13 @@ window.Skills = (function () {
           '[data-spec-id="sheet-delivery"] [data-field="delivery-line-qty"][data-idx="' + idx + '"]'
         );
       if (qtyInp) line.qty = Math.max(1, parseInt(qtyInp.value, 10) || 1);
+      const processInp =
+        (el &&
+          el.querySelector('[data-action="delivery-line-process"][data-idx="' + idx + '"]')) ||
+        document.querySelector(
+          '[data-spec-id="sheet-delivery"] [data-action="delivery-line-process"][data-idx="' + idx + '"]'
+        );
+      if (processInp) line.processVersion = processInp.value;
     });
   }
 
@@ -6801,17 +6812,43 @@ function deliveryOpenFormForOrder(o) {
     const fmt = function (d) {
       return (d || '').replace(/-/g, '/');
     };
+    
+    // 判断异常类型 - 只有明确标记为异常时才认为有问题
+    const hasMaterialIssue = line.materialStatus === 'shortage' || line.materialReady === false;
+    const hasCapacityIssue = line.capacityStatus === 'overload' || line.capacityReady === false;
     const onTime = expectedDate && new Date(expectedDate) >= new Date(compareDate);
+    
+    // 生成详情说明文案
+    let detail = '';
+    if (onTime) {
+      // status = 按期：直接显示评估通过
+      detail = '【评估通过】起止时间满足客户交期，物料充足、产能空闲，可锁定排程按期投产。';
+    } else {
+      // status = 交期异常：根据异常原因展示
+      if (hasMaterialIssue && !hasCapacityIssue) {
+        // 仅物料异常
+        detail = '【物料异常】部分核心物料缺货，预计实际结束时间时间为' + fmt(planDates.end) + '，建议调整方案';
+      } else if (!hasMaterialIssue && hasCapacityIssue) {
+        // 仅产能异常
+        detail = '【产能异常】产线当前时段超负荷，预计实际结束时间为' + fmt(planDates.end) + '，建议调整方案';
+      } else if (hasMaterialIssue && hasCapacityIssue) {
+        // 双重异常
+        detail = '【物料异常】【产能异常】：存在物料缺货，且产线当前超负荷，预计实际结束时间' + fmt(planDates.end) + '超出客户要求交期，建议调整方案';
+      } else {
+        // 无明确异常标记（兜底）
+        detail = '【物料异常】部分核心物料缺货，预计实际结束时间时间为' + fmt(planDates.end) + '，建议调整方案';
+      }
+    }
+    
     return {
       inventoryName: line.inventoryName || '—',
       freeAttrsText: deliveryLineFreeAttrsText(line),
       qtyText: deliveryLineQtyText(line),
+      processVersion: line.processVersion || '标准版',
       expectedDate: expectedDate,
       onTime: onTime,
-      status: onTime ? '按期' : '不齐套',
-      detail: onTime
-        ? '预计 ' + fmt(expectedDate) + ' 可交付'
-        : '部分物料缺货，建议延后至 ' + fmt(planDates.end) + ' 或调整方案'
+      status: onTime ? '按期' : '交期异常',
+      detail: detail
     };
   }
 
@@ -6846,7 +6883,7 @@ function deliveryOpenFormForOrder(o) {
 
     return {
       onTime: onTime,
-      status: onTime ? '按期' : '不齐套',
+      status: onTime ? '按期' : '交期异常',
       verdict: onTime ? '可以按时交付' : '无法按时交付',
       detail: detail,
       lineResults: lineResults
@@ -6856,13 +6893,34 @@ function deliveryOpenFormForOrder(o) {
   function renderDeliveryResultLinesHtml(lineResults) {
     lineResults = lineResults || [];
     if (!lineResults.length) return '';
+    
+    // 状态标签样式化处理
+    const formatDetail = function(detail) {
+      if (!detail) return '';
+      // 替换状态标签为带样式的span
+      let formatted = detail
+        .replace(/【评估通过】/g, '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--ok">评估通过</span>')
+        .replace(/【物料异常】/g, '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--material">物料异常</span>')
+        .replace(/【产能异常】/g, '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--capacity">产能异常</span>');
+      return formatted;
+    };
+    
     const rows = lineResults
       .map(function (r) {
         const badge = r.onTime ? 'sc-badge--new' : 'sc-badge--old';
-        const status = r.status || (r.onTime ? '按期' : '不齐套');
+        const status = r.status || (r.onTime ? '按期' : '交期异常');
         const fmt = function (v) {
           return App.escapeHtml((v || '').replace(/-/g, '/'));
         };
+        
+        // 判断详情区域样式
+        let detailClass = 'sc-delivery-result__line-detail';
+        if (r.detail && r.detail.includes('评估通过')) {
+          detailClass += ' sc-delivery-result__line-detail--success';
+        } else if (r.detail && (r.detail.includes('物料异常') || r.detail.includes('产能异常'))) {
+          detailClass += ' sc-delivery-result__line-detail--warning';
+        }
+        
         return (
           '<div class="sc-delivery-result__line">' +
           '<div class="sc-delivery-result__line-head">' +
@@ -6881,13 +6939,17 @@ function deliveryOpenFormForOrder(o) {
           '数量 ' +
           App.escapeHtml(r.qtyText || '—') +
           '</p>' +
+          '<p class="sc-card__meta sc-delivery-result__line-process">' +
+          '工艺版本 ' +
+          App.escapeHtml(r.processVersion || '标准版') +
+          '</p>' +
           '<p class="sc-card__meta sc-delivery-result__line-date">' +
           '期望交期 ' +
           fmt(r.expectedDate) +
           '</p>' +
-          '<p class="sc-card__meta">' +
-          App.escapeHtml(r.detail || '') +
-          '</p></div>'
+          '<div class="' + detailClass + '">' +
+          formatDetail(r.detail || '') +
+          '</div></div>'
         );
       })
       .join('');
@@ -7114,6 +7176,7 @@ function orderProgressSalesperson(o) {
       );
     }).join('');
     return (
+      '<div class="sc-progress-workflow-wrapper">' +
       '<div class="sc-progress-workflow">' +
       '<div class="sc-progress-workflow__start">' +
       '<div class="sc-progress-workflow__start-label">开始</div>' +
@@ -7121,6 +7184,7 @@ function orderProgressSalesperson(o) {
       '<div class="sc-progress-workflow__arrow">→</div>' +
       '<div class="sc-progress-workflow__nodes">' +
       nodes +
+      '</div>' +
       '</div>' +
       '</div>'
     );
@@ -7283,13 +7347,6 @@ function orderProgressSalesperson(o) {
     }
     enterSkill('order');
     const linesFromDelivery = d.lines && d.lines.length ? enrichOrderLines(d.lines) : null;
-    function applyDeliveryOrderPending(lines, meta) {
-      setOrderPending(lines, meta);
-      if (d.expectedDate && ctx().orderPending) {
-        ctx().orderPending.shipDate = d.expectedDate;
-      }
-      showOrderConfirm();
-    }
     if (d.sourceType === 'quote' && d.quoteId) {
       const q =
         (ctx().quote && ctx().quote.id === d.quoteId ? ctx().quote : null) ||
@@ -7298,7 +7355,7 @@ function orderProgressSalesperson(o) {
         });
       if (q) {
         const lines = linesFromDelivery || enrichOrderLines(q.lines || []);
-        applyDeliveryOrderPending(lines, {
+        setOrderPending(lines, {
           customerId: q.customerId,
           sourceType: 'quote',
           quoteId: q.id,
@@ -7306,15 +7363,12 @@ function orderProgressSalesperson(o) {
             return s + (l.sub || 0);
           }, q.total)
         });
+        showOrderConfirm();
         return;
       }
     }
-    if (
-      (d.sourceType === 'lines' || d.sourceType === 'scheme') &&
-      linesFromDelivery &&
-      linesFromDelivery.length
-    ) {
-      applyDeliveryOrderPending(linesFromDelivery, {
+    if (d.sourceType === 'lines' && linesFromDelivery && linesFromDelivery.length) {
+      setOrderPending(linesFromDelivery, {
         customerId: (activeCustomer() || {}).id,
         sourceType: 'direct',
         quoteId: null,
@@ -7322,6 +7376,7 @@ function orderProgressSalesperson(o) {
           return s + (l.sub || 0);
         }, 0)
       });
+      showOrderConfirm();
       return;
     }
     if (d.sourceType === 'order' && d.orderId) {
@@ -7342,7 +7397,7 @@ function orderProgressSalesperson(o) {
                 .filter(Boolean)
           );
         if (lines.length) {
-          applyDeliveryOrderPending(lines, {
+          setOrderPending(lines, {
             customerId: o.customerId,
             sourceType: 'direct',
             quoteId: o.quoteId || null,
@@ -7352,20 +7407,10 @@ function orderProgressSalesperson(o) {
                 return s + (l.sub || 0);
               }, 0)
           });
+          showOrderConfirm();
           return;
         }
       }
-    }
-    if (linesFromDelivery && linesFromDelivery.length) {
-      applyDeliveryOrderPending(linesFromDelivery, {
-        customerId: (activeCustomer() || {}).id,
-        sourceType: 'direct',
-        quoteId: null,
-        total: linesFromDelivery.reduce(function (s, l) {
-          return s + (l.sub || 0);
-        }, 0)
-      });
-      return;
     }
     showOrderSkillEntry();
   }
@@ -7653,7 +7698,7 @@ function orderProgressSalesperson(o) {
 
   function syncOrderConfirmFromDom() {
     const pending = ctx().orderPending;
-    const el = orderConfirmRoot();
+    const el = document.querySelector('[data-spec-id="sheet-order"]');
     if (!pending || !el) return;
     const method = el.querySelector('[data-field="settlement-method"]');
     const currency = el.querySelector('[data-field="settlement-currency"]');
@@ -8045,6 +8090,50 @@ function orderProgressSalesperson(o) {
     );
   }
 
+  function renderOrderCopyCard(sourceOrder) {
+    const pending = ctx().orderPending;
+    if (!pending || !pending.lines.length) return '';
+    recalcOrderPendingTotal();
+    const expanded =
+      ctx().orderCopyExpandedIdx != null ? ctx().orderCopyExpandedIdx : 0;
+    const c = App.getCustomer(pending.customerId);
+    const o = sourceOrder || null;
+    const lineBlocks = pending.lines
+      .map(function (line, idx) {
+        return renderOrderCopyLineBlock(line, idx, expanded === idx);
+      })
+      .join('');
+    return (
+      '<div class="sc-card sc-card--compact sc-card--inline-form sc-card--order-copy" data-spec-id="card-order-copy"' +
+      (o ? ' data-copied-oid="' + App.escapeHtml(o.id) + '"' : '') +
+      '>' +
+      '<div class="sc-card__head sc-card__head--compact">复制订单 · 明细确认</div>' +
+      (o
+        ? '<p class="sc-card__meta">来源订单 <strong>' +
+          App.escapeHtml(o.no) +
+          '</strong> ' +
+          orderStatusBadgeHtml(o.status) +
+          ' · ' +
+          App.escapeHtml(o.date || '') +
+          '</p>'
+        : '') +
+      '<p class="sc-card__meta">客户：<strong>' +
+      App.escapeHtml(c ? c.name : '—') +
+      '</strong></p>' +
+      '<p class="sc-card__meta sc-order-copy__hint">点击明细行展开，可修改规格、数量与单价</p>' +
+      '<div class="sc-order-copy-lines">' +
+      lineBlocks +
+      '</div>' +
+      '<p class="sc-order-copy__total">合计金额 <strong data-order-copy-total>' +
+      fmtMoney(pending.total) +
+      '</strong></p>' +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="copy-repick-order">重选订单</button>' +
+      '<button type="button" class="sc-btn sc-btn--primary" data-action="copy-order-confirm">确认复制</button></div>' +
+      '</div>'
+    );
+  }
+
   function renderCopyOrderLinePickCard(o, lines) {
     if (!o || !lines || !lines.length) return '';
     const c = App.getCustomer(o.customerId);
@@ -8095,50 +8184,6 @@ function orderProgressSalesperson(o) {
       '<button type="button" class="sc-btn sc-btn--ghost" data-action="copy-line-pick-repick">重选订单</button>' +
       '<button type="button" class="sc-btn sc-btn--primary" data-action="copy-line-pick-confirm">确认选择</button>' +
       '</div>' +
-      '</div>'
-    );
-  }
-
-  function renderOrderCopyCard(sourceOrder) {
-    const pending = ctx().orderPending;
-    if (!pending || !pending.lines.length) return '';
-    recalcOrderPendingTotal();
-    const expanded =
-      ctx().orderCopyExpandedIdx != null ? ctx().orderCopyExpandedIdx : 0;
-    const c = App.getCustomer(pending.customerId);
-    const o = sourceOrder || null;
-    const lineBlocks = pending.lines
-      .map(function (line, idx) {
-        return renderOrderCopyLineBlock(line, idx, expanded === idx);
-      })
-      .join('');
-    return (
-      '<div class="sc-card sc-card--compact sc-card--inline-form sc-card--order-copy" data-spec-id="card-order-copy"' +
-      (o ? ' data-copied-oid="' + App.escapeHtml(o.id) + '"' : '') +
-      '>' +
-      '<div class="sc-card__head sc-card__head--compact">复制订单 · 明细确认</div>' +
-      (o
-        ? '<p class="sc-card__meta">来源订单 <strong>' +
-          App.escapeHtml(o.no) +
-          '</strong> ' +
-          orderStatusBadgeHtml(o.status) +
-          ' · ' +
-          App.escapeHtml(o.date || '') +
-          '</p>'
-        : '') +
-      '<p class="sc-card__meta">客户：<strong>' +
-      App.escapeHtml(c ? c.name : '—') +
-      '</strong></p>' +
-      '<p class="sc-card__meta sc-order-copy__hint">点击明细行展开，可修改规格、数量与单价</p>' +
-      '<div class="sc-order-copy-lines">' +
-      lineBlocks +
-      '</div>' +
-      '<p class="sc-order-copy__total">合计金额 <strong data-order-copy-total>' +
-      fmtMoney(pending.total) +
-      '</strong></p>' +
-      '<div class="sc-card__actions-inline">' +
-      '<button type="button" class="sc-btn sc-btn--ghost" data-action="copy-repick-order">重选订单</button>' +
-      '<button type="button" class="sc-btn sc-btn--primary" data-action="copy-order-confirm">确认复制</button></div>' +
       '</div>'
     );
   }
@@ -8385,7 +8430,6 @@ function orderProgressSalesperson(o) {
   function submitOrder() {
     const pending = ctx().orderPending;
     if (!pending || !pending.lines.length) { App.toast('无订单明细'); return; }
-    syncOrderConfirmLinesFromDom();
     syncOrderConfirmFromDom();
     const c = App.getCustomer(pending.customerId);
     if (!c) {
@@ -8503,7 +8547,7 @@ function orderProgressSalesperson(o) {
   function renderCopyOrderQueryRow(val) {
     return (
       '<div class="sc-plan-query-row">' +
-      '<input type="search" class="sc-input sc-input--field" id="copy-order-query-input" placeholder="订单号 / 品项关键词" value="' +
+      '<input type="search" class="sc-input sc-input--field" id="copy-order-query-input" placeholder="订单编号 / 货品名称 / 自由项" value="' +
       App.escapeHtml(val || '') +
       '"/>' +
       '<button type="button" class="sc-btn sc-btn--ghost" data-action="copy-order-query-apply">筛选</button></div>'
@@ -8540,13 +8584,15 @@ function orderProgressSalesperson(o) {
         ? '匹配 <strong>' + list.length + '</strong> 笔（共 ' + totalPool + ' 笔）'
         : '共 <strong>' + list.length + '</strong> 笔历史订单';
     const demandHint =
-      (mode === 'copy' || mode === 'progress') && state.demandText
-        ? '<p class="sc-card__meta">需求：' +
+      mode === 'copy' && state.demandText
+        ? '<p class="sc-card__meta">筛选条件：' +
           App.escapeHtml(state.demandText) +
-          ' <button type="button" class="sc-link-btn" data-action="' +
-          (mode === 'progress' ? 'progress-edit-demand' : 'copy-edit-demand') +
-          '">修改</button></p>'
-        : '';
+          ' <button type="button" class="sc-link-btn" data-action="copy-edit-demand">修改</button></p>'
+        : mode === 'progress' && state.demandText
+          ? '<p class="sc-card__meta">需求：' +
+            App.escapeHtml(state.demandText) +
+            ' <button type="button" class="sc-link-btn" data-action="progress-edit-demand">修改</button></p>'
+          : '';
     const rows = visible
       .map(function (o, i) {
         const n = i + 1;
@@ -8574,7 +8620,7 @@ function orderProgressSalesperson(o) {
       .join('');
     const emptyHint =
       list.length === 0
-        ? '<p class="sc-card__meta">无匹配订单，请调整检索或修改需求。</p>'
+        ? '<p class="sc-card__meta">无匹配订单，请调整筛选条件或修改输入。</p>'
         : '';
     const loadMoreAction =
       mode === 'progress' ? 'progress-order-load-more' : 'copy-order-load-more';
@@ -8796,9 +8842,10 @@ function orderProgressSalesperson(o) {
     return renderDemandPromptCard(c, {
       specId: 'card-copy-demand',
       allowSkip: true,
-      headTitle: '请描述要复制的订单特征（可跳过）',
-      promptMeta: '填写后用于筛选历史订单；跳过则按最近下单展示全部订单。',
-      skipLabel: '跳过，展示最近订单'
+      headTitle: '复制订单 · 需求筛选',
+      promptMeta:
+        '按订单编号、货品名称或自由项筛选；填写后点「确认筛选」，跳过则展示全部历史订单。',
+      skipLabel: '跳过，展示全部历史订单'
     });
   }
 
@@ -8825,7 +8872,7 @@ function orderProgressSalesperson(o) {
     if (!c) return false;
     const t = String(text || '').trim();
     if (!t) {
-      App.toast('请描述要复制的订单特征，或点跳过');
+      App.toast('请按订单编号、货品名称或自由项输入筛选条件，或点跳过');
       return true;
     }
     const state = ensureCopyPickState();
@@ -8835,7 +8882,7 @@ function orderProgressSalesperson(o) {
     if (opts.simulateUserMsg) simulateUserUtterance(t);
     pushCopyOrderPickCard(c, {
       leadHtml:
-        '<p class="sc-reply-lead">已记录需求，请从匹配的历史订单中选择一笔：</p>'
+        '<p class="sc-reply-lead">已记录筛选条件，请从匹配的历史订单中选择一笔：</p>'
     });
     return true;
   }
@@ -8850,7 +8897,7 @@ function orderProgressSalesperson(o) {
     state.visibleCount = COPY_ORDER_LIST_PAGE_SIZE;
     pushCopyOrderPickCard(c, {
       leadHtml:
-        '<p class="sc-reply-lead">已跳过需求，按<strong>最近下单</strong>展示历史订单：</p>'
+        '<p class="sc-reply-lead">已跳过筛选，按<strong>最近下单</strong>展示全部历史订单：</p>'
     });
     if (opts.simulateUserMsg) simulateUserUtterance('跳过');
     return true;
@@ -8867,10 +8914,10 @@ function orderProgressSalesperson(o) {
         specId: 'card-copy-demand',
         edit: true,
         optional: true,
-        headTitle: '修改复制筛选需求',
-        promptMeta: '修改后将重新筛选历史订单列表。'
+        headTitle: '修改筛选条件',
+        promptMeta: '修改后将按订单编号、货品名称或自由项重新筛选历史订单。'
       }),
-      opts.simulateUserMsg ? '修改需求' : null
+      opts.simulateUserMsg ? '修改筛选条件' : null
     );
     rescanAnnotationPins();
   }
@@ -9218,7 +9265,7 @@ function openChangeSheet(oid, opts) {
       '<p class="sc-card__meta">客户：<strong>' +
       App.escapeHtml(c ? c.name : '—') +
       '</strong></p>' +
-      '<p class="sc-card__meta">确认后将提交变更申请，订单将转为异常状态。</p>' +
+      '<p class="sc-card__meta">确认后将提交变更申请；已审核订单将回退至销售审核。</p>' +
       '<div class="sc-card__actions-inline">' +
       '<button type="button" class="sc-btn sc-btn--ghost" data-action="change-repick-order">重选订单</button>' +
       '<button type="button" class="sc-btn sc-btn--primary" data-action="change-confirm-submit">确认变更</button></div>' +
@@ -9236,32 +9283,6 @@ function openChangeSheet(oid, opts) {
   function getLatestChangeConfirmCard() {
     const cards = document.querySelectorAll('[data-spec-id="card-change-confirm"]');
     return cards.length ? cards[cards.length - 1] : null;
-  }
-
-  function markOrderAbnormalAfterChange(o) {
-    if (!o) return;
-    const now = new Date();
-    const at =
-      now.getFullYear() +
-      '-' +
-      String(now.getMonth() + 1).padStart(2, '0') +
-      '-' +
-      String(now.getDate()).padStart(2, '0') +
-      ' ' +
-      String(now.getHours()).padStart(2, '0') +
-      ':' +
-      String(now.getMinutes()).padStart(2, '0');
-    o.status = '异常';
-    o.statusDetail = '变更申请已受理，订单已转异常';
-    const nodes = (o.timeline || []).filter(function (n) {
-      return n.label !== '已完成' && n.label !== '异常';
-    });
-    nodes.forEach(function (n) {
-      n.current = false;
-      if (n.at || n.label === '未审核') n.done = true;
-    });
-    nodes.push({ label: '异常', at: at, done: false, current: true, error: true });
-    o.timeline = nodes;
   }
 
   function submitChange(opts) {
@@ -9295,7 +9316,12 @@ function openChangeSheet(oid, opts) {
       App.toast('请填写变更备注');
       return;
     }
-    markOrderAbnormalAfterChange(o);
+    if (o.status === '已审核') {
+      o.status = '销售审核';
+      o.statusDetail = '变更申请已受理，重新进入销售审核';
+    } else {
+      o.statusDetail = (o.statusDetail || '') + '；变更申请已受理';
+    }
     ctx().changeOrderId = null;
     App.closeOverlays();
     App.pushAiHtml(renderChangeSuccessCard(o, { fromConfirm: fromConfirm || opts.fromConfirm }));
@@ -9309,7 +9335,9 @@ function openChangeSheet(oid, opts) {
         '<div class="sc-card" data-spec-id="card-change-success"><div class="sc-card__head sc-card__head--compact">变更已提交</div>' +
         '<div class="sc-card__row sc-card__row--compact"><p class="sc-card__meta">订单 <strong>' +
         App.escapeHtml(o ? o.no : '—') +
-        '</strong></p><p class="sc-card__meta">变更申请已受理，订单已转异常。</p></div></div>'
+        '</strong></p><p class="sc-card__meta">变更申请已受理' +
+        (o && o.status === '销售审核' ? '，订单已回退至销售审核' : '') +
+        '。</p></div></div>'
       );
     }
     const reason = opts.reason || '';
@@ -9929,7 +9957,7 @@ function openChangeSheet(oid, opts) {
       '<div class="sc-card__head sc-card__head--compact">库存查询</div>' +
       '<div class="sc-biz-overview sc-inventory__overview">' +
       '<p class="sc-biz-overview__line sc-card-summary-line"><strong>合计：货品：' +
-      summary.totalProducts + '  规格：' + summary.totalSku + '  可用为0：' + summary.zeroAvail +
+      summary.totalProducts + '  规格：' + summary.totalSku + '  空库存：' + summary.zeroAvail +
       '</strong></p></div>' +
       (listItems ? '<div class="sc-inventory-list">' + listItems + '</div>' : emptyHint) +
       '</div>'
@@ -10654,7 +10682,7 @@ function openChangeSheet(oid, opts) {
       runOrder();
       return true;
     }
-    if (/复制|老订单/.test(t)) {
+    if (/复制|老订单/.test(t) && !/^确认复制\s*$/.test((t || '').trim())) {
       enterSkill('copy');
       runCopy();
       return true;
@@ -11255,9 +11283,9 @@ function openChangeSheet(oid, opts) {
         return true;
       }
       enterSkill('order');
-      pushNextAiCard(renderOrderConfirmCard(), '确认复制');
+      simulateUserUtterance('确认复制');
+      showOrderConfirm();
       focusSpecHost('sheet-order');
-      rescanAnnotationPins();
       return true;
     }
     if (action === 'change-pick' && oid) {
@@ -11961,10 +11989,10 @@ function openChangeSheet(oid, opts) {
     syncQuoteQtyFromDom,
     syncOrderQtyFromDom,
     syncOrderCopyLinesFromDom,
+    syncOrderConfirmLinesFromDom,
     onQuoteLineSkuChange,
     onCopyLineSkuChange,
     onDeliveryFormExpectedDateChange,
-    syncOrderConfirmLinesFromDom,
     refreshLastQuoteConfirmCard
   };
 })();
