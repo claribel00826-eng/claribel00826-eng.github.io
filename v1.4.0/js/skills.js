@@ -10000,6 +10000,7 @@ function openChangeSheet(oid, opts) {
   function runInventory(opts) {
     opts = opts || {};
     const filter = opts.filter || '';
+    const skipFilter = !!opts.skipFilter;
     const rows = DemoData.buildInventorySnapshotRows ? DemoData.buildInventorySnapshotRows() : [];
     if (!rows.length) {
       App.toast('暂无库存数据');
@@ -10009,15 +10010,16 @@ function openChangeSheet(oid, opts) {
     if (opts.simulateUserMsg && utterance) {
       simulateUserUtteranceUnlessDuplicate(utterance);
     }
-    if (!filter) {
+    if (!filter && !skipFilter) {
       App.pushAiHtml(
         '<p class="sc-reply-lead">为您查询库存，请先输入筛选条件。</p>' +
           renderInventoryFilterCard()
       );
     } else {
       const filteredRows = filterInventoryRows(rows, filter);
+      const filterLabel = filter ? '<strong>' + App.escapeHtml(filter) + '</strong>' : '<strong>全部货品</strong>';
       App.pushAiHtml(
-        '<p class="sc-reply-lead">为您查询 <strong>' + App.escapeHtml(filter) + '</strong> 相关货品规格库存（全仓合计）：</p>' +
+        '<p class="sc-reply-lead">为您查询 ' + filterLabel + ' 规格库存（全仓合计）：</p>' +
           renderInventoryResultCard(filteredRows, filter)
       );
     }
@@ -11563,7 +11565,7 @@ function openChangeSheet(oid, opts) {
     }
     if (action === 'inventory-filter-skip') {
       simulateUserUtterance('查看全部库存');
-      runInventory({ filter: '', simulateUserMsg: false });
+      runInventory({ filter: '', skipFilter: true, simulateUserMsg: false });
       return true;
     }
     if (action === 'inventory-reset-filter') {
