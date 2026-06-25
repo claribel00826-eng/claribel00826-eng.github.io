@@ -9922,7 +9922,33 @@ function openChangeSheet(oid, opts) {
     };
   }
 
-  function renderInventoryResultCard(allRows) {
+  function filterInventoryRows(allRows, filter) {
+    const keyword = String(filter || '').toLowerCase().trim();
+    if (!keyword) return allRows;
+    return allRows.filter(function (row) {
+      const code = String(row.inventoryCode || '').toLowerCase();
+      const name = String(row.productName || '').toLowerCase();
+      return code.indexOf(keyword) >= 0 || name.indexOf(keyword) >= 0;
+    });
+  }
+
+  function renderInventoryFilterCard() {
+    return (
+      '<div class="sc-card sc-card--compact" data-spec-id="card-inventory-filter">' +
+      '<div class="sc-card__head sc-card__head--compact">请输入筛选条件</div>' +
+      '<p class="sc-card__meta">填写存货编码或名称后点确认；也可跳过，直接查看全部库存。</p>' +
+      '<div class="sc-plan-query-row">' +
+      '<input type="search" class="sc-input sc-input--field" id="inventory-filter-input" placeholder="输入存货编码或名称..."/>' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="inventory-filter-submit">确认</button>' +
+      '</div>' +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="inventory-filter-skip">跳过，查看全部</button>' +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderInventoryResultCard(allRows, filter) {
     const summary = inventorySnapshotSummary(allRows);
     const groups = [];
     allRows.forEach(function (row) {
@@ -9954,21 +9980,26 @@ function openChangeSheet(oid, opts) {
         '</div>'
       );
     }).join('');
-    const emptyHint = !allRows.length ? '<p class="sc-card__meta">暂无库存数据。</p>' : '';
+    const emptyHint = !allRows.length ? '<p class="sc-card__meta">暂无匹配的库存数据。</p>' : '';
+    const filterLabel = filter ? ' · 筛选：' + App.escapeHtml(filter) : '';
     return (
       '<div class="sc-card sc-card--compact sc-card--inventory" data-spec-id="card-inventory">' +
-      '<div class="sc-card__head sc-card__head--compact">库存查询</div>' +
+      '<div class="sc-card__head sc-card__head--compact">库存查询' + filterLabel + '</div>' +
       '<div class="sc-biz-overview sc-inventory__overview">' +
       '<p class="sc-biz-overview__line sc-card-summary-line"><strong>合计：货品：' +
       summary.totalProducts + '  规格：' + summary.totalSku + '  空库存：' + summary.zeroAvail +
       '</strong></p></div>' +
       (listItems ? '<div class="sc-inventory-list">' + listItems + '</div>' : emptyHint) +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="inventory-reset-filter">重新筛选</button>' +
+      '</div>' +
       '</div>'
     );
   }
 
   function runInventory(opts) {
     opts = opts || {};
+    const filter = opts.filter || '';
     const rows = DemoData.buildInventorySnapshotRows ? DemoData.buildInventorySnapshotRows() : [];
     if (!rows.length) {
       App.toast('暂无库存数据');
@@ -9978,10 +10009,18 @@ function openChangeSheet(oid, opts) {
     if (opts.simulateUserMsg && utterance) {
       simulateUserUtteranceUnlessDuplicate(utterance);
     }
-    App.pushAiHtml(
-      '<p class="sc-reply-lead">为您查询 <strong>全部货品</strong> 规格库存（全仓合计）：</p>' +
-        renderInventoryResultCard(rows)
-    );
+    if (!filter) {
+      App.pushAiHtml(
+        '<p class="sc-reply-lead">为您查询库存，请先输入筛选条件。</p>' +
+          renderInventoryFilterCard()
+      );
+    } else {
+      const filteredRows = filterInventoryRows(rows, filter);
+      App.pushAiHtml(
+        '<p class="sc-reply-lead">为您查询 <strong>' + App.escapeHtml(filter) + '</strong> 相关货品规格库存（全仓合计）：</p>' +
+          renderInventoryResultCard(filteredRows, filter)
+      );
+    }
     rescanAnnotationPins();
   }
 
@@ -11509,6 +11548,30 @@ function openChangeSheet(oid, opts) {
             renderBizAnalysisCard(data)
         );
       }
+      return true;
+    }
+    if (action === 'inventory-filter-submit') {
+      const input = document.getElementById('inventory-filter-input');
+      const filter = input ? input.value.trim() : '';
+      if (!filter) {
+        App.toast('请输入存货编码或名称');
+        return true;
+      }
+      simulateUserUtterance('筛选库存：' + filter);
+      runInventory({ filter: filter });
+      return true;
+    }
+    if (action === 'inventory-filter-skip') {
+      simulateUserUtterance('查看全部库存');
+      runInventory({ filter: '', simulateUserMsg: false });
+      return true;
+    }
+    if (action === 'inventory-reset-filter') {
+      simulateUserUtterance('重新筛选');
+      App.pushAiHtml(
+        '<p class="sc-reply-lead">为您查询库存，请先输入筛选条件。</p>' +
+          renderInventoryFilterCard()
+      );
       return true;
     }
     return false;
