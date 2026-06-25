@@ -1899,5 +1899,24 @@ window.DemoData = {
       { name: '郑顾问', orderCount: 38, quantity: 3960, amount: 3680000 },
       { name: '孙专员', orderCount: 29, quantity: 3050, amount: 2820000 }
     ]
+  },
+  getPaymentAnalysis: function(year) {
+    var baseData = this.paymentAnalysis;
+    if (!baseData) return null;
+    var factor = year >= new Date().getFullYear() ? 1 : (year === new Date().getFullYear() - 1 ? 0.85 : 0.7);
+    return {
+      year: year,
+      annualSalesAmount: Math.round(baseData.annualSalesAmount * factor),
+      plannedCollectionAmount: Math.round(baseData.plannedCollectionAmount * factor),
+      receivableBalance: Math.round(baseData.receivableBalance * factor),
+      unreceivedAmount: Math.round(baseData.unreceivedAmount * factor),
+      monthlyDetails: baseData.monthlyDetails.map(function(d) {
+        return {
+          month: d.month,
+          receivable: Math.round(d.receivable * factor),
+          unreceived: Math.round(d.unreceived * factor)
+        };
+      })
+    };
   }
 };

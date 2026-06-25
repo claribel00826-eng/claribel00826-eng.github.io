@@ -83,7 +83,7 @@
       const pt = c.partnerType || 'customer';
       return pt === 'customer' || pt === 'both';
     });
-    if (state.activeSkill === 'copy' && DemoData.isOldCustomer) {
+    if ((state.activeSkill === 'copy' || state.activeSkill === 'progress') && DemoData.isOldCustomer) {
       const user = DemoData.demoSalesUser || DemoData.salesperson;
       return pool.filter(function (c) {
         return DemoData.isOldCustomer(c, user);
@@ -2122,6 +2122,8 @@
       if (quoteQty && window.Skills && Skills.syncQuoteQtyFromDom) Skills.syncQuoteQtyFromDom();
       const orderQty = e.target.closest('[data-action="order-qty"]');
       if (orderQty && window.Skills && Skills.syncOrderQtyFromDom) Skills.syncOrderQtyFromDom();
+      const paymentYear = e.target.closest('[data-action="payment-year-change"]');
+      if (paymentYear && window.Skills) Skills.handleAction('payment-year-change', paymentYear);
     });
 
     document.addEventListener('input', (e) => {

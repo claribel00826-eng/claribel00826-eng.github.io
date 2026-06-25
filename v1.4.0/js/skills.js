@@ -10009,12 +10009,24 @@ function openChangeSheet(oid, opts) {
   }
 
   function renderPaymentResultCard(data) {
+    var currentYear = data.year || new Date().getFullYear();
+    var years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
+    var yearOptions = years.map(function(y) {
+      var selected = y === currentYear ? ' selected' : '';
+      return '<option value="' + y + '"' + selected + '>' + y + '年</option>';
+    }).join('');
+    
     return (
       '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
-      '<div class="sc-card__head sc-card__head--compact">回款分析</div>' +
+      '<div class="sc-card__head sc-card__head--compact sc-card__head--with-select">' +
+      '<span class="sc-card__head-text">回款分析</span>' +
+      '<select class="sc-payment-year-select" data-action="payment-year-change">' +
+      yearOptions +
+      '</select>' +
+      '</div>' +
       '<div class="sc-payment-overview">' +
       '<div class="sc-payment-overview__item">' +
-      '<span class="sc-payment-overview__label">本年销售金额</span>' +
+      '<span class="sc-payment-overview__label">' + currentYear + '年销售金额</span>' +
       '<span class="sc-payment-overview__value">' + formatPaymentMoney(data.annualSalesAmount) + '</span>' +
       '</div>' +
       '<div class="sc-payment-overview__item">' +
@@ -10085,17 +10097,20 @@ function openChangeSheet(oid, opts) {
 
   function runPayment(opts) {
     opts = opts || {};
-    var data = DemoData.paymentAnalysis;
+    var utterance = opts.utterance || '';
+    var matchYear = utterance.match(/(\d{4})年/);
+    var targetYear = matchYear ? parseInt(matchYear[1]) : new Date().getFullYear();
+    
+    var data = DemoData.getPaymentAnalysis(targetYear);
     if (!data) {
       App.toast('暂无回款数据');
       return;
     }
-    var utterance = opts.utterance || '';
     if (opts.simulateUserMsg && utterance) {
       simulateUserUtteranceUnlessDuplicate(utterance);
     }
     App.pushAiHtml(
-      '<p class="sc-reply-lead">为您汇总 <strong>全部客户</strong> 回款与应收：</p>' +
+      '<p class="sc-reply-lead">为您汇总 <strong>' + targetYear + '年</strong> 全部客户回款与应收：</p>' +
         renderPaymentResultCard(data)
     );
     rescanAnnotationPins();
@@ -10724,6 +10739,13 @@ function openChangeSheet(oid, opts) {
     const pid = btn.getAttribute('data-pid');
     const oid = btn.getAttribute('data-oid');
 
+    if (action === 'payment-year-change') {
+      const year = parseInt(btn.value);
+      if (!isNaN(year)) {
+        simulateUserUtterance(year + '年回款分析');
+      }
+      return true;
+    }
     if (action === 'pick-free-attr') {
       onPickFreeAttrChange(btn);
       return true;
