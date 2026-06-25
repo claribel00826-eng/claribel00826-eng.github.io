@@ -11553,7 +11553,8 @@ function openChangeSheet(oid, opts) {
       return true;
     }
     if (action === 'inventory-filter-submit') {
-      const input = document.getElementById('inventory-filter-input');
+      const card = btn.closest('[data-spec-id="card-inventory-filter"]');
+      const input = card ? card.querySelector('input[type="search"]') : null;
       const filter = input ? input.value.trim() : '';
       if (!filter) {
         App.toast('请输入存货编码或名称');
