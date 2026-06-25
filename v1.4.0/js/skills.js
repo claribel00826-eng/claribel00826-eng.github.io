@@ -9863,6 +9863,9 @@ function openChangeSheet(oid, opts) {
       renderBizRankListHtml(data.salespersons || [], metric) +
       '</div>' +
       '<p class="sc-biz-hint">切换 Tab 查看客户排行；点指标切换列表排序</p>' +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="biz-change-range">选择时间范围</button>' +
+      '</div>' +
       '</div>'
     );
   }
@@ -10060,6 +10063,33 @@ function openChangeSheet(oid, opts) {
       '<div class="sc-card__actions">' +
       '<button type="button" class="sc-btn sc-btn--ghost" data-action="payment-year-cancel">取消</button>' +
       '<button type="button" class="sc-btn sc-btn--primary" data-action="payment-year-confirm">确认</button>' +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderBizDateRangePickerCard() {
+    var today = new Date();
+    var defaultEnd = today.toISOString().slice(0, 10);
+    var defaultStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+    return (
+      '<p class="sc-reply-lead">请选择时间范围：</p>' +
+      '<div class="sc-card sc-card--compact" data-spec-id="card-biz-date-range-picker">' +
+      '<div class="sc-card__body">' +
+      '<div class="sc-date-range-picker">' +
+      '<div class="sc-date-range-picker__row">' +
+      '<label class="sc-date-range-picker__label">开始时间</label>' +
+      '<input type="date" class="sc-input sc-input--field" data-action="biz-range-start" value="' + defaultStart + '">' +
+      '</div>' +
+      '<div class="sc-date-range-picker__row">' +
+      '<label class="sc-date-range-picker__label">结束时间</label>' +
+      '<input type="date" class="sc-input sc-input--field" data-action="biz-range-end" value="' + defaultEnd + '">' +
+      '</div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="sc-card__actions">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="biz-range-cancel">取消</button>' +
+      '<button type="button" class="sc-btn sc-btn--primary" data-action="biz-range-confirm">确认</button>' +
       '</div>' +
       '</div>'
     );
@@ -11449,6 +11479,31 @@ function openChangeSheet(oid, opts) {
       if (selected) {
         const year = parseInt(selected.value, 10);
         App.pushAiHtml(renderPaymentResultCard(DemoData.getPaymentAnalysis(year), year));
+      }
+      return true;
+    }
+    if (action === 'biz-change-range') {
+      App.pushAiHtml(renderBizDateRangePickerCard());
+      return true;
+    }
+    if (action === 'biz-range-cancel') {
+      const card = btn.closest('[data-spec-id="card-biz-date-range-picker"]');
+      if (card) card.remove();
+      return true;
+    }
+    if (action === 'biz-range-confirm') {
+      const card = btn.closest('[data-spec-id="card-biz-date-range-picker"]');
+      const startInput = card && card.querySelector('[data-action="biz-range-start"]');
+      const endInput = card && card.querySelector('[data-action="biz-range-end"]');
+      if (startInput && endInput) {
+        var startDate = startInput.value;
+        var endDate = endInput.value;
+        var data = DemoData.bizAnalysis;
+        data.rangeLabel = startDate + ' 至 ' + endDate;
+        App.pushAiHtml(
+          '<p class="sc-reply-lead">为您展示 <strong>' + startDate + '</strong> 至 <strong>' + endDate + '</strong> 的业务排行：</p>' +
+            renderBizAnalysisCard(data)
+        );
       }
       return true;
     }

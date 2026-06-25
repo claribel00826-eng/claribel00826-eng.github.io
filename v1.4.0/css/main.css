@@ -877,6 +877,31 @@ a.sc-demo-reset-btn--link {
   cursor: pointer;
 }
 
+/* 时间范围选择器 */
+.sc-date-range-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sc-date-range-picker__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sc-date-range-picker__label {
+  min-width: 70px;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.sc-date-range-picker .sc-input--field {
+  flex: 1;
+  font-size: 14px;
+}
+
 .sc-card__actions-inline--wrap {
   flex-wrap: wrap;
 }
