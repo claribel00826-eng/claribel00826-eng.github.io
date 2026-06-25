@@ -10012,10 +10012,7 @@ function openChangeSheet(oid, opts) {
     var displayYear = year || new Date().getFullYear();
     return (
       '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
-      '<div class="sc-card__head sc-card__head--compact">' +
-      '<span>回款分析 · ' + displayYear + '年</span>' +
-      '<button type="button" class="sc-btn sc-btn--ghost sc-btn--sm" data-action="payment-change-year">更换年份</button>' +
-      '</div>' +
+      '<div class="sc-card__head sc-card__head--compact">回款分析 · ' + displayYear + '年</div>' +
       '<div class="sc-payment-overview">' +
       '<div class="sc-payment-overview__item">' +
       '<span class="sc-payment-overview__label">本年销售金额</span>' +
@@ -10035,6 +10032,9 @@ function openChangeSheet(oid, opts) {
       '</div>' +
       '</div>' +
       renderPaymentMonthlyChart(data.monthlyDetails || []) +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="payment-change-year">更换年份</button>' +
+      '</div>' +
       '</div>'
     );
   }
