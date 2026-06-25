@@ -1901,16 +1901,14 @@ window.DemoData = {
     ]
   },
   getPaymentAnalysis: function(year) {
-    var baseData = this.paymentAnalysis;
-    if (!baseData) return null;
-    var factor = year >= new Date().getFullYear() ? 1 : (year === new Date().getFullYear() - 1 ? 0.85 : 0.7);
+    var base = this.paymentAnalysis;
+    var factor = year === 2024 ? 1 : year === 2023 ? 0.85 : year === 2022 ? 0.72 : year === 2021 ? 0.6 : 0.9;
     return {
-      year: year,
-      annualSalesAmount: Math.round(baseData.annualSalesAmount * factor),
-      plannedCollectionAmount: Math.round(baseData.plannedCollectionAmount * factor),
-      receivableBalance: Math.round(baseData.receivableBalance * factor),
-      unreceivedAmount: Math.round(baseData.unreceivedAmount * factor),
-      monthlyDetails: baseData.monthlyDetails.map(function(d) {
+      annualSalesAmount: Math.round(base.annualSalesAmount * factor),
+      plannedCollectionAmount: Math.round(base.plannedCollectionAmount * factor),
+      receivableBalance: Math.round(base.receivableBalance * factor),
+      unreceivedAmount: Math.round(base.unreceivedAmount * factor),
+      monthlyDetails: base.monthlyDetails.map(function(d) {
         return {
           month: d.month,
           receivable: Math.round(d.receivable * factor),
