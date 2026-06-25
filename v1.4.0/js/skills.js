@@ -11465,6 +11465,7 @@ function openChangeSheet(oid, opts) {
       return true;
     }
     if (action === 'payment-change-year') {
+      simulateUserUtterance('更换年份');
       App.pushAiHtml(renderPaymentYearPickerCard());
       return true;
     }
@@ -11478,11 +11479,13 @@ function openChangeSheet(oid, opts) {
       const selected = card && card.querySelector('input[name="payment-year"]:checked');
       if (selected) {
         const year = parseInt(selected.value, 10);
+        simulateUserUtterance('查看' + year + '年的数据');
         App.pushAiHtml(renderPaymentResultCard(DemoData.getPaymentAnalysis(year), year));
       }
       return true;
     }
     if (action === 'biz-change-range') {
+      simulateUserUtterance('选择时间范围');
       App.pushAiHtml(renderBizDateRangePickerCard());
       return true;
     }
@@ -11498,6 +11501,7 @@ function openChangeSheet(oid, opts) {
       if (startInput && endInput) {
         var startDate = startInput.value;
         var endDate = endInput.value;
+        simulateUserUtterance('查看' + startDate + '至' + endDate + '的业务排行');
         var data = DemoData.bizAnalysis;
         data.rangeLabel = startDate + ' 至 ' + endDate;
         App.pushAiHtml(
