@@ -61,6 +61,7 @@ window.AnnotationSpecScope = {
     'card-capacity-block-detail',
     'card-biz-analysis',
     'card-biz-analysis-insight',
+    'card-biz-date-range-picker',
     'card-inventory',
     'card-payment'
   ]
