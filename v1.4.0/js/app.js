@@ -2122,8 +2122,6 @@
       if (quoteQty && window.Skills && Skills.syncQuoteQtyFromDom) Skills.syncQuoteQtyFromDom();
       const orderQty = e.target.closest('[data-action="order-qty"]');
       if (orderQty && window.Skills && Skills.syncOrderQtyFromDom) Skills.syncOrderQtyFromDom();
-      const paymentYear = e.target.closest('[data-action="payment-year-change"]');
-      if (paymentYear && window.Skills) Skills.handleAction('payment-year-change', paymentYear);
     });
 
     document.addEventListener('input', (e) => {

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0" />
+  <title>HyperFrames Product Animation</title>
+  <style>
+    /* 基础画布：固定 1920x1080，适配 HyperFrames 标准 16:9 视频输出 */
+    html,
+    body {
+      width: 1920px;
+      height: 1080px;
+      margin: 0;
+      overflow: hidden;
+      background: #071013;
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    [data-composition-id="product-launch-20s"] {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      color: #eef8f4;
+      background:
+        radial-gradient(circle at 18% 20%, rgba(68, 180, 151, 0.32), transparent 34%),
+        radial-gradient(circle at 82% 72%, rgba(234, 196, 98, 0.22), transparent 30%),
+        linear-gradient(135deg, #071013 0%, #0e1b1d 48%, #121314 100%);
+      isolation: isolate;
+    }
+
+    /* 公共场景层 */
+    .scene {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .scene-content {
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 120px 156px;
+      gap: 28px;
+    }
+
+    /* 背景装饰，保持深色科技感 */
+    .grid {
+      position: absolute;
+      inset: 0;
+      opacity: 0.17;
+      background-image:
+        linear-gradient(rgba(238, 248, 244, 0.09) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(238, 248, 244, 0.09) 1px, transparent 1px);
+      background-size: 72px 72px;
+      transform-origin: center;
+      z-index: 0;
+    }
+
+    .orb {
+      position: absolute;
+      width: 720px;
+      height: 720px;
+      border-radius: 50%;
+      filter: blur(48px);
+      opacity: 0.32;
+      background: rgba(68, 180, 151, 0.36);
+      z-index: 0;
+      will-change: transform, opacity;
+    }
+
+    .orb-a {
+      left: -190px;
+      top: -160px;
+    }
+
+    .orb-b {
+      right: -260px;
+      bottom: -240px;
+      background: rgba(234, 196, 98, 0.28);
+    }
+
+    .hairline {
+      position: absolute;
+      left: 156px;
+      right: 156px;
+      bottom: 112px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(238, 248, 244, 0.36), transparent);
+      z-index: 2;
+    }
+
+    /* 0-4s：开场标题 */
+    .intro {
+      z-index: 3;
+    }
+
+    .intro .scene-content {
+      align-items: flex-start;
+      max-width: 1400px;
+    }
+
+    .eyebrow {
+      color: #eac462;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .title {
+      max-width: 1180px;
+      margin: 0;
+      color: #eef8f4;
+      font-size: 126px;
+      line-height: 0.95;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 820px;
+      margin: 0;
+      color: rgba(238, 248, 244, 0.78);
+      font-size: 34px;
+      line-height: 1.36;
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+
+    /* 4-10s：产品图进入 */
+    .product-scene {
+      z-index: 4;
+      opacity: 0;
+    }
+
+    .product-wrap {
+      position: absolute;
+      right: 130px;
+      top: 145px;
+      width: 720px;
+      height: 790px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      will-change: transform, opacity;
+    }
+
+    .product-img {
+      width: 650px;
+      height: auto;
+      display: block;
+      filter: drop-shadow(0 44px 58px rgba(0, 0, 0, 0.42));
+    }
+
+    .product-copy {
+      position: absolute;
+      left: 156px;
+      top: 300px;
+      width: 760px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      z-index: 3;
+    }
+
+    .product-copy h2 {
+      margin: 0;
+      font-size: 86px;
+      line-height: 1.02;
+      font-weight: 850;
+      letter-spacing: 0;
+      color: #eef8f4;
+    }
+
+    .product-copy p {
+      margin: 0;
+      width: 620px;
+      font-size: 30px;
+      line-height: 1.44;
+      color: rgba(238, 248, 244, 0.74);
+    }
+
+    .spec-row {
+      display: flex;
+      gap: 18px;
+      padding-top: 12px;
+    }
+
+    .spec {
+      width: 172px;
+      padding: 18px 20px;
+      border: 1px solid rgba(238, 248, 244, 0.18);
+      background: rgba(238, 248, 244, 0.06);
+      border-radius: 8px;
+      color: rgba(238, 248, 244, 0.82);
+      font-size: 22px;
+      font-weight: 650;
+    }
+
+    /* 10-16s：卖点文字打字机 */
+    .features {
+      z-index: 5;
+      opacity: 0;
+    }
+
+    .features .scene-content {
+      justify-content: center;
+      padding-left: 240px;
+      padding-right: 240px;
+      gap: 30px;
+    }
+
+    .feature-kicker {
+      color: #eac462;
+      font-size: 30px;
+      font-weight: 750;
+    }
+
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+      width: 1240px;
+    }
+
+    .feature-line {
+      min-height: 86px;
+      margin: 0;
+      color: #eef8f4;
+      font-size: 62px;
+      line-height: 1.18;
+      font-weight: 820;
+      letter-spacing: 0;
+    }
+
+    .feature-line .char {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(22px);
+      will-change: transform, opacity;
+    }
+
+    .feature-line .space {
+      width: 0.36em;
+    }
+
+    /* 16-20s：结尾 Logo */
+    .outro {
+      z-index: 6;
+      opacity: 0;
+    }
+
+    .outro .scene-content {
+      align-items: center;
+      text-align: center;
+      gap: 24px;
+    }
+
+    .logo-mark {
+      width: 176px;
+      height: 176px;
+      border-radius: 42px;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.42), transparent 28%),
+        linear-gradient(145deg, #44b497, #eac462);
+      box-shadow: 0 30px 90px rgba(68, 180, 151, 0.28);
+      will-change: transform, opacity;
+    }
+
+    .logo-mark span {
+      color: #071013;
+      font-size: 74px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .brand-name {
+      margin: 0;
+      color: #eef8f4;
+      font-size: 74px;
+      line-height: 1;
+      font-weight: 880;
+      letter-spacing: 0;
+    }
+
+    .brand-tagline {
+      margin: 0;
+      color: rgba(238, 248, 244, 0.72);
+      font-size: 28px;
+      line-height: 1.35;
+      font-weight: 400;
+    }
+
+    /* 转场遮罩：场景切换时覆盖画面，避免硬切 */
+    .transition-wipe {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      background: linear-gradient(115deg, #44b497 0%, #eac462 100%);
+      transform: translateX(-110%);
+      will-change: transform;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div
+    id="main-composition"
+    data-composition-id="product-launch-20s"
+    data-start="0"
+    data-duration="20"
+    data-width="1920"
+    data-height="1080"
+    data-track-index="0"
+  >
+    <!-- 全局背景装饰 -->
+    <div class="grid"></div>
+    <div class="orb orb-a"></div>
+    <div class="orb orb-b"></div>
+    <div class="hairline"></div>
+
+    <!-- 0-4s：开场标题 -->
+    <section class="scene intro">
+      <div class="scene-content">
+        <div class="eyebrow">New Product Film</div>
+        <h1 class="title">未来级体验 即刻启动</h1>
+        <p class="subtitle">用更清晰的视觉、更稳定的性能和更自然的交互，重新定义你的日常工作流。</p>
+      </div>
+    </section>
+
+    <!-- 4-10s：产品图片缓慢平移进入画面 -->
+    <section class="scene product-scene">
+      <div class="product-copy">
+        <h2>轻薄机身 强劲核心</h2>
+        <p>为高频使用场景打造，兼顾视觉质感、速度响应与全天候稳定输出。</p>
+        <div class="spec-row">
+          <div class="spec">AI Ready</div>
+          <div class="spec">Ultra Fast</div>
+          <div class="spec">Quiet Power</div>
+        </div>
+      </div>
+
+      <div class="product-wrap">
+        <!-- 可替换产品图：将 src 换成真实图片地址即可 -->
+        <img
+          class="product-img"
+          alt="Product"
+          src='data:image/svg+xml;utf8,
+          <svg xmlns="http://www.w3.org/2000/svg" width="760" height="760" viewBox="0 0 760 760">
+            <defs>
+              <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="%23f5fff9"/>
+                <stop offset="0.48" stop-color="%23b8d9d0"/>
+                <stop offset="1" stop-color="%23355355"/>
+              </linearGradient>
+              <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="%23081416"/>
+                <stop offset="0.58" stop-color="%23153b3a"/>
+                <stop offset="1" stop-color="%2344b497"/>
+              </linearGradient>
+              <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+                <feDropShadow dx="0" dy="38" stdDeviation="32" flood-color="%23000000" flood-opacity="0.36"/>
+              </filter>
+            </defs>
+            <g filter="url(%23shadow)">
+              <rect x="128" y="96" width="504" height="356" rx="34" fill="url(%23body)"/>
+              <rect x="156" y="124" width="448" height="294" rx="22" fill="url(%23screen)"/>
+              <circle cx="380" cy="113" r="7" fill="%23071013" opacity="0.58"/>
+              <path d="M94 474 L666 474 L604 558 L156 558 Z" fill="url(%23body)"/>
+              <path d="M176 494 L584 494 L552 532 L208 532 Z" fill="%230b1417" opacity="0.22"/>
+              <path d="M250 190 C330 142 470 162 520 248 C440 224 346 256 294 330 C282 268 244 232 250 190 Z" fill="%23eac462" opacity="0.86"/>
+              <path d="M208 350 C302 274 420 278 548 344" fill="none" stroke="%23eef8f4" stroke-width="10" stroke-linecap="round" opacity="0.72"/>
+            </g>
+          </svg>'
+        />
+      </div>
+    </section>
+
+    <!-- 10-16s：卖点文字逐行打字机效果 -->
+    <section class="scene features">
+      <div class="scene-content">
+        <div class="feature-kicker">Core Advantages</div>
+        <div class="feature-list">
+          <p class="feature-line" data-text="毫秒级响应，让灵感不等待"></p>
+          <p class="feature-line" data-text="沉浸式显示，细节清晰呈现"></p>
+          <p class="feature-line" data-text="全天候续航，稳定陪伴创作"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 16-20s：结尾 Logo 缓慢浮现 -->
+    <section class="scene outro">
+      <div class="scene-content">
+        <div class="logo-mark"><span>N</span></div>
+        <h2 class="brand-name">NOVA X</h2>
+        <p class="brand-tagline">Make every frame feel effortless.</p>
+      </div>
+    </section>
+
+    <div class="transition-wipe"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      /* 打字机文字预处理：同步生成字符节点，方便 GSAP 逐字动画 */
+      document.querySelectorAll(".feature-line").forEach(function (line) {
+        var text = line.getAttribute("data-text");
+        line.textContent = "";
+        Array.from(text).forEach(function (char) {
+          var span = document.createElement("span");
+          span.className = char === " " ? "char space" : "char";
+          span.textContent = char === " " ? "\u00A0" : char;
+          line.appendChild(span);
+        });
+      });
+
+      window.__timelines = window.__timelines || {};
+
+      var tl = gsap.timeline({
+        paused: true,
+        defaults: { duration: 0.7, ease: "power3.out" }
+      });
+
+      /* 背景呼吸动效：全程 20 秒内有限循环 */
+      tl.to(".grid", { scale: 1.035, opacity: 0.24, duration: 10, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+      tl.to(".orb-a", { x: 80, y: 34, scale: 1.08, duration: 10, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+      tl.to(".orb-b", { x: -74, y: -42, scale: 1.12, duration: 10, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+
+      /* 0-4s：标题淡入入场 */
+      tl.from(".intro .eyebrow", { y: 30, opacity: 0, duration: 0.55 }, 0.25);
+      tl.from(".intro .title", { y: 58, opacity: 0, scale: 0.985, duration: 0.82 }, 0.55);
+      tl.from(".intro .subtitle", { y: 36, opacity: 0, duration: 0.62 }, 1.05);
+
+      /* 4s 转场到产品画面 */
+      tl.to(".transition-wipe", { x: "0%", duration: 0.42, ease: "power4.inOut" }, 3.72);
+      tl.set(".product-scene", { opacity: 1 }, 4.0);
+      tl.set(".intro", { opacity: 0 }, 4.0);
+      tl.to(".transition-wipe", { x: "110%", duration: 0.5, ease: "power4.inOut" }, 4.05);
+      tl.set(".transition-wipe", { x: "-110%" }, 4.6);
+
+      /* 4-10s：产品图缓慢平移进入 */
+      tl.from(".product-copy h2", { y: 46, opacity: 0, duration: 0.72 }, 4.38);
+      tl.from(".product-copy p", { y: 34, opacity: 0, duration: 0.58 }, 4.72);
+      tl.from(".spec", { y: 26, opacity: 0, duration: 0.5, stagger: 0.1 }, 5.02);
+      tl.fromTo(".product-wrap", { x: 620, opacity: 0, scale: 0.96 }, { x: 0, opacity: 1, scale: 1, duration: 4.6, ease: "power2.out" }, 4.25);
+      tl.to(".product-wrap", { x: -34, duration: 2.2, ease: "sine.inOut" }, 7.2);
+
+      /* 10s 转场到卖点文字 */
+      tl.to(".transition-wipe", { x: "0%", duration: 0.42, ease: "power4.inOut" }, 9.72);
+      tl.set(".features", { opacity: 1 }, 10.0);
+      tl.set(".product-scene", { opacity: 0 }, 10.0);
+      tl.to(".transition-wipe", { x: "110%", duration: 0.5, ease: "power4.inOut" }, 10.05);
+      tl.set(".transition-wipe", { x: "-110%" }, 10.6);
+
+      /* 10-16s：卖点逐行打字机弹出 */
+      tl.from(".feature-kicker", { y: 24, opacity: 0, duration: 0.5 }, 10.35);
+      tl.to(".feature-line:nth-child(1) .char", { opacity: 1, y: 0, duration: 0.16, stagger: 0.045, ease: "power2.out" }, 10.75);
+      tl.to(".feature-line:nth-child(2) .char", { opacity: 1, y: 0, duration: 0.16, stagger: 0.045, ease: "power2.out" }, 12.25);
+      tl.to(".feature-line:nth-child(3) .char", { opacity: 1, y: 0, duration: 0.16, stagger: 0.045, ease: "power2.out" }, 13.75);
+
+      /* 16s 转场到结尾 Logo */
+      tl.to(".transition-wipe", { x: "0%", duration: 0.42, ease: "power4.inOut" }, 15.72);
+      tl.set(".outro", { opacity: 1 }, 16.0);
+      tl.set(".features", { opacity: 0 }, 16.0);
+      tl.to(".transition-wipe", { x: "110%", duration: 0.5, ease: "power4.inOut" }, 16.05);
+      tl.set(".transition-wipe", { x: "-110%" }, 16.6);
+
+      /* 16-20s：Logo 缓慢浮现收尾 */
+      tl.from(".logo-mark", { y: 34, opacity: 0, scale: 0.82, duration: 1.15, ease: "power3.out" }, 16.45);
+      tl.from(".brand-name", { y: 28, opacity: 0, duration: 0.82 }, 17.25);
+      tl.from(".brand-tagline", { y: 20, opacity: 0, duration: 0.7 }, 17.72);
+      tl.to(".outro .scene-content", { scale: 1.018, duration: 1.8, ease: "sine.inOut" }, 18.0);
+
+      window.__timelines["product-launch-20s"] = tl;
+
+      /* 浏览器直接打开时自动完整播放；HyperFrames 渲染器仍可读取已注册时间轴 */
+      requestAnimationFrame(function () {
+        tl.play(0);
+      });
+    </script>
+  </div>
+</body>
+</html>
