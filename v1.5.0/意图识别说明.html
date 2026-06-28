@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>意图识别说明 · v1.3.0</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f4f4f5;
+      --surface: #fff;
+      --border: #e4e4e7;
+      --text: #18181b;
+      --muted: #71717a;
+      --primary: #4f46e5;
+      --code-bg: #f4f4f5;
+      --quote-border: #c7d2fe;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .topbar__inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 16px;
+    }
+    .topbar a.back {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .topbar a.back:hover { text-decoration: underline; }
+    .topbar h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+    }
+    .topbar__links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .topbar__links a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .topbar__links a:hover {
+      color: var(--primary);
+      border-color: #a5b4fc;
+      background: #eef2ff;
+    }
+    .hint {
+      width: 100%;
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .hint--warn { color: #b45309; }
+    .page-layout {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 28px;
+      align-items: start;
+    }
+    main { min-width: 0; }
+    .flowchart-only {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .flowchart-only img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto;
+    }
+    .toc {
+      position: sticky;
+      top: 72px;
+      max-height: calc(100vh - 88px);
+      overflow-y: auto;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+    }
+    .toc__title {
+      margin: 0 0 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .toc__list { list-style: none; margin: 0; padding: 0; }
+    .toc__list a {
+      display: block;
+      padding: 4px 0 4px 10px;
+      margin-left: -2px;
+      border-left: 2px solid transparent;
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .toc__list a:hover,
+    .toc__list a.is-active {
+      color: var(--primary);
+      border-left-color: var(--primary);
+      font-weight: 600;
+    }
+    .toc__list--h3 a {
+      padding-left: 22px;
+      font-size: 12px;
+      font-weight: 400;
+    }
+    .md-body {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .md-body :first-child { margin-top: 0; }
+    .md-body h1 { font-size: 1.75rem; margin: 0 0 1rem; }
+    .md-body h2 {
+      font-size: 1.25rem;
+      margin: 2rem 0 0.75rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+      scroll-margin-top: 80px;
+    }
+    .md-body h3 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; scroll-margin-top: 80px; }
+    .md-body p { margin: 0.65rem 0; }
+    .md-body blockquote {
+      margin: 1rem 0;
+      padding: 0.5rem 1rem;
+      border-left: 4px solid var(--quote-border);
+      background: #fafafa;
+      color: #3f3f46;
+    }
+    .md-body code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.12em 0.35em;
+      border-radius: 4px;
+    }
+    .md-body a { color: var(--primary); }
+    .md-body table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 1rem 0;
+      min-width: 640px;
+    }
+    .md-body th,
+    .md-body td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .md-body th { background: #f4f4f5; font-weight: 600; }
+    .md-body tr:nth-child(even) td { background: #fafafa; }
+    .loading, .error {
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .error { color: #b91c1c; }
+    @media (max-width: 960px) {
+      .page-layout { grid-template-columns: 1fr; }
+      .toc { position: static; max-height: none; order: -1; }
+    }
+    @media (max-width: 640px) {
+      .md-body { padding: 18px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="back" href="index.html">← H5 原型</a>
+      <h1>意图识别说明 · v1.3.0</h1>
+      <div class="topbar__links">
+        <a href="doc-preview.html?doc=func">功能描述</a>
+        <a href="doc-preview.html?doc=rules">技术实现规则</a>
+      </div>
+      <p class="hint" id="file-hint"></p>
+    </div>
+  </header>
+  <div class="page-layout">
+    <main>
+      <section class="flowchart-only" id="flowchart" aria-label="交互模式判定流程图">
+        <img
+          src="diagrams/交互模式判定.png"
+          width="960"
+          height="auto"
+          alt="交互模式判定流程图"
+          loading="eager"
+        />
+      </section>
+      <article class="md-body" id="md-root">
+        <p class="loading">正在加载文档…</p>
+      </article>
+    </main>
+    <nav class="toc" id="toc" aria-label="章节导航">
+      <p class="toc__title">章节</p>
+      <p class="toc__empty">加载中…</p>
+    </nav>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js"></script>
+  <script>
+    (function () {
+      var MD_FILE = '意图识别说明-v1.3.0.md';
+      var rootEl = document.getElementById('md-root');
+      var tocEl = document.getElementById('toc');
+      var hintEl = document.getElementById('file-hint');
+
+      if (location.protocol === 'file:') {
+        hintEl.innerHTML =
+          '<span class="hint--warn">请通过静态服务或 GitHub Pages 打开（本地 file:// 可能无法加载 .md）。</span>';
+      } else {
+        hintEl.textContent = '数据源：' + MD_FILE;
+      }
+
+      marked.setOptions({ gfm: true, breaks: false, mangle: false });
+
+      /** 流程图已在页顶单独展示，正文中去掉模式定义表与重复插图 */
+      function prepareIntentMd(md) {
+        return md
+          .replace(/### 交互模式定义[\s\S]*?!\[交互模式判定流程图\]\([^)]+\)\s*/m, '')
+          .replace(/!\[交互模式判定流程图\]\([^)]+\)\s*/g, '');
+      }
+
+      function slugify(text) {
+        var base = (text || '')
+          .trim()
+          .replace(/\s+/g, '-')
+          .replace(/[^\w\u4e00-\u9fff-]+/g, '')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '');
+        return base || 'section';
+      }
+
+      function buildHeadingAnchors(container) {
+        var used = Object.create(null);
+        var headings = container.querySelectorAll('h2, h3');
+        headings.forEach(function (h) {
+          var id = slugify(h.textContent);
+          if (used[id]) {
+            used[id] += 1;
+            id = id + '-' + used[id];
+          } else {
+            used[id] = 1;
+          }
+          h.id = id;
+        });
+        return headings;
+      }
+
+      function buildToc(headings) {
+        tocEl.innerHTML = '<p class="toc__title">章节</p>';
+        var flowLink = document.createElement('ul');
+        flowLink.className = 'toc__list';
+        var li0 = document.createElement('li');
+        var a0 = document.createElement('a');
+        a0.href = '#flowchart';
+        a0.textContent = '交互模式判定流程图';
+        li0.appendChild(a0);
+        flowLink.appendChild(li0);
+        tocEl.appendChild(flowLink);
+
+        if (!headings.length) return [a0];
+
+        var listH2 = document.createElement('ul');
+        listH2.className = 'toc__list';
+        var listH3 = null;
+        var links = [a0];
+
+        headings.forEach(function (h) {
+          var a = document.createElement('a');
+          a.href = '#' + h.id;
+          a.textContent = h.textContent.trim();
+          a.addEventListener('click', function (e) {
+            e.preventDefault();
+            h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            history.replaceState(null, '', '#' + h.id);
+          });
+          var li = document.createElement('li');
+          li.appendChild(a);
+          links.push(a);
+
+          if (h.tagName === 'H2') {
+            listH3 = null;
+            listH2.appendChild(li);
+          } else {
+            if (!listH3) {
+              listH3 = document.createElement('ul');
+              listH3.className = 'toc__list toc__list--h3';
+              var parentLi = listH2.lastElementChild;
+              if (parentLi) parentLi.appendChild(listH3);
+              else listH2.appendChild(li);
+            }
+            if (listH3) listH3.appendChild(li);
+          }
+        });
+
+        tocEl.appendChild(listH2);
+        return links;
+      }
+
+      function rewriteMdLinks(container) {
+        container.querySelectorAll('a[href]').forEach(function (a) {
+          var href = a.getAttribute('href') || '';
+          if (!/\.md([#?]|$)/.test(href)) return;
+          var parts = href.split('#');
+          var path = parts[0].replace(/^\.\//, '');
+          var hash = parts[1] ? '#' + parts[1] : '';
+          if (path.indexOf('意图识别说明') === 0) {
+            a.setAttribute('href', '意图识别说明.html' + hash);
+            return;
+          }
+          a.setAttribute('href', 'doc-preview.html?file=' + encodeURIComponent(path) + hash);
+        });
+      }
+
+      fetch(MD_FILE, { credentials: 'same-origin' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        })
+        .then(function (raw) {
+          rootEl.innerHTML = marked.parse(prepareIntentMd(raw));
+          rewriteMdLinks(rootEl);
+          var headings = buildHeadingAnchors(rootEl);
+          buildToc(headings);
+        })
+        .catch(function (err) {
+          rootEl.innerHTML =
+            '<p class="error">无法加载「' +
+            MD_FILE +
+            '」<br><small>' +
+            (err && err.message ? err.message : '') +
+            '</small></p>';
+          tocEl.innerHTML =
+            '<p class="toc__title">章节</p><ul class="toc__list"><li><a href="#flowchart">交互模式判定流程图</a></li></ul>';
+        });
+    })();
+  </script>
+</body>
+</html>

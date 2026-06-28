@@ -1,0 +1,27 @@
+flowchart TD
+    Start([收到用户输入]) --> Parse[解析功能意图 + 槽位<br/>结合当前卡片与会话态]
+    Parse --> BtnQ{是否页面按钮？}
+
+    BtnQ -->|是| Click[模拟点击]
+    BtnQ -->|否| SlotQ{拥有槽位信息？}
+
+    SlotQ -->|否| Partial[部分需求]
+    SlotQ -->|是| FullQ{必填槽位完整？}
+
+    FullQ -->|是| Full[完整需求]
+    FullQ -->|否| FormQ{当前卡片有表单<br/>且话术在补字段？}
+
+    FormQ -->|是| Form[表单填充]
+    FormQ -->|否| Partial
+
+    Click --> Route[输出路由<br/>解析槽位 + 目标卡片]
+    Full --> Route
+    Form --> Route
+    Partial --> Route
+
+    classDef mode fill:#e8f4fd,stroke:#2563eb,stroke-width:2px
+    classDef decision fill:#fff7ed,stroke:#ea580c,stroke-width:1px
+    classDef outNode fill:#f0fdf4,stroke:#16a34a,stroke-width:2px
+    class Click,Full,Form,Partial mode
+    class BtnQ,SlotQ,FullQ,FormQ decision
+    class Route outNode

@@ -10391,6 +10391,9 @@ function openChangeSheet(oid, opts) {
       default:
         App.toast('未知能力');
     }
+    if (App.recordRecentVisit && skillId) {
+      App.recordRecentVisit(skillId, { checkpoint: 'entry' });
+    }
   }
 
   function customersInEnterprise() {
@@ -11730,6 +11733,11 @@ function openChangeSheet(oid, opts) {
       if (inventoryCardState) {
         inventoryCardState.lowOnly = !inventoryCardState.lowOnly;
         refreshInventoryResultCard();
+        if (App.recordRecentVisit) {
+          App.recordRecentVisit('inventory', {
+            checkpointLabel: inventoryCardState.lowOnly ? '仅看可用为 0' : '全量概览'
+          });
+        }
       }
       return true;
     }
