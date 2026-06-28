@@ -107,10 +107,10 @@ async function run() {
     await page.waitForTimeout(700);
   }
 
-  const confirmBtn = await page.$('[data-action="copy-order-confirm"]:not([disabled])');
-  log('复制明细卡出现', !!confirmBtn);
-  if (confirmBtn) {
-    await confirmBtn.click();
+  const linePickBtn = await page.$('[data-action="copy-line-pick-confirm"]:not([disabled])');
+  log('复制勾选货品卡出现', !!linePickBtn);
+  if (linePickBtn) {
+    await linePickBtn.click();
     await page.waitForTimeout(800);
     const after = await page.evaluate(() => {
       const cards = document.querySelectorAll('[data-spec-id="sheet-order"]');
@@ -124,10 +124,10 @@ async function run() {
         htmlLen: card ? card.outerHTML.length : 0
       };
     });
-    log('确认复制 → 下单确认卡', after.sheetCount > 0 && after.active, 'sheets=' + after.sheetCount + ' html=' + after.htmlLen);
-    log('确认复制无 JS 报错', after.errors.length === 0, after.errors.join('; '));
+    log('勾选确认 → 下单确认卡', after.sheetCount > 0 && after.active, 'sheets=' + after.sheetCount + ' html=' + after.htmlLen);
+    log('勾选确认无 JS 报错', after.errors.length === 0, after.errors.join('; '));
   } else {
-    log('确认复制 → 下单确认卡', false, '无确认按钮');
+    log('勾选确认 → 下单确认卡', false, '无勾选确认按钮');
   }
 
   // 2. 下单确认卡点「确认下单」→ 成功卡

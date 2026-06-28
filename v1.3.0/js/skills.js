@@ -8182,7 +8182,7 @@ function orderProgressSalesperson(o) {
       '</div>' +
       '<div class="sc-card__actions-inline">' +
       '<button type="button" class="sc-btn sc-btn--ghost" data-action="copy-line-pick-repick">重选订单</button>' +
-      '<button type="button" class="sc-btn sc-btn--primary" data-action="copy-line-pick-confirm">确认选择</button>' +
+      '<button type="button" class="sc-btn sc-btn--primary" data-action="copy-line-pick-confirm">下一步：确认下单</button>' +
       '</div>' +
       '</div>'
     );
@@ -8356,14 +8356,6 @@ function orderProgressSalesperson(o) {
   }
 
   function runOrder() {
-    if (
-      ctx().orderPending &&
-      ctx().orderPending.sourceType === 'copy' &&
-      isActiveFlowCard('card-order-copy')
-    ) {
-      App.toast('请先在复制明细卡上点「确认复制」');
-      return;
-    }
     showOrderSkillEntry();
   }
 
@@ -9152,7 +9144,7 @@ function orderProgressSalesperson(o) {
       simulateUserUtterance('复制订单 ' + o.no);
     }
     App.pushAiHtml(
-      '<p class="sc-reply-lead">请勾选要复制的货品（可多选），确认后进入明细修改：</p>' +
+      '<p class="sc-reply-lead">请勾选要复制的货品（可多选），确认后进入下单确认：</p>' +
         renderCopyOrderLinePickCard(o, lines)
     );
     rescanAnnotationPins();
@@ -9188,14 +9180,17 @@ function orderProgressSalesperson(o) {
       if (line.quotePrice == null) line.quotePrice = hints.latestPrice;
       if (line.sub == null) line.sub = (line.quotePrice || 0) * (line.qty || 1);
     });
-    ctx().orderCopyExpandedIdx = 0;
+    enterSkill('order');
+    simulateUserUtterance('确认复制');
     App.pushAiHtml(
       '<p class="sc-reply-lead">已按订单 <strong>' +
         App.escapeHtml(o.no) +
         '</strong> 带入 ' +
-        filteredLines.length + ' 条明细，请核对并修改后确认下单：</p>' +
-        renderOrderCopyCard(o)
+        filteredLines.length +
+        ' 条明细，请核对后确认下单：</p>'
     );
+    showOrderConfirm();
+    focusSpecHost('sheet-order');
     rescanAnnotationPins();
     return true;
   }
