@@ -365,9 +365,11 @@
     return s;
   }
 
-  function renderCustomerCreateCardHtml(form, errors) {
+  function renderCustomerCreateCardHtml(form, errors, opts) {
     form = form || emptyCreateForm();
     errors = errors || {};
+    opts = opts || {};
+    const settled = !!opts.settled;
     const tree = DemoData.customerCategoryTree || {};
     const cat1Keys = Object.keys(tree);
     const cat2List = form.cat1 && tree[form.cat1] ? tree[form.cat1] : [];
@@ -389,7 +391,9 @@
     const isDomestic = form.regionScope !== 'international';
 
     let html =
-      '<div class="sc-card sc-card--compact sc-card--inline-form sc-card--customer-create" data-spec-id="card-customer-create">' +
+      '<div class="sc-card sc-card--compact sc-card--inline-form sc-card--customer-create"' +
+      (settled ? ' data-create-settled="1"' : '') +
+      ' data-spec-id="card-customer-create">' +
       '<div class="sc-card__head sc-card__head--compact">新增客户</div>' +
       '<div class="sc-form-scroll sc-form-scroll--card sc-form-scroll--create">' +
       '<div class="sc-form-meta-row">' +
@@ -410,7 +414,9 @@
       (errors.name ? ' sc-input--error' : '') +
       '" data-field="create-name" type="text" value="' +
       deps.escapeHtml(form.name) +
-      '" placeholder="请输入客户名称" autocomplete="off" />';
+      '" placeholder="请输入客户名称" autocomplete="off"' +
+      (settled ? ' readonly disabled' : '') +
+      ' />';
     if (errors.name) {
       html += '<p class="sc-field-hint sc-field-hint--error">' + deps.escapeHtml(errors.name) + '</p>';
     }
@@ -420,13 +426,15 @@
       '<div class="sc-field-row sc-field-row--2col">' +
       '<select class="sc-input sc-input--field' +
       (errors.cat1 ? ' sc-input--error' : '') +
-      '" data-field="create-cat1">' +
+      '" data-field="create-cat1"' +
+      (settled ? ' disabled' : '') +
+      '>' +
       buildSelectOptions(cat1Keys, form.cat1, '请选择一级') +
       '</select>' +
       '<select class="sc-input sc-input--field' +
-      (!form.cat1 ? ' sc-select--disabled' : '') +
+      (!form.cat1 || settled ? ' sc-select--disabled' : '') +
       '" data-field="create-cat2"' +
-      (!form.cat1 ? ' disabled' : '') +
+      (!form.cat1 || settled ? ' disabled' : '') +
       '>' +
       buildSelectOptions(cat2List, form.cat2, form.cat1 ? '可不选' : '请先选择一级') +
       '</select></div>' +
@@ -438,33 +446,43 @@
       '<div class="sc-segment" role="tablist">' +
       '<button type="button" class="sc-segment__item' +
       (isDomestic ? ' sc-segment__item--active' : '') +
-      '" data-action="create-region-domestic" role="tab">国内</button>' +
+      '"' +
+      (settled ? ' disabled' : ' data-action="create-region-domestic"') +
+      ' role="tab">国内</button>' +
       '<button type="button" class="sc-segment__item' +
       (!isDomestic ? ' sc-segment__item--active' : '') +
-      '" data-action="create-region-intl" role="tab">国际</button></div>';
+      '"' +
+      (settled ? ' disabled' : ' data-action="create-region-intl"') +
+      ' role="tab">国际</button></div>';
+
+    const selDis = function (baseDisabled) {
+      return baseDisabled || settled ? ' disabled' : '';
+    };
 
     if (isDomestic) {
       html +=
         '<label class="sc-field-label sc-field-label--sub">省/直辖市 <span class="sc-field-req">*</span></label>' +
         '<select class="sc-input sc-input--field' +
         (errors.region ? ' sc-input--error' : '') +
-        '" data-field="create-province">' +
+        '" data-field="create-province"' +
+        selDis(false) +
+        '>' +
         buildSelectOptions(provinces, form.province, '请选择') +
         '</select>' +
         '<div class="sc-field-row sc-field-row--2col">' +
         '<div><label class="sc-field-label sc-field-label--sub">市 <span class="sc-field-req">*</span></label>' +
         '<select class="sc-input sc-input--field' +
-        (!form.province ? ' sc-select--disabled' : '') +
+        (!form.province || settled ? ' sc-select--disabled' : '') +
         '" data-field="create-city"' +
-        (!form.province ? ' disabled' : '') +
+        selDis(!form.province) +
         '>' +
         buildSelectOptions(cities, form.city, form.province ? '请选择' : '请先选择省') +
         '</select></div>' +
         '<div><label class="sc-field-label sc-field-label--sub">区/县 <span class="sc-field-req">*</span></label>' +
         '<select class="sc-input sc-input--field' +
-        (!form.city ? ' sc-select--disabled' : '') +
+        (!form.city || settled ? ' sc-select--disabled' : '') +
         '" data-field="create-district"' +
-        (!form.city ? ' disabled' : '') +
+        selDis(!form.city) +
         '>' +
         buildSelectOptions(districts, form.district, form.city ? '请选择' : '请先选择市') +
         '</select></div></div>';
@@ -473,23 +491,25 @@
         '<label class="sc-field-label sc-field-label--sub">国家 <span class="sc-field-req">*</span></label>' +
         '<select class="sc-input sc-input--field' +
         (errors.region ? ' sc-input--error' : '') +
-        '" data-field="create-country">' +
+        '" data-field="create-country"' +
+        selDis(false) +
+        '>' +
         buildSelectOptions(countries, form.country, '请选择') +
         '</select>' +
         '<div class="sc-field-row sc-field-row--2col">' +
         '<div><label class="sc-field-label sc-field-label--sub">州/省 <span class="sc-field-req">*</span></label>' +
         '<select class="sc-input sc-input--field' +
-        (!form.country ? ' sc-select--disabled' : '') +
+        (!form.country || settled ? ' sc-select--disabled' : '') +
         '" data-field="create-state"' +
-        (!form.country ? ' disabled' : '') +
+        selDis(!form.country) +
         '>' +
         buildSelectOptions(states, form.state, form.country ? '请选择' : '请先选择国家') +
         '</select></div>' +
         '<div><label class="sc-field-label sc-field-label--sub">城市 <span class="sc-field-req">*</span></label>' +
         '<select class="sc-input sc-input--field' +
-        (!form.state ? ' sc-select--disabled' : '') +
+        (!form.state || settled ? ' sc-select--disabled' : '') +
         '" data-field="create-intl-city"' +
-        (!form.state ? ' disabled' : '') +
+        selDis(!form.state) +
         '>' +
         buildSelectOptions(intlCities, form.intlCity, form.state ? '请选择' : '请先选择州/省') +
         '</select></div></div>';
@@ -499,24 +519,27 @@
       html +=
         '<p class="sc-form-block__summary">✓ 已选：' + deps.escapeHtml(summary) + '</p>';
     }
-    if (errors.region) {
+    if (errors.region && !settled) {
       html += '<p class="sc-field-hint sc-field-hint--error">' + deps.escapeHtml(errors.region) + '</p>';
     }
 
-    html +=
-      '</div></div>' +
-      '<div class="sc-card__actions-inline sc-card__actions-inline--split">' +
-      '<button type="button" class="sc-btn sc-btn--ghost" data-action="customer-create-cancel">取消</button>' +
-      '<button type="button" class="sc-btn sc-btn--primary" data-action="customer-create-submit">提交</button>' +
-      '</div></div>';
+    html += '</div></div>';
+    if (!settled) {
+      html +=
+        '<div class="sc-card__actions-inline sc-card__actions-inline--split">' +
+        '<button type="button" class="sc-btn sc-btn--ghost" data-action="customer-create-cancel">取消</button>' +
+        '<button type="button" class="sc-btn sc-btn--primary" data-action="customer-create-submit">提交</button>' +
+        '</div>';
+    }
+    html += '</div>';
     return html;
   }
 
-  function refreshCreateCard(card, form, errors) {
+  function refreshCreateCard(card, form, errors, opts) {
     if (!card || !card.parentNode) return;
     const parent = card.parentNode;
     const next = document.createElement('div');
-    next.innerHTML = renderCustomerCreateCardHtml(form, errors);
+    next.innerHTML = renderCustomerCreateCardHtml(form, errors, opts);
     const fresh = next.firstElementChild;
     if (!fresh) return;
     parent.replaceChild(fresh, card);
@@ -524,10 +547,19 @@
     return fresh;
   }
 
-  function removeCreateFormMessage(card) {
-    const row = card && card.closest ? card.closest('.sc-msg') : null;
-    if (row) row.remove();
-    else if (card) card.remove();
+  function lockCreateFormCard(card, form) {
+    return refreshCreateCard(card, form, {}, { settled: true });
+  }
+
+  function cancelCreateForm(card, form) {
+    deps.pushUserMsg('取消新增客户');
+    lockCreateFormCard(card, form);
+    deps.pushAiHtml(
+      '<p class="sc-reply-lead">好的，已取消新增客户。您可以继续选择客户，或再次说「新增客户」建档。</p>'
+    );
+    if (deps.scrollMessages) deps.scrollMessages();
+    if (deps.persistChatHistory) deps.persistChatHistory();
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
   }
 
   function openCreateCustomerCard(prefillName, opts) {
@@ -603,7 +635,7 @@
     saveLocalCustomersRaw(local);
     DemoData.customers.push(customer);
     deps.pushUserMsg('新增客户：' + customer.name.trim());
-    removeCreateFormMessage(card);
+    lockCreateFormCard(card, form);
     deps.pushSystem('已新增客户：' + customer.name);
     deps.switchCustomer(id, { skipCustomerAnnounce: true });
     deps.pushAiHtml(deps.renderNextStepCard(id));
@@ -615,11 +647,11 @@
   function handleCreateAction(action, btn) {
     const card = btn.closest('[data-spec-id="card-customer-create"]');
     if (!card) return false;
+    if (card.getAttribute('data-create-settled') === '1') return false;
     let form = readCreateFormFromCard(card);
 
     if (action === 'customer-create-cancel') {
-      removeCreateFormMessage(card);
-      deps.persistChatHistory();
+      cancelCreateForm(card, form);
       return true;
     }
     if (action === 'customer-create-submit') {
@@ -644,7 +676,7 @@
 
   function handleCreateSelectChange(selectEl) {
     const card = selectEl.closest('[data-spec-id="card-customer-create"]');
-    if (!card) return;
+    if (!card || card.getAttribute('data-create-settled') === '1') return;
     const form = readCreateFormFromCard(card);
     const field = selectEl.getAttribute('data-field') || '';
     if (field === 'create-cat1') {
