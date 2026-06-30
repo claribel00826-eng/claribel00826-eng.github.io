@@ -25,6 +25,7 @@
 
   let customerPickerTab = 'both';
   let customerPickerQuery = '';
+  let customerPickerPurpose = 'switch';
 
   const $ = (sel) => document.querySelector(sel);
 
@@ -84,6 +85,12 @@
       return pt === 'customer' || pt === 'both';
     });
     if ((state.activeSkill === 'copy' || state.activeSkill === 'progress') && DemoData.isOldCustomer) {
+      const user = DemoData.demoSalesUser || DemoData.salesperson;
+      return pool.filter(function (c) {
+        return DemoData.isOldCustomer(c, user);
+      });
+    }
+    if (customerPickerPurpose === 'payment' && DemoData.isOldCustomer) {
       const user = DemoData.demoSalesUser || DemoData.salesperson;
       return pool.filter(function (c) {
         return DemoData.isOldCustomer(c, user);
@@ -799,6 +806,8 @@
   }
 
   function buildCustomerListHtml(items) {
+    const pickAction =
+      customerPickerPurpose === 'payment' ? 'payment-pick-customer' : 'pick-customer';
     if (!items.length) {
       return '<p class="sc-card__meta sc-card__empty-hint">无匹配客户，请调整筛选条件</p>';
     }
@@ -807,7 +816,9 @@
         return (
           '<button type="button" class="sc-list-item sc-list-item--customer' +
           (c.id === state.customerId ? ' sc-list-item--active' : '') +
-          '" data-action="pick-customer" data-cid="' +
+          '" data-action="' +
+          pickAction +
+          '" data-cid="' +
           escapeHtml(c.id) +
           '"><span class="sc-list-item__main"><span class="sc-list-item__name">' +
           escapeHtml(c.name) +
@@ -841,7 +852,9 @@
         '<div class="sc-customer-list sc-customer-list--card">' + buildCustomerListHtml(items) + '</div>';
     }
     return (
-      '<div class="sc-card sc-card--compact sc-card--inline-form" data-spec-id="sheet-customer">' +
+      '<div class="sc-card sc-card--compact sc-card--inline-form" data-spec-id="sheet-customer" data-customer-picker-purpose="' +
+      escapeHtml(customerPickerPurpose) +
+      '">' +
       '<div class="sc-card__head sc-card__head--compact">切换客户</div>' +
       '<input type="search" class="sc-search sc-card__search" data-action="customer-search" value="' +
       escapeHtml(customerPickerQuery) +
@@ -856,7 +869,9 @@
   function refreshLastCustomerPickCard() {
     const cards = document.querySelectorAll('[data-spec-id="sheet-customer"]');
     const card = cards[cards.length - 1];
-    if (card) card.outerHTML = renderCustomerPickCardHtml();
+    if (!card) return;
+    customerPickerPurpose = card.getAttribute('data-customer-picker-purpose') || 'switch';
+    card.outerHTML = renderCustomerPickCardHtml();
     if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
   }
 
@@ -1823,7 +1838,20 @@
     if (prefillQuery != null) customerPickerQuery = String(prefillQuery);
     else customerPickerQuery = '';
     customerPickerTab = 'both';
+    customerPickerPurpose = 'switch';
     pushAiHtml(renderCustomerPickCardHtml());
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
+  }
+
+  function openCustomerSheetForPayment(prefillQuery, opts) {
+    opts = opts || {};
+    customerPickerQuery = prefillQuery != null ? String(prefillQuery) : '';
+    customerPickerTab = 'both';
+    customerPickerPurpose = 'payment';
+    const lead = opts.lead
+      ? '<p class="sc-reply-lead">' + escapeHtml(opts.lead) + '</p>'
+      : '';
+    pushAiHtml(lead + renderCustomerPickCardHtml());
     if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
   }
 
@@ -2095,8 +2123,17 @@
     }
 
     $('#messages').addEventListener('input', function (e) {
+      const regionSearchInp = e.target.closest('[data-action="create-region-search"]');
+      if (regionSearchInp && window.V155 && V155.handleCreateRegionSearch) {
+        V155.handleCreateRegionSearch(regionSearchInp);
+        return;
+      }
       const inp = e.target.closest('[data-action="customer-search"]');
       if (!inp) return;
+      const pickerCard = inp.closest('[data-spec-id="sheet-customer"]');
+      if (pickerCard) {
+        customerPickerPurpose = pickerCard.getAttribute('data-customer-picker-purpose') || 'switch';
+      }
       customerPickerQuery = inp.value;
       refreshLastCustomerPickCard();
     });
@@ -2231,6 +2268,7 @@
       promptForCustomerSelection,
       skillNeedsCustomer,
       openCustomerSheet,
+      openCustomerSheetForPayment,
       switchActiveSkill,
       openSkillSwitchConfirm,
       isLatestFlowCardActive,

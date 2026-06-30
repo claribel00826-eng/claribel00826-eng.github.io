@@ -137,6 +137,30 @@ window.Skills = (function () {
       hint: '可点底部技能条，或直接说「配个方案」「报价」「下单」',
       specId: 'chat-skill-bar'
     },
+    paymentYear: {
+      message: '请先确定查询年份',
+      hint: '可说「今年」「2024年」，或点年份选项',
+      specId: 'card-payment-year',
+      ensureCard: function () {
+        enterSkill('payment');
+        pushPaymentYearStep(ensurePaymentQuery());
+      },
+      pushLead: false
+    },
+    paymentScope: {
+      message: '请确定查询范围',
+      hint: '可说「全部」或客户名；点「全部客户」汇总',
+      specId: 'card-payment-scope',
+      ensureCard: function () {
+        var pq = ensurePaymentQuery();
+        if (!pq.year) {
+          pushPaymentYearStep(pq);
+          return;
+        }
+        pushPaymentScopeStep(pq);
+      },
+      pushLead: false
+    },
     planDemand: {
       message: '请描述采购需求',
       hint: '例：伺服电机和传动齿轮箱各 2 台',
@@ -4103,10 +4127,7 @@ function deliveryOpenFormForOrder(o) {
   }
 
   function syncPlanSkuFromDom() {
-    document.querySelectorAll('[data-action="plan-sku"]').forEach((sel) => {
-      const id = sel.getAttribute('data-pid');
-      if (id && ctx().plan) ctx().plan.sku[id] = sel.value;
-    });
+    syncPickCustomAttrsFromDom('plan');
   }
 
   function planSelectedIds() {
@@ -4580,17 +4601,18 @@ function deliveryOpenFormForOrder(o) {
 
   function renderPlanCartCardFixed() {
     syncPlanQtyFromDom();
+    syncPickCustomAttrsFromDom('plan');
     const plan = ctx().plan;
     const items = planSelectedIds().map((pid) => ({ p: productById(pid), qty: plan.qty[pid] || 1 }));
     const rows = items
       .map((it) => {
         const pid = it.p.id;
         return (
-          '<div class="sc-plan-cart-row"><span class="sc-follow-row__name">' +
+          '<div class="sc-plan-cart-row sc-plan-cart-row--free"><span class="sc-follow-row__name">' +
           App.escapeHtml(it.p.name) +
-          '</span>' +
-          renderSkuSelect(it.p, pid) +
-          '<label class="sc-qty-inline">数量 <input type="number" min="1" value="' +
+          '</span><div class="sc-plan-cart-row__spec">' +
+          renderPickSpecBlock(it.p, pid, 'plan') +
+          '</div><label class="sc-plan-cart-qty sc-qty-inline">数量 <input type="number" min="1" value="' +
           it.qty +
           '" data-action="plan-qty" data-pid="' +
           pid +
@@ -4806,11 +4828,16 @@ function deliveryOpenFormForOrder(o) {
       const p = productById(pid);
       const qty = plan.qty[pid] || 1;
       const skuId = plan.sku[pid] || DemoData.defaultSkuId(p);
+      const customAttrs = plan.customAttrs && plan.customAttrs[pid];
+      const skuLabel = customAttrs
+        ? DemoData.skuLabelFromAttrs(p, customAttrs)
+        : DemoData.skuLabel(p, skuId);
       return {
         productId: pid,
         name: p.name,
         skuId,
-        skuLabel: DemoData.skuLabel(p, skuId),
+        skuLabel,
+        customAttrs: customAttrs || null,
         qty,
         sub: p.unitPrice * qty
       };
@@ -6001,6 +6028,7 @@ function deliveryOpenFormForOrder(o) {
   }
 
   function linesFromQuoteDraft(draft) {
+    syncPickCustomAttrsFromDom('quote');
     return quoteSelectedIds()
       .map((pid) => {
         const pr = productById(pid);
@@ -6010,7 +6038,15 @@ function deliveryOpenFormForOrder(o) {
           qty: draft.qty[pid] || 1
         };
         if (draft.quotePrice && draft.quotePrice[pid] != null) opts.quotePrice = draft.quotePrice[pid];
-        return makeQuoteLine(pr, opts);
+        const line = makeQuoteLine(pr, opts);
+        if (draft.customAttrs && draft.customAttrs[pid]) {
+          line.customAttrs = draft.customAttrs[pid].map(function (a) {
+            return Object.assign({}, a);
+          });
+          line.skuLabel = DemoData.skuLabelFromAttrs(pr, line.customAttrs);
+          line._customAttrsTouched = true;
+        }
+        return line;
       })
       .filter(Boolean);
   }
@@ -7488,14 +7524,23 @@ function orderProgressSalesperson(o) {
   }
 
   function linesFromOrderDraft(draft) {
+    syncPickCustomAttrsFromDom('order');
     return orderSelectedIds()
       .map((pid) => {
         const pr = productById(pid);
         if (!pr) return null;
-        return makeQuoteLine(pr, {
+        const line = makeQuoteLine(pr, {
           skuId: draft.sku[pid] || DemoData.defaultSkuId(pr),
           qty: draft.qty[pid] || 1
         });
+        if (draft.customAttrs && draft.customAttrs[pid]) {
+          line.customAttrs = draft.customAttrs[pid].map(function (a) {
+            return Object.assign({}, a);
+          });
+          line.skuLabel = DemoData.skuLabelFromAttrs(pr, line.customAttrs);
+          line._customAttrsTouched = true;
+        }
+        return line;
       })
       .filter(Boolean);
   }
@@ -7599,14 +7644,33 @@ function orderProgressSalesperson(o) {
     );
   }
 
+  function refreshLastOrderCartCard() {
+    const cards = document.querySelectorAll('[data-spec-id="card-order-cart"]');
+    const card = cards[cards.length - 1];
+    if (card) card.outerHTML = renderOrderProductCartCard();
+    rescanAnnotationPins();
+  }
+
   function renderOrderProductCartCard() {
     syncOrderQtyFromDom();
+    syncPickCustomAttrsFromDom('order');
     const d = ctx().orderDraft;
-    const rows = orderSelectedIds().map((pid) => {
-      const pr = productById(pid);
-      return '<div class="sc-plan-cart-row"><span class="sc-follow-row__name">' + App.escapeHtml(pr.name) + '</span>' + renderOrderSkuSelect(pr, pid) +
-        '<label class="sc-qty-inline">数量 <input type="number" min="1" value="' + (d.qty[pid] || 1) + '" data-action="order-qty" data-pid="' + pid + '" class="sc-qty-input"/></label></div>';
-    }).join('');
+    const rows = orderSelectedIds()
+      .map((pid) => {
+        const pr = productById(pid);
+        return (
+          '<div class="sc-plan-cart-row sc-plan-cart-row--free"><span class="sc-follow-row__name">' +
+          App.escapeHtml(pr.name) +
+          '</span><div class="sc-plan-cart-row__spec">' +
+          renderPickSpecBlock(pr, pid, 'order') +
+          '</div><label class="sc-plan-cart-qty sc-qty-inline">数量 <input type="number" min="1" value="' +
+          (d.qty[pid] || 1) +
+          '" data-action="order-qty" data-pid="' +
+          pid +
+          '" class="sc-qty-input"/></label></div>'
+        );
+      })
+      .join('');
     const deliveryLines = !!ctx().deliveryLinesMode;
     const headTitle = deliveryLines ? '交期明细' : '订单购物车';
     const nextAction = deliveryLines ? 'delivery-lines-confirm' : 'order-to-quote-setup';
@@ -10195,58 +10259,400 @@ function openChangeSheet(oid, opts) {
     return String(num);
   }
 
-  function renderPaymentResultCard(data, year) {
-    var displayYear = year || new Date().getFullYear();
+  function ensurePaymentQuery(overrides) {
+    var cur = new Date().getFullYear();
+    var pq = ctx().paymentQuery || {};
+    ctx().paymentQuery = {
+      year: pq.year != null ? pq.year : null,
+      customerId: pq.customerId != null ? pq.customerId : null,
+      step: pq.step || 'year',
+      prefillYear: pq.prefillYear != null ? pq.prefillYear : null,
+      prefillScopeAll: !!pq.prefillScopeAll,
+      prefillCustomerQuery: pq.prefillCustomerQuery || '',
+      prefillCustomerId: pq.prefillCustomerId || null,
+      customerSearch: pq.customerSearch || ''
+    };
+    if (overrides) {
+      Object.keys(overrides).forEach(function (k) {
+        ctx().paymentQuery[k] = overrides[k];
+      });
+    }
+    return ctx().paymentQuery;
+  }
+
+  function resetPaymentQuery(prefill) {
+    ctx().paymentQuery = {
+      year: null,
+      customerId: null,
+      step: 'year',
+      prefillYear: null,
+      prefillScopeAll: false,
+      prefillCustomerQuery: '',
+      prefillCustomerId: null,
+      customerSearch: ''
+    };
+    if (prefill) {
+      Object.keys(prefill).forEach(function (k) {
+        ctx().paymentQuery[k] = prefill[k];
+      });
+    }
+    return ctx().paymentQuery;
+  }
+
+  function paymentOldCustomers() {
+    var user = DemoData.demoSalesUser || DemoData.salesperson;
+    return customersInEnterprise().filter(function (c) {
+      var pt = c.partnerType || 'customer';
+      return (
+        (pt === 'customer' || pt === 'both') &&
+        DemoData.isOldCustomer &&
+        DemoData.isOldCustomer(c, user)
+      );
+    });
+  }
+
+  function getPaymentYearOptions() {
+    var cur = new Date().getFullYear();
+    var years = [];
+    var y;
+    for (y = 2021; y <= cur; y++) years.push(y);
+    return years;
+  }
+
+  function parsePaymentYearFromText(text) {
+    var t = (text || '').trim();
+    if (!t) return null;
+    var cur = new Date().getFullYear();
+    if (/今年|本年|当前年/.test(t)) return cur;
+    if (/去年/.test(t)) return cur - 1;
+    var m = t.match(/(20\d{2})\s*年?/);
+    if (m) {
+      var y = parseInt(m[1], 10);
+      if (y >= 2021 && y <= cur) return y;
+    }
+    return null;
+  }
+
+  function parsePaymentUtterance(text) {
+    var prefill = {
+      prefillYear: null,
+      prefillScopeAll: false,
+      prefillCustomerQuery: '',
+      prefillCustomerId: null
+    };
+    if (!text) return prefill;
+    prefill.prefillYear = parsePaymentYearFromText(text);
+    if (/全部|所有客户|汇总/.test(text)) {
+      prefill.prefillScopeAll = true;
+    }
+    var pool = paymentOldCustomers();
+    if (DemoData.resolveCustomerUtterance) {
+      var res = DemoData.resolveCustomerUtterance(text, pool);
+      if (res.status === 'unique') {
+        prefill.prefillCustomerId = res.customer.id;
+        prefill.prefillCustomerQuery = res.customer.name;
+      } else if (res.status === 'ambiguous') {
+        prefill.prefillCustomerQuery = res.query || '';
+      }
+    }
+    return prefill;
+  }
+
+  function paymentYearChipLabel(y) {
+    var cur = new Date().getFullYear();
+    return y === cur ? '今年' : y + '年';
+  }
+
+  function renderPaymentYearStepCard(pq) {
+    var years = getPaymentYearOptions();
+    var cur = new Date().getFullYear();
+    var chips = years
+      .map(function (y) {
+        var cls = 'sc-payment-year-chip';
+        var tags = '';
+        if (y === cur) cls += ' sc-payment-year-chip--recommended';
+        if (pq.prefillYear === y) cls += ' sc-payment-year-chip--prefill';
+        if (y === cur && pq.prefillYear !== y) {
+          tags += '<span class="sc-payment-year-chip__tag">★推荐</span>';
+        } else if (pq.prefillYear === y) {
+          tags += '<span class="sc-payment-year-chip__tag">待确认</span>';
+        }
+        return (
+          '<button type="button" class="' +
+          cls +
+          '" data-action="payment-pick-year" data-year="' +
+          y +
+          '">' +
+          '<span>' +
+          App.escapeHtml(paymentYearChipLabel(y)) +
+          '</span>' +
+          tags +
+          '</button>'
+        );
+      })
+      .join('');
     return (
-      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
-      '<div class="sc-card__head sc-card__head--compact">回款分析 · ' + displayYear + '年</div>' +
-      '<div class="sc-payment-overview">' +
-      '<div class="sc-payment-overview__item">' +
-      '<span class="sc-payment-overview__label">本年销售金额</span>' +
-      '<span class="sc-payment-overview__value">' + formatPaymentMoney(data.annualSalesAmount) + '</span>' +
+      '<div class="sc-card sc-card--compact sc-card--payment-step" data-spec-id="card-payment-year">' +
+      '<div class="sc-payment-step__head">' +
+      '<p class="sc-payment-step__kicker">回款分析</p>' +
+      '<span class="sc-payment-step__badge">Step 1/2</span>' +
       '</div>' +
-      '<div class="sc-payment-overview__item">' +
-      '<span class="sc-payment-overview__label">计划收款额</span>' +
-      '<span class="sc-payment-overview__value">' + formatPaymentMoney(data.plannedCollectionAmount) + '</span>' +
+      '<p class="sc-payment-step__subtitle">请选择年份</p>' +
+      '<div class="sc-payment-year-grid" role="group" aria-label="选择年份">' +
+      chips +
       '</div>' +
-      '<div class="sc-payment-overview__item">' +
-      '<span class="sc-payment-overview__label">应收金额</span>' +
-      '<span class="sc-payment-overview__value">' + formatPaymentMoney(data.receivableBalance) + '</span>' +
-      '</div>' +
-      '<div class="sc-payment-overview__item">' +
-      '<span class="sc-payment-overview__label">未收金额</span>' +
-      '<span class="sc-payment-overview__value sc-payment-overview__value--warn">' + formatPaymentMoney(data.unreceivedAmount) + '</span>' +
-      '</div>' +
-      '</div>' +
-      renderPaymentMonthlyChart(data.monthlyDetails || []) +
-      '<div class="sc-card__actions-inline">' +
-      '<button type="button" class="sc-btn sc-btn--ghost" data-action="payment-change-year">更换年份</button>' +
-      '</div>' +
+      '<p class="sc-payment-step__hint">点选年份后将进入范围选择</p>' +
       '</div>'
     );
   }
 
-  function renderPaymentYearPickerCard(currentYear) {
-    var years = [2021, 2022, 2023, 2024, 2025];
-    var current = currentYear || new Date().getFullYear();
-    var yearOptions = years.map(function(y) {
-      var isChecked = y === current;
-      return '<label class="sc-radio-label">' +
-        '<input type="radio" name="payment-year" value="' + y + '"' + (isChecked ? ' checked' : '') + '>' +
-        '<span>' + y + '年</span>' +
-        '</label>';
-    }).join('');
+  function renderPaymentScopeStepCard(pq) {
+    var allCls = 'sc-plan-entry__option sc-plan-entry__option--primary';
+    if (pq.prefillScopeAll) allCls += ' sc-plan-entry__option--prefill';
+    var pickCls = 'sc-plan-entry__option';
+    if (pq.prefillCustomerId || pq.prefillCustomerQuery) pickCls += ' sc-plan-entry__option--prefill';
+    var allTitle = pq.prefillScopeAll ? '全部客户 <span class="sc-payment-year-chip__tag">待确认</span>' : '全部客户';
+    var pickTitle = pq.prefillCustomerId || pq.prefillCustomerQuery
+      ? '选择指定客户 <span class="sc-payment-year-chip__tag">待确认</span>'
+      : '选择指定客户';
     return (
-      '<p class="sc-reply-lead">请选择年份：</p>' +
-      '<div class="sc-card sc-card--compact" data-spec-id="card-payment-year-picker">' +
-      '<div class="sc-card__body">' +
-      '<div class="sc-radio-group">' +
-      yearOptions +
+      '<div class="sc-card sc-card--compact sc-card--payment-step" data-spec-id="card-payment-scope">' +
+      '<div class="sc-payment-step__head">' +
+      '<p class="sc-payment-step__kicker">回款分析 · <span class="sc-payment-step__kicker-year">' +
+      pq.year +
+      '年</span></p>' +
+      '<span class="sc-payment-step__badge">Step 2/2</span>' +
+      '</div>' +
+      '<p class="sc-payment-step__subtitle">选择查询范围（客户可选）</p>' +
+      '<div class="sc-payment-scope__actions" role="group" aria-label="选择查询范围">' +
+      '<button type="button" class="' +
+      allCls +
+      '" data-action="payment-scope-all">' +
+      '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">' +
+      allTitle +
+      '</span><span class="sc-plan-entry__option-desc">汇总您负责的全部老客户</span></span>' +
+      '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>' +
+      '<button type="button" class="' +
+      pickCls +
+      '" data-action="payment-scope-open-customer">' +
+      '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">' +
+      pickTitle +
+      '</span><span class="sc-plan-entry__option-desc">从老客户列表中点选</span></span>' +
+      '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>' +
+      '</div>' +
+      '<p class="sc-payment-step__hint">点「全部客户」或「选择指定客户」以继续</p>' +
+      '</div>'
+    );
+  }
+
+  function pushPaymentCustomerPickStep(pq) {
+    if (pq.prefillCustomerQuery && !pq.customerSearch) {
+      pq.customerSearch = pq.prefillCustomerQuery;
+    }
+    if (App.openCustomerSheetForPayment) {
+      App.openCustomerSheetForPayment(pq.customerSearch || '', {
+        lead: '请从老客户列表中选择要查询的客户：'
+      });
+    }
+    rescanAnnotationPins();
+  }
+
+  function openPaymentCustomerPicker() {
+    simulateUserUtterance('选择指定客户');
+    pushPaymentCustomerPickStep(ensurePaymentQuery());
+  }
+
+  function pushPaymentYearStep(pq) {
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">好的，先确认查询哪一年的回款。可以说「今年」或「2024年」，也可以点下面选项。</p>' +
+        renderPaymentYearStepCard(pq)
+    );
+    rescanAnnotationPins();
+  }
+
+  function pushPaymentScopeStep(pq) {
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">已选 <strong>' +
+        pq.year +
+        '年</strong>。要查某位老客户的回款，还是汇总全部？可以说「全部」，或点下面选项。</p>' +
+        renderPaymentScopeStepCard(pq)
+    );
+    rescanAnnotationPins();
+  }
+
+  function selectPaymentYear(year, opts) {
+    opts = opts || {};
+    var pq = ensurePaymentQuery();
+    pq.year = year;
+    pq.step = 'scope';
+    if (!opts.skipUserMsg) {
+      var cur = new Date().getFullYear();
+      simulateUserUtterance(year === cur ? '今年' : year + '年');
+    }
+    pushPaymentScopeStep(pq);
+  }
+
+  function paymentScopeLabel(pq) {
+    if (!pq.customerId) return '全部客户';
+    var c = DemoData.customers.find(function (x) {
+      return x.id === pq.customerId;
+    });
+    return c ? c.name : '指定客户';
+  }
+
+  function pushPaymentResult() {
+    var pq = ensurePaymentQuery();
+    if (!pq.year) {
+      guideMissingSlot('paymentYear');
+      return;
+    }
+    if (!DemoData.paymentAnalysis) {
+      App.toast('暂无回款数据');
+      return;
+    }
+    var data = DemoData.getPaymentAnalysis(pq.year, pq.customerId);
+    var scopeLabel = paymentScopeLabel(pq);
+    var hasData =
+      (data.annualSalesAmount || 0) +
+        (data.receivableBalance || 0) +
+        (data.unreceivedAmount || 0) >
+      0;
+    pq.step = 'done';
+    var lead =
+      '<p class="sc-reply-lead">为您汇总 <strong>' +
+      App.escapeHtml(scopeLabel) +
+      '</strong> 回款与应收：</p>';
+    var emptyHint = hasData
+      ? ''
+      : '<p class="sc-card__meta">该范围在本年度暂无应收数据</p>';
+    App.pushAiHtml(lead + emptyHint + renderPaymentResultCard(data, pq.year, pq.customerId));
+    if (App.recordRecentVisit) {
+      var shortScope = pq.customerId ? paymentScopeLabel(pq) : '全部';
+      if (shortScope.length > 8) shortScope = shortScope.slice(0, 8) + '…';
+      App.recordRecentVisit('payment', {
+        customerId: pq.customerId || null,
+        checkpoint: 'result',
+        checkpointLabel: pq.year + '年 · ' + shortScope,
+        meta: { year: pq.year, paymentCustomerId: pq.customerId || null }
+      });
+    }
+    rescanAnnotationPins();
+  }
+
+  function beginPaymentScopeAll() {
+    simulateUserUtterance('全部客户');
+    var pq = ensurePaymentQuery();
+    pq.customerId = null;
+    pushPaymentResult();
+  }
+
+  function beginPaymentCustomerPick(customerId) {
+    var c = DemoData.customers.find(function (x) {
+      return x.id === customerId;
+    });
+    if (!c) return;
+    simulateUserUtterance(c.name);
+    var pq = ensurePaymentQuery();
+    pq.customerId = customerId;
+    pushPaymentResult();
+  }
+
+  function tryPaymentStepIntent(t) {
+    var pq = ctx().paymentQuery;
+    if (!pq || App.state.activeSkill !== 'payment') return false;
+    if (pq.step === 'done') return false;
+    var text = (t || '').trim();
+    if (!text) return true;
+    if (pq.step === 'year') {
+      var year = parsePaymentYearFromText(text);
+      if (year) {
+        selectPaymentYear(year);
+        return true;
+      }
+      guideMissingSlot('paymentYear', { skipToast: true });
+      return true;
+    }
+    if (pq.step === 'scope') {
+      if (/全部|所有客户|汇总/.test(text)) {
+        beginPaymentScopeAll();
+        return true;
+      }
+      if (/选择指定客户|指定客户/.test(text)) {
+        openPaymentCustomerPicker();
+        return true;
+      }
+      var pool = paymentOldCustomers();
+      if (DemoData.resolveCustomerUtterance) {
+        var res = DemoData.resolveCustomerUtterance(text, pool);
+        if (res.status === 'unique') {
+          beginPaymentCustomerPick(res.customer.id);
+          return true;
+        }
+        if (res.status === 'ambiguous') {
+          pq.prefillCustomerQuery = res.query || text;
+          pq.customerSearch = res.query || text;
+          simulateUserUtterance(text);
+          pushPaymentCustomerPickStep(pq);
+          return true;
+        }
+      }
+      guideMissingSlot('paymentScope', { skipToast: true });
+      return true;
+    }
+    return false;
+  }
+
+  function renderPaymentResultCard(data, year, customerId) {
+    var displayYear = year || new Date().getFullYear();
+    var scopeTitle;
+    if (customerId) {
+      var c = DemoData.customers.find(function (x) {
+        return x.id === customerId;
+      });
+      var name = c ? c.name : '指定客户';
+      if (name.length > 14) name = name.slice(0, 14) + '…';
+      scopeTitle = App.escapeHtml(name);
+    } else {
+      scopeTitle =
+        '<span class="sc-payment-head__scope sc-payment-head__scope--all">全部客户</span>';
+    }
+    return (
+      '<div class="sc-card sc-card--compact sc-card--payment" data-spec-id="card-payment">' +
+      '<div class="sc-card__head sc-card__head--compact">回款分析 · ' +
+      displayYear +
+      '年 · ' +
+      scopeTitle +
+      '</div>' +
+      '<div class="sc-payment-overview">' +
+      '<div class="sc-payment-overview__item">' +
+      '<span class="sc-payment-overview__label">本年销售金额</span>' +
+      '<span class="sc-payment-overview__value">' +
+      formatPaymentMoney(data.annualSalesAmount) +
+      '</span>' +
+      '</div>' +
+      '<div class="sc-payment-overview__item">' +
+      '<span class="sc-payment-overview__label">计划收款额</span>' +
+      '<span class="sc-payment-overview__value">' +
+      formatPaymentMoney(data.plannedCollectionAmount) +
+      '</span>' +
+      '</div>' +
+      '<div class="sc-payment-overview__item">' +
+      '<span class="sc-payment-overview__label">应收金额</span>' +
+      '<span class="sc-payment-overview__value">' +
+      formatPaymentMoney(data.receivableBalance) +
+      '</span>' +
+      '</div>' +
+      '<div class="sc-payment-overview__item">' +
+      '<span class="sc-payment-overview__label">未收金额</span>' +
+      '<span class="sc-payment-overview__value sc-payment-overview__value--warn">' +
+      formatPaymentMoney(data.unreceivedAmount) +
+      '</span>' +
       '</div>' +
       '</div>' +
-      '<div class="sc-card__actions">' +
-      '<button type="button" class="sc-btn sc-btn--ghost" data-action="payment-year-cancel">取消</button>' +
-      '<button type="button" class="sc-btn sc-btn--primary" data-action="payment-year-confirm">确认</button>' +
+      renderPaymentMonthlyChart(data.monthlyDetails || []) +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="payment-change-year">换年份</button>' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="payment-change-scope">换范围</button>' +
       '</div>' +
       '</div>'
     );
@@ -10329,20 +10735,27 @@ function openChangeSheet(oid, opts) {
 
   function runPayment(opts) {
     opts = opts || {};
-    var data = DemoData.paymentAnalysis;
-    if (!data) {
+    enterSkill('payment');
+    if (!DemoData.paymentAnalysis) {
       App.toast('暂无回款数据');
       return;
     }
+    if (opts.resume && opts.resume.year) {
+      resetPaymentQuery({
+        year: opts.resume.year,
+        customerId: opts.resume.customerId || null,
+        step: 'done'
+      });
+      pushPaymentResult();
+      return;
+    }
     var utterance = opts.utterance || '';
+    var prefill = parsePaymentUtterance(utterance);
+    resetPaymentQuery(prefill);
     if (opts.simulateUserMsg && utterance) {
       simulateUserUtteranceUnlessDuplicate(utterance);
     }
-    App.pushAiHtml(
-      '<p class="sc-reply-lead">为您汇总 <strong>全部客户</strong> 回款与应收：</p>' +
-        renderPaymentResultCard(data)
-    );
-    rescanAnnotationPins();
+    pushPaymentYearStep(ctx().paymentQuery);
   }
 
   function run(skillId) {
@@ -10386,7 +10799,7 @@ function openChangeSheet(oid, opts) {
       default:
         App.toast('未知能力');
     }
-    if (App.recordRecentVisit && skillId) {
+    if (App.recordRecentVisit && skillId && skillId !== 'payment') {
       App.recordRecentVisit(skillId, { checkpoint: 'entry' });
     }
   }
@@ -10790,6 +11203,9 @@ function openChangeSheet(oid, opts) {
 
   function tryIntent(t) {
     syncCustomerFromDemandUtterance(t);
+    if (App.state.activeSkill === 'payment' && ctx().paymentQuery && ctx().paymentQuery.step !== 'done') {
+      if (tryPaymentStepIntent(t)) return true;
+    }
     if (tryPlanTemplateUtterance(t)) return true;
     if (tryQuoteTemplateUtterance(t)) return true;
     if (tryCrossFunctionHandoff(t)) return true;
@@ -10971,6 +11387,14 @@ function openChangeSheet(oid, opts) {
     const pid = btn.getAttribute('data-pid');
     const oid = btn.getAttribute('data-oid');
 
+    if (action === 'free-attr-add-confirm') {
+      confirmFreeAttrAdd(btn);
+      return true;
+    }
+    if (action === 'free-attr-add-cancel') {
+      cancelFreeAttrAdd(btn);
+      return true;
+    }
     if (action === 'pick-free-attr') {
       onPickFreeAttrChange(btn);
       return true;
@@ -11651,24 +12075,39 @@ function openChangeSheet(oid, opts) {
       changeRepickOrder();
       return true;
     }
+    if (action === 'payment-pick-year') {
+      var pickYear = parseInt(btn.getAttribute('data-year'), 10);
+      if (pickYear) selectPaymentYear(pickYear);
+      return true;
+    }
+    if (action === 'payment-scope-all') {
+      beginPaymentScopeAll();
+      return true;
+    }
+    if (action === 'payment-scope-open-customer') {
+      openPaymentCustomerPicker();
+      return true;
+    }
+    if (action === 'payment-pick-customer') {
+      var payCid = btn.getAttribute('data-cid');
+      if (payCid) beginPaymentCustomerPick(payCid);
+      return true;
+    }
     if (action === 'payment-change-year') {
-      simulateUserUtterance('更换年份');
-      App.pushAiHtml(renderPaymentYearPickerCard());
+      simulateUserUtterance('换年份');
+      resetPaymentQuery(parsePaymentUtterance(''));
+      pushPaymentYearStep(ctx().paymentQuery);
       return true;
     }
-    if (action === 'payment-year-cancel') {
-      const card = btn.closest('[data-spec-id="card-payment-year-picker"]');
-      if (card) card.remove();
-      return true;
-    }
-    if (action === 'payment-year-confirm') {
-      const card = btn.closest('[data-spec-id="card-payment-year-picker"]');
-      const selected = card && card.querySelector('input[name="payment-year"]:checked');
-      if (selected) {
-        const year = parseInt(selected.value, 10);
-        simulateUserUtterance('查看' + year + '年的数据');
-        App.pushAiHtml(renderPaymentResultCard(DemoData.getPaymentAnalysis(year), year));
-      }
+    if (action === 'payment-change-scope') {
+      simulateUserUtterance('换范围');
+      var pqScope = ensurePaymentQuery();
+      var keepYear = pqScope.year;
+      resetPaymentQuery(parsePaymentUtterance(''));
+      pqScope = ensurePaymentQuery();
+      pqScope.year = keepYear;
+      pqScope.step = 'scope';
+      pushPaymentScopeStep(pqScope);
       return true;
     }
     if (action === 'biz-change-range') {
@@ -11797,6 +12236,126 @@ function openChangeSheet(oid, opts) {
     return null;
   }
 
+  function getFreeAttrAddDraft() {
+    return ctx().freeAttrAddDraft || null;
+  }
+
+  function setFreeAttrAddDraft(draft) {
+    if (draft) ctx().freeAttrAddDraft = draft;
+    else if (ctx().freeAttrAddDraft) delete ctx().freeAttrAddDraft;
+  }
+
+  function isFreeAttrAddOpen(scope, pid, key, idx) {
+    const d = getFreeAttrAddDraft();
+    if (!d) return false;
+    const idxStr = idx !== '' && idx != null ? String(idx) : '';
+    return d.scope === scope && d.pid === pid && d.key === key && String(d.idx || '') === idxStr;
+  }
+
+  function freeAttrMapFromAttrs(attrs) {
+    const map = {};
+    (attrs || []).forEach(function (a) {
+      if (a && a.key) map[a.key] = a.value;
+    });
+    return map;
+  }
+
+  function maybeSyncSkuFromAttrs(target, product, attrs) {
+    if (!target || !product) return;
+    const exact = DemoData.findSkuByAttrValues(product, freeAttrMapFromAttrs(attrs), { strict: true });
+    if (exact) target.skuId = exact.id;
+  }
+
+  function refreshFreeAttrHost(scope) {
+    if (scope === 'plan') {
+      if (document.querySelector('[data-spec-id="card-plan-preview"]')) refreshLastPlanCartCard();
+      else refreshLastPlanPickCard();
+      return;
+    }
+    if (scope === 'quote') {
+      refreshLastQuotePickCard();
+      return;
+    }
+    if (scope === 'order') {
+      if (document.querySelector('[data-spec-id="card-order-cart"]')) refreshLastOrderCartCard();
+      else refreshLastOrderPickCard();
+      return;
+    }
+    if (scope === 'quote-line') {
+      if (isQuoteSetupOpen()) refreshQuoteSetupLines();
+      else if (document.querySelector('[data-spec-id="card-quote-cart"]')) refreshLastQuoteConfirmCard();
+    }
+  }
+
+  function renderFreeAttrAddInline(scope, pid, key, idx, label) {
+    const idxAttr = idx !== '' && idx != null ? ' data-idx="' + idx + '"' : '';
+    return (
+      '<div class="sc-free-attr-add sc-free-attr-add--inline" data-free-attr-add data-scope="' +
+      scope +
+      '" data-pid="' +
+      pid +
+      '" data-attr-key="' +
+      App.escapeHtml(key) +
+      '"' +
+      idxAttr +
+      '><input type="text" class="sc-input sc-input--field sc-free-attr-add__input sc-pick-free-attr__control" data-field="free-attr-add-input" placeholder="请输入' +
+      App.escapeHtml(label) +
+      '，如：玫瑰金" maxlength="' +
+      DemoData.FREE_ATTR_ADD_MAX_LEN +
+      '" autofocus />' +
+      '<div class="sc-free-attr-add__actions">' +
+      '<button type="button" class="sc-btn sc-btn--ghost sc-btn--sm" data-action="free-attr-add-cancel">取消</button>' +
+      '<button type="button" class="sc-btn sc-btn--primary sc-btn--sm" data-action="free-attr-add-confirm">确定</button>' +
+      '</div></div>'
+    );
+  }
+
+  function renderPickFreeAttrSelect(scope, pid, attr, product, idx, stopProp) {
+    const pickOpts = DemoData.freeAttrOptionsForPick(product, attr.key, ctx());
+    const cur = attr.value || '';
+    const isOtherSelected =
+      isFreeAttrAddOpen(scope, pid, attr.key, idx) || cur === DemoData.FREE_ATTR_OTHER_VALUE;
+    const optionHtml = pickOpts
+      .map(function (o) {
+        const label = o.custom ? o.value + '（自定义）' : o.value;
+        return (
+          '<option value="' +
+          App.escapeHtml(o.value) +
+          '"' +
+          (o.value === cur && !isOtherSelected ? ' selected' : '') +
+          '>' +
+          App.escapeHtml(label) +
+          '</option>'
+        );
+      })
+      .join('');
+    const otherSelected = isOtherSelected ? ' selected' : '';
+    const orphanSelected =
+      !isOtherSelected && cur && !pickOpts.some(function (o) { return o.value === cur; })
+        ? '<option value="' + App.escapeHtml(cur) + '" selected>' + App.escapeHtml(cur) + '（自定义）</option>'
+        : '';
+    return (
+      '<select class="sc-pick-free-attr__control sc-pick-free-attr__select" data-action="pick-free-attr" data-scope="' +
+      scope +
+      '" data-pid="' +
+      pid +
+      '" data-attr-key="' +
+      App.escapeHtml(attr.key) +
+      '"' +
+      (idx !== '' && idx != null ? ' data-idx="' + idx + '"' : '') +
+      stopProp +
+      '>' +
+      optionHtml +
+      orphanSelected +
+      '<option disabled>────────</option>' +
+      '<option value="' +
+      DemoData.FREE_ATTR_OTHER_VALUE +
+      '"' +
+      otherSelected +
+      '>其他…</option></select>'
+    );
+  }
+
   function renderPickFreeAttrRows(product, pid, scope, lineOpts) {
     const defs = DemoData.productCustomAttrDefs(product);
     if (!defs.length) return '';
@@ -11813,51 +12372,43 @@ function openChangeSheet(oid, opts) {
       '<div class="sc-pick-free-attrs">' +
       attrs
         .map(function (a) {
-          const hasOpts = a.options && a.options.length;
-          const inputHtml = hasOpts
-            ? '<select class="sc-pick-free-attr__control sc-pick-free-attr__select" data-action="pick-free-attr" data-scope="' +
+          const def = defs.find(function (d) { return d.key === a.key; }) || a;
+          const hasOpts = def.options && def.options.length;
+          let controlHtml;
+          const adding = hasOpts && isFreeAttrAddOpen(scope, pid, a.key, idx);
+          if (hasOpts) {
+            if (adding) {
+              controlHtml = renderFreeAttrAddInline(scope, pid, a.key, idx, a.label || def.label);
+            } else {
+              controlHtml = renderPickFreeAttrSelect(scope, pid, a, product, idx, stopProp);
+            }
+          } else {
+            controlHtml =
+              '<input type="text" class="sc-pick-free-attr__control sc-pick-free-attr__input" data-action="pick-free-attr" data-scope="' +
               scope +
               '" data-pid="' +
               pid +
               '" data-attr-key="' +
               App.escapeHtml(a.key) +
               '"' +
-              (idx !== '' ? ' data-idx="' + idx + '"' : '') +
-              stopProp +
-              '>' +
-              a.options
-                .map(function (o) {
-                  return (
-                    '<option value="' +
-                    App.escapeHtml(o) +
-                    '"' +
-                    (o === a.value ? ' selected' : '') +
-                    '>' +
-                    App.escapeHtml(o) +
-                    '</option>'
-                  );
-                })
-                .join('') +
-              '</select>'
-            : '<input type="text" class="sc-pick-free-attr__control sc-pick-free-attr__input" data-action="pick-free-attr" data-scope="' +
-              scope +
-              '" data-pid="' +
-              pid +
-              '" data-attr-key="' +
-              App.escapeHtml(a.key) +
-              '"' +
-              (idx !== '' ? ' data-idx="' + idx + '"' : '') +
+              (idx !== '' && idx != null ? ' data-idx="' + idx + '"' : '') +
               stopProp +
               ' value="' +
               App.escapeHtml(a.value || '') +
               '"/>';
+          }
           return (
-            '<label class="sc-pick-free-attr">' +
+            '<div class="sc-pick-free-attr-wrap' +
+            (adding ? ' sc-pick-free-attr-wrap--adding' : '') +
+            '">' +
+            '<label class="sc-pick-free-attr' +
+            (adding ? ' sc-pick-free-attr--adding' : '') +
+            '">' +
             '<span class="sc-pick-free-attr__label">' +
-            App.escapeHtml(a.label) +
+            App.escapeHtml(a.label || def.label) +
             '</span>' +
-            inputHtml +
-            '</label>'
+            controlHtml +
+            '</label></div>'
           );
         })
         .join('') +
@@ -11899,7 +12450,11 @@ function openChangeSheet(oid, opts) {
       const a = attrs.find(function (x) {
         return x.key === key;
       });
-      if (a) a.value = el.value;
+      if (a) {
+        const val = el.value;
+        if (val === DemoData.FREE_ATTR_OTHER_VALUE) return;
+        a.value = val;
+      }
       draft._customAttrsTouched = draft._customAttrsTouched || {};
       draft._customAttrsTouched[pid] = true;
       syncPickSkuFromCustomAttrs(draft, pid, pr);
@@ -11909,12 +12464,10 @@ function openChangeSheet(oid, opts) {
   function syncPickSkuFromCustomAttrs(draft, pid, product) {
     const attrs = draft.customAttrs && draft.customAttrs[pid];
     if (!attrs || !product) return;
-    const map = {};
-    attrs.forEach(function (a) {
-      if (a && a.key) map[a.key] = a.value;
-    });
+    const map = freeAttrMapFromAttrs(attrs);
     if (!draft.sku) draft.sku = {};
-    draft.sku[pid] = DemoData.resolveSkuFromAttrValues(product, map);
+    const exact = DemoData.findSkuByAttrValues(product, map, { strict: true });
+    if (exact) draft.sku[pid] = exact.id;
   }
 
   function syncQuotePickCustomAttrsFromDom() {
@@ -11940,15 +12493,62 @@ function openChangeSheet(oid, opts) {
           '[data-action="pick-free-attr"][data-scope="quote-line"][data-idx="' + idx + '"][data-attr-key="' + d.key + '"]'
         );
       const prev = (line.customAttrs || []).find(function (x) { return x.key === d.key; });
+      const pickOpts = DemoData.freeAttrOptionsForPick(pr, d.key, ctx());
+      let val = el ? el.value : prev && prev.value != null ? prev.value : '';
+      if (val === DemoData.FREE_ATTR_OTHER_VALUE) {
+        val = prev && prev.value != null ? prev.value : '';
+      }
       return {
         key: d.key,
         label: d.label,
-        value: el ? el.value : prev && prev.value != null ? prev.value : '',
-        options: d.options
+        value: val,
+        options: pickOpts.map(function (o) { return o.value; })
       };
     });
     line.customAttrs = attrs;
     line._customAttrsTouched = true;
+  }
+
+  function applyFreeAttrValue(scope, pid, key, val, lineOpts) {
+    const pr = productById(pid);
+    if (!pr || !key) return;
+    lineOpts = lineOpts || {};
+
+    if (scope === 'quote-line') {
+      const pending = ctx().quotePending;
+      if (!pending) return;
+      const idx = lineOpts.idx;
+      const line = lineOpts.line
+        ? lineOpts.line
+        : pending.lines[idx];
+      if (!line) return;
+      if (!line.customAttrs) line.customAttrs = DemoData.resolveLineCustomAttrs(pr, line.skuId);
+      const a = line.customAttrs.find(function (x) { return x.key === key; });
+      if (a) a.value = val;
+      line._customAttrsTouched = true;
+      maybeSyncSkuFromAttrs(line, pr, line.customAttrs);
+      line.skuLabel = DemoData.skuLabelFromAttrs(pr, line.customAttrs);
+      const hints = DemoData.priceHints(pr, line.skuId);
+      line.latestPrice = hints.latestPrice;
+      line.minPrice = hints.minPrice;
+      if (!line._quotePriceTouched) line.quotePrice = hints.latestPrice;
+      applyQuoteLineCommercialDefaults(line, pr, { keepCustom: true });
+      line.sub = line.quotePrice * (line.qty || 1);
+      line.unitPrice = line.quotePrice;
+      refreshFreeAttrHost('quote-line');
+      return;
+    }
+
+    const draft = pickDraftForScope(scope);
+    if (!draft) return;
+    ensurePickCustomAttrs(draft, pid, pr);
+    const attrs = draft.customAttrs[pid];
+    const attr = attrs.find(function (x) { return x.key === key; });
+    if (attr) attr.value = val;
+    draft._customAttrsTouched = draft._customAttrsTouched || {};
+    draft._customAttrsTouched[pid] = true;
+    syncPickSkuFromCustomAttrs(draft, pid, pr);
+    refreshFreeAttrHost(scope);
   }
 
   function onPickFreeAttrChange(el) {
@@ -11958,52 +12558,94 @@ function openChangeSheet(oid, opts) {
     const val = el.value;
     const pr = productById(pid);
     if (!pr || !key) return;
+    const idxAttr = el.getAttribute('data-idx');
+    const idx = idxAttr != null && idxAttr !== '' ? parseInt(idxAttr, 10) : '';
+
+    if (val === DemoData.FREE_ATTR_OTHER_VALUE) {
+      const prev =
+        scope === 'quote-line'
+          ? (function () {
+              const pending = ctx().quotePending;
+              if (!pending) return '';
+              const line = pending.lines[idx];
+              if (!line || !line.customAttrs) return '';
+              const a = line.customAttrs.find(function (x) { return x.key === key; });
+              return a ? a.value : '';
+            })()
+          : (function () {
+              const draft = pickDraftForScope(scope);
+              if (!draft || !draft.customAttrs || !draft.customAttrs[pid]) return '';
+              const a = draft.customAttrs[pid].find(function (x) { return x.key === key; });
+              return a ? a.value : '';
+            })();
+      setFreeAttrAddDraft({ scope: scope, pid: pid, key: key, idx: idx, prevValue: prev });
+      refreshFreeAttrHost(scope);
+      return;
+    }
+
+    if (getFreeAttrAddDraft()) setFreeAttrAddDraft(null);
 
     if (scope === 'quote-line') {
       const pending = ctx().quotePending;
       if (!pending) return;
-      const idx = parseInt(el.getAttribute('data-idx'), 10);
-      const line = pid
-        ? pending.lines.find(function (l) {
-            return l.productId === pid;
-          })
-        : pending.lines[idx];
-      if (!line) return;
-      if (!line.customAttrs) line.customAttrs = DemoData.resolveLineCustomAttrs(pr, line.skuId);
-      const a = line.customAttrs.find(function (x) {
-        return x.key === key;
-      });
-      if (a) a.value = val;
-      line._customAttrsTouched = true;
-      const map = {};
-      line.customAttrs.forEach(function (x) {
-        if (x && x.key) map[x.key] = x.value;
-      });
-      line.skuId = DemoData.resolveSkuFromAttrValues(pr, map);
-      line.skuLabel = DemoData.skuLabelFromAttrs(pr, line.customAttrs);
-      const hints = DemoData.priceHints(pr, line.skuId);
-      line.latestPrice = hints.latestPrice;
-      line.minPrice = hints.minPrice;
-      if (!line._quotePriceTouched) line.quotePrice = hints.latestPrice;
-      applyQuoteLineCommercialDefaults(line, pr, { keepCustom: true });
-      line.sub = line.quotePrice * line.qty;
-      line.unitPrice = line.quotePrice;
-      if (isQuoteSetupOpen()) refreshQuoteSetupLines();
-      else if (document.querySelector('[data-spec-id="card-quote-cart"]')) refreshLastQuoteConfirmCard();
+      const line = pending.lines[idx];
+      applyFreeAttrValue(scope, pid, key, val, { idx: idx, line: line });
       return;
     }
 
-    const draft = pickDraftForScope(scope);
-    if (!draft) return;
-    ensurePickCustomAttrs(draft, pid, pr);
-    const attrs = draft.customAttrs[pid];
-    const attr = attrs.find(function (x) {
-      return x.key === key;
-    });
-    if (attr) attr.value = val;
-    draft._customAttrsTouched = draft._customAttrsTouched || {};
-    draft._customAttrsTouched[pid] = true;
-    syncPickSkuFromCustomAttrs(draft, pid, pr);
+    applyFreeAttrValue(scope, pid, key, val);
+  }
+
+  function confirmFreeAttrAdd(btn) {
+    const panel = btn.closest('[data-free-attr-add]');
+    if (!panel) return;
+    const scope = panel.getAttribute('data-scope');
+    const pid = panel.getAttribute('data-pid');
+    const key = panel.getAttribute('data-attr-key');
+    const idxAttr = panel.getAttribute('data-idx');
+    const idx = idxAttr != null && idxAttr !== '' ? parseInt(idxAttr, 10) : '';
+    const pr = productById(pid);
+    if (!pr || !key) return;
+    const defs = DemoData.productCustomAttrDefs(pr);
+    const def = defs.find(function (d) { return d.key === key; });
+    const label = (def && def.label) || '自由项';
+    const inp = panel.querySelector('[data-field="free-attr-add-input"]');
+    const raw = inp ? inp.value : '';
+    const result = DemoData.addSessionFreeAttrExtra(pr, key, raw, ctx(), label);
+    if (!result.ok) {
+      App.toast(result.message || '请输入有效取值');
+      return;
+    }
+    setFreeAttrAddDraft(null);
+    if (scope === 'quote-line') {
+      const pending = ctx().quotePending;
+      const line = pending && pending.lines[idx];
+      applyFreeAttrValue(scope, pid, key, result.value, { idx: idx, line: line });
+    } else {
+      applyFreeAttrValue(scope, pid, key, result.value);
+    }
+  }
+
+  function cancelFreeAttrAdd(btn) {
+    const panel = btn.closest('[data-free-attr-add]');
+    if (!panel) return;
+    const scope = panel.getAttribute('data-scope');
+    const draft = getFreeAttrAddDraft();
+    setFreeAttrAddDraft(null);
+    if (draft && draft.prevValue) {
+      if (scope === 'quote-line') {
+        const pending = ctx().quotePending;
+        const line = pending && pending.lines[draft.idx];
+        applyFreeAttrValue(scope, draft.pid, draft.key, draft.prevValue, {
+          idx: draft.idx,
+          line: line
+        });
+        return;
+      }
+      applyFreeAttrValue(scope, draft.pid, draft.key, draft.prevValue);
+      return;
+    }
+    refreshFreeAttrHost(scope);
   }
 
   function orderConfirmRoot() {
@@ -12332,7 +12974,9 @@ function openChangeSheet(oid, opts) {
     syncOrderConfirmLinesFromDom,
     onQuoteLineSkuChange,
     onCopyLineSkuChange,
+    onPickFreeAttrChange,
     onDeliveryFormExpectedDateChange,
-    refreshLastQuoteConfirmCard
+    refreshLastQuoteConfirmCard,
+    runPayment
   };
 })();

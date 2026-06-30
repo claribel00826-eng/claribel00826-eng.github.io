@@ -612,6 +612,149 @@ window.DemoData = {
     经销商: ['区域经销', '行业经销', '电商渠道', '其他'],
     战略客户: ['集团总部', '重点工程', '其他']
   },
+  regionTree: [
+    {
+      id: 'cn-js',
+      name: '江苏省',
+      children: [
+        {
+          id: 'cn-js-sz',
+          name: '苏州市',
+          children: [
+            { id: 'cn-js-sz-sip', name: '工业园区', children: [] },
+            { id: 'cn-js-sz-wz', name: '吴中区', children: [] },
+            { id: 'cn-js-sz-xc', name: '相城区', children: [] }
+          ]
+        },
+        {
+          id: 'cn-js-nj',
+          name: '南京市',
+          children: [
+            { id: 'cn-js-nj-jn', name: '江宁区', children: [] },
+            { id: 'cn-js-nj-xw', name: '玄武区', children: [] }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'cn-zj',
+      name: '浙江省',
+      children: [
+        {
+          id: 'cn-zj-hz',
+          name: '杭州市',
+          children: [
+            {
+              id: 'cn-zj-hz-yh',
+              name: '余杭区',
+              children: [
+                { id: 'cn-zj-hz-yh-wt', name: '未来科技城', children: [] },
+                { id: 'cn-zj-hz-yh-ls', name: '良渚新城', children: [] }
+              ]
+            },
+            { id: 'cn-zj-hz-xh', name: '西湖区', children: [] }
+          ]
+        },
+        {
+          id: 'cn-zj-nb',
+          name: '宁波市',
+          children: [
+            { id: 'cn-zj-nb-yz', name: '鄞州区', children: [] },
+            { id: 'cn-zj-nb-hs', name: '海曙区', children: [] }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'cn-gd',
+      name: '广东省',
+      children: [
+        {
+          id: 'cn-gd-sz',
+          name: '深圳市',
+          children: [
+            { id: 'cn-gd-sz-ns', name: '南山区', children: [] },
+            { id: 'cn-gd-sz-ft', name: '福田区', children: [] }
+          ]
+        },
+        {
+          id: 'cn-gd-gz',
+          name: '广州市',
+          children: [
+            { id: 'cn-gd-gz-th', name: '天河区', children: [] },
+            { id: 'cn-gd-gz-py', name: '番禺区', children: [] }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'de',
+      name: '德国',
+      children: [
+        {
+          id: 'de-by',
+          name: '巴伐利亚',
+          children: [
+            { id: 'de-by-m', name: '慕尼黑', children: [] },
+            { id: 'de-by-n', name: '纽伦堡', children: [] }
+          ]
+        },
+        {
+          id: 'de-be',
+          name: '柏林',
+          children: [
+            { id: 'de-be-mi', name: '米特区', children: [] },
+            { id: 'de-be-ch', name: '夏洛滕堡', children: [] }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'us',
+      name: '美国',
+      children: [
+        {
+          id: 'us-ca',
+          name: '加利福尼亚',
+          children: [
+            { id: 'us-ca-sf', name: '旧金山', children: [] },
+            { id: 'us-ca-la', name: '洛杉矶', children: [] }
+          ]
+        },
+        {
+          id: 'us-ny',
+          name: '纽约州',
+          children: [
+            { id: 'us-ny-nyc', name: '纽约市', children: [] },
+            { id: 'us-ny-buf', name: '布法罗', children: [] }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'jp',
+      name: '日本',
+      children: [
+        {
+          id: 'jp-kanto',
+          name: '关东',
+          children: [
+            { id: 'jp-kanto-tokyo', name: '东京', children: [] },
+            { id: 'jp-kanto-yokohama', name: '横滨', children: [] }
+          ]
+        },
+        {
+          id: 'jp-kansai',
+          name: '关西',
+          children: [
+            { id: 'jp-kansai-osaka', name: '大阪', children: [] },
+            { id: 'jp-kansai-kyoto', name: '京都', children: [] }
+          ]
+        }
+      ]
+    }
+  ],
+  /** @deprecated 演示迁移用；地区请用 regionTree */
   regionDomestic: {
     江苏省: {
       苏州市: ['工业园区', '吴中区', '相城区'],
@@ -674,6 +817,48 @@ window.DemoData = {
       { month: '十一月', receivable: 0, unreceived: 0 },
       { month: '十二月', receivable: 0, unreceived: 0 }
     ]
+  },
+  paymentAnalysisByCustomer: {
+    c1: {
+      annualSalesAmount: 2340000,
+      plannedCollectionAmount: 2080000,
+      receivableBalance: 745000,
+      unreceivedAmount: 356000,
+      monthlyDetails: [
+        { month: '一月', receivable: 608000, unreceived: 128000 },
+        { month: '二月', receivable: 672000, unreceived: 164000 },
+        { month: '三月', receivable: 572000, unreceived: 112000 },
+        { month: '四月', receivable: 700000, unreceived: 208000 },
+        { month: '五月', receivable: 745000, unreceived: 356000 },
+        { month: '六月', receivable: 792000, unreceived: 304000 },
+        { month: '七月', receivable: 0, unreceived: 0 },
+        { month: '八月', receivable: 0, unreceived: 0 },
+        { month: '九月', receivable: 0, unreceived: 0 },
+        { month: '十月', receivable: 0, unreceived: 0 },
+        { month: '十一月', receivable: 0, unreceived: 0 },
+        { month: '十二月', receivable: 0, unreceived: 0 }
+      ]
+    },
+    c2: {
+      annualSalesAmount: 2050000,
+      plannedCollectionAmount: 1820000,
+      receivableBalance: 652000,
+      unreceivedAmount: 312000,
+      monthlyDetails: [
+        { month: '一月', receivable: 532000, unreceived: 112000 },
+        { month: '二月', receivable: 588000, unreceived: 144000 },
+        { month: '三月', receivable: 500000, unreceived: 98000 },
+        { month: '四月', receivable: 612000, unreceived: 182000 },
+        { month: '五月', receivable: 652000, unreceived: 312000 },
+        { month: '六月', receivable: 694000, unreceived: 266000 },
+        { month: '七月', receivable: 0, unreceived: 0 },
+        { month: '八月', receivable: 0, unreceived: 0 },
+        { month: '九月', receivable: 0, unreceived: 0 },
+        { month: '十月', receivable: 0, unreceived: 0 },
+        { month: '十一月', receivable: 0, unreceived: 0 },
+        { month: '十二月', receivable: 0, unreceived: 0 }
+      ]
+    }
   },
   /** 欢迎区功能网格：6×2；文案统一四字 */
   welcomeFeatures: [
@@ -976,6 +1161,82 @@ window.DemoData = {
       if (o) set.add(o);
     });
     return Array.from(set);
+  },
+
+  /** v1.5.0 · 自由项下拉「其他…」占位值（非真实业务取值） */
+  FREE_ATTR_OTHER_VALUE: '__other__',
+  FREE_ATTR_ADD_MAX_LEN: 20,
+
+  normalizeFreeAttrInputValue(val) {
+    return String(val || '')
+      .trim()
+      .replace(/\s+/g, ' ');
+  },
+
+  ensureSessionFreeAttrStore(ctxRef) {
+    const ctx = ctxRef || {};
+    if (!ctx.freeAttrExtraOptions) ctx.freeAttrExtraOptions = {};
+    return ctx.freeAttrExtraOptions;
+  },
+
+  sessionFreeAttrExtras(productId, attrKey, ctxRef) {
+    const store = DemoData.ensureSessionFreeAttrStore(ctxRef);
+    const byProduct = store[productId] || {};
+    return (byProduct[attrKey] || []).slice();
+  },
+
+  isSessionFreeAttrExtra(productId, attrKey, value, ctxRef) {
+    const v = DemoData.normalizeFreeAttrInputValue(value);
+    if (!v) return false;
+    return DemoData.sessionFreeAttrExtras(productId, attrKey, ctxRef).some(function (x) {
+      return x === v;
+    });
+  },
+
+  /** 合并标准候选项 + 本会话自定义项（去重，保留顺序） */
+  freeAttrOptionsForPick(product, attrKey, ctxRef) {
+    const base = DemoData.freeAttrOptionsForProduct(product, attrKey);
+    const extras = product ? DemoData.sessionFreeAttrExtras(product.id, attrKey, ctxRef) : [];
+    const seen = new Set();
+    const out = [];
+    base.forEach(function (o) {
+      if (!o || seen.has(o)) return;
+      seen.add(o);
+      out.push({ value: o, custom: false });
+    });
+    extras.forEach(function (o) {
+      if (!o || seen.has(o)) return;
+      seen.add(o);
+      out.push({ value: o, custom: true });
+    });
+    return out;
+  },
+
+  /**
+   * 添加本会话自由项取值；若与已有项重复（忽略大小写）则返回已有 canonical 值
+   * @returns {{ ok: boolean, value?: string, existed?: boolean, message?: string }}
+   */
+  addSessionFreeAttrExtra(product, attrKey, rawValue, ctxRef, label) {
+    const v = DemoData.normalizeFreeAttrInputValue(rawValue);
+    if (!v) {
+      return { ok: false, message: '请输入' + (label || '自由项') };
+    }
+    if (v.length > DemoData.FREE_ATTR_ADD_MAX_LEN) {
+      return { ok: false, message: '最多 ' + DemoData.FREE_ATTR_ADD_MAX_LEN + ' 个字' };
+    }
+    if (!product || !attrKey) return { ok: false, message: '数据异常，请重试' };
+    const base = DemoData.freeAttrOptionsForProduct(product, attrKey);
+    const extras = DemoData.sessionFreeAttrExtras(product.id, attrKey, ctxRef);
+    const all = base.concat(extras);
+    const dup = all.find(function (o) {
+      return String(o).toLowerCase() === v.toLowerCase();
+    });
+    if (dup) return { ok: true, value: dup, existed: true };
+    const store = DemoData.ensureSessionFreeAttrStore(ctxRef);
+    if (!store[product.id]) store[product.id] = {};
+    if (!store[product.id][attrKey]) store[product.id][attrKey] = [];
+    store[product.id][attrKey].push(v);
+    return { ok: true, value: v, existed: false };
   },
 
   /** 按自由项取值匹配 SKU（支持部分匹配） */
@@ -1956,8 +2217,83 @@ window.DemoData = {
       { name: '孙专员', orderCount: 29, quantity: 3050, amount: 2820000 }
     ]
   },
-  getPaymentAnalysis: function(year) {
-    var base = this.paymentAnalysis;
+  findRegionNodeById: function (nodeId, nodes, trail) {
+    nodes = nodes || this.regionTree || [];
+    trail = trail || [];
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      var path = trail.concat([{ id: n.id, name: n.name }]);
+      if (n.id === nodeId) {
+        return { node: n, path: path };
+      }
+      if (n.children && n.children.length) {
+        var hit = this.findRegionNodeById(nodeId, n.children, path);
+        if (hit) return hit;
+      }
+    }
+    return null;
+  },
+  getRegionChildren: function (parentId) {
+    if (!parentId) {
+      return (this.regionTree || []).map(function (n) {
+        return {
+          id: n.id,
+          name: n.name,
+          hasChildren: !!(n.children && n.children.length)
+        };
+      });
+    }
+    var hit = this.findRegionNodeById(parentId);
+    if (!hit || !hit.node.children) return [];
+    return hit.node.children.map(function (n) {
+      return {
+        id: n.id,
+        name: n.name,
+        hasChildren: !!(n.children && n.children.length)
+      };
+    });
+  },
+  getRegionBrowsePath: function (parentId) {
+    if (!parentId) return [];
+    var hit = this.findRegionNodeById(parentId);
+    return hit ? hit.path : [];
+  },
+  formatRegionLabel: function (path) {
+    return (path || [])
+      .map(function (p) {
+        return p.name;
+      })
+      .join(' / ');
+  },
+  searchRegions: function (query) {
+    var q = (query || '').trim().toLowerCase();
+    if (!q) return [];
+    var out = [];
+    var walk = function (nodes, trail) {
+      (nodes || []).forEach(function (n) {
+        var path = trail.concat([{ id: n.id, name: n.name }]);
+        var label = DemoData.formatRegionLabel(path);
+        if (n.name.toLowerCase().indexOf(q) !== -1 || label.toLowerCase().indexOf(q) !== -1) {
+          out.push({
+            id: n.id,
+            name: n.name,
+            path: path,
+            fullPathLabel: label,
+            hasChildren: !!(n.children && n.children.length)
+          });
+        }
+        if (n.children && n.children.length) walk(n.children, path);
+      });
+    };
+    walk(this.regionTree || [], []);
+    return out.slice(0, 20);
+  },
+  getPaymentAnalysis: function(year, customerId) {
+    var base =
+      customerId && this.paymentAnalysisByCustomer && this.paymentAnalysisByCustomer[customerId]
+        ? this.paymentAnalysisByCustomer[customerId]
+        : this.paymentAnalysis;
     var factor = year === 2024 ? 1 : year === 2023 ? 0.85 : year === 2022 ? 0.72 : year === 2021 ? 0.6 : 0.9;
     return {
       annualSalesAmount: Math.round(base.annualSalesAmount * factor),

@@ -1,18 +1,26 @@
-/** v1.4.0 设计标注范围：文档 02～06（不含意图路由钉 chat-llm）。 */
+/** v1.5.0 设计标注范围：文档 02～07（不含意图路由钉 chat-llm）。 */
 window.AnnotationSpecScope = {
-  version: 'v1.4.0',
-  label: '1.4.0 版',
+  version: 'v1.5.0',
+  label: '1.5.0 版',
   docs: [
     { id: '02', title: '方案报价下单' },
-    { id: '03', title: '增量验收' },
+    { id: '03', title: '增量验收（1.2.0）' },
     { id: '04', title: '数据填槽需求' },
     { id: '05', title: '交期与订单运营' },
-    { id: '06', title: '经营分析' }
+    { id: '06', title: '经营分析' },
+    { id: '07', title: '增量验收（1.5.0）' }
   ],
   ids: [
     'data-rules-chat-flow',
     'chat-messages',
+    'chat-recent',
     'btn-switch-customer',
+    'sheet-customer',
+    'btn-customer-create',
+    'btn-customer-create-skill',
+    'card-customer-prompt',
+    'card-customer-create',
+    'card-region-picker',
     'card-plan-entry',
     'card-plan-demand',
     'card-plan-pick',
@@ -63,6 +71,8 @@ window.AnnotationSpecScope = {
     'card-biz-analysis-insight',
     'card-biz-date-range-picker',
     'card-inventory',
+    'card-payment-year',
+    'card-payment-scope',
     'card-payment'
   ]
 };

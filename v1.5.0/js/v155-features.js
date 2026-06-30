@@ -284,15 +284,33 @@
         } else {
           deps.executeSkillAction('followup', { skipUserMsg: true });
         }
+      } else if (skillId === 'payment') {
+        const list = loadRecentVisitsRaw();
+        const entry = list.find(function (r) {
+          return r.skillId === 'payment';
+        });
+        if (entry && entry.meta && entry.meta.year && window.Skills && Skills.runPayment) {
+          Skills.runPayment({
+            resume: {
+              year: entry.meta.year,
+              customerId: entry.meta.paymentCustomerId || null
+            },
+            simulateUserMsg: false
+          });
+        } else if (window.Skills && Skills.runPayment) {
+          Skills.runPayment({ simulateUserMsg: false });
+        }
       } else if (resumeDraft && window.Skills && Skills.run) {
         Skills.run(skillId);
       } else if (window.Skills && Skills.run) {
         Skills.run(skillId);
       }
-      recordRecentVisit(skillId, {
-        customerId: customerId || deps.state.customerId,
-        checkpoint: checkpoint || 'entry'
-      });
+      if (skillId !== 'payment') {
+        recordRecentVisit(skillId, {
+          customerId: customerId || deps.state.customerId,
+          checkpoint: checkpoint || 'entry'
+        });
+      }
     }, 300);
   }
 
@@ -304,13 +322,15 @@
       name: prefillName || '',
       cat1: '',
       cat2: '',
-      regionScope: 'domestic',
-      province: '',
-      city: '',
-      district: '',
-      country: '',
-      state: '',
-      intlCity: ''
+      regionId: '',
+      regionPath: [],
+      regionLabel: '',
+      regionPickerOpen: false,
+      regionPickerMode: 'search',
+      regionBrowseParentId: '',
+      regionSearch: '',
+      regionCandidateId: '',
+      regionCandidatePath: []
     };
   }
 
@@ -320,19 +340,66 @@
       const el = card.querySelector(sel);
       return el ? el.value : '';
     };
+    let regionPath = [];
+    try {
+      const raw = g('[data-field="create-region-path"]');
+      if (raw) regionPath = JSON.parse(raw);
+    } catch (e) {
+      regionPath = [];
+    }
+    let regionCandidatePath = [];
+    try {
+      const candRaw = g('[data-field="create-region-candidate-path"]');
+      if (candRaw) regionCandidatePath = JSON.parse(candRaw);
+    } catch (e) {
+      regionCandidatePath = [];
+    }
     return {
       code: g('[data-field="create-code"]') || nextCustomerCode(),
       name: g('[data-field="create-name"]'),
       cat1: g('[data-field="create-cat1"]'),
       cat2: g('[data-field="create-cat2"]'),
-      regionScope: g('[data-field="create-region-scope"]') || 'domestic',
-      province: g('[data-field="create-province"]'),
-      city: g('[data-field="create-city"]'),
-      district: g('[data-field="create-district"]'),
-      country: g('[data-field="create-country"]'),
-      state: g('[data-field="create-state"]'),
-      intlCity: g('[data-field="create-intl-city"]')
+      regionId: g('[data-field="create-region-id"]'),
+      regionPath: regionPath,
+      regionLabel: g('[data-field="create-region-label"]'),
+      regionPickerOpen: card.getAttribute('data-region-picker-open') === '1',
+      regionPickerMode: card.getAttribute('data-region-picker-mode') || 'search',
+      regionBrowseParentId: card.getAttribute('data-region-browse-parent') || '',
+      regionSearch: g('[data-field="create-region-search"]') || '',
+      regionCandidateId: g('[data-field="create-region-candidate-id"]') || '',
+      regionCandidatePath: regionCandidatePath
     };
+  }
+
+  function setRegionCandidate(form, nodeId) {
+    const hit = DemoData.findRegionNodeById ? DemoData.findRegionNodeById(nodeId) : null;
+    if (!hit) return;
+    form.regionCandidateId = nodeId;
+    form.regionCandidatePath = hit.path;
+  }
+
+  function candidatePathLabel(form) {
+    if (!form.regionCandidatePath || !form.regionCandidatePath.length) return '';
+    return DemoData.formatRegionLabel
+      ? DemoData.formatRegionLabel(form.regionCandidatePath)
+      : form.regionCandidatePath.map(function (p) { return p.name; }).join(' / ');
+  }
+
+  function openRegionPickerOnForm(form) {
+    form.regionPickerOpen = true;
+    form.regionPickerMode = 'search';
+    form.regionBrowseParentId = '';
+    form.regionSearch = '';
+    form.regionCandidateId = form.regionId || '';
+    form.regionCandidatePath = form.regionPath ? form.regionPath.slice() : [];
+  }
+
+  function closeRegionPickerOnForm(form) {
+    form.regionPickerOpen = false;
+    form.regionSearch = '';
+    form.regionBrowseParentId = '';
+    form.regionCandidateId = '';
+    form.regionCandidatePath = [];
   }
 
   function buildSelectOptions(items, selected, placeholder) {
@@ -350,19 +417,142 @@
     return h;
   }
 
-  function regionSummary(form) {
-    if (form.regionScope === 'international') {
-      if (!form.country) return '';
-      let s = form.country;
-      if (form.state) s += ' · ' + form.state;
-      if (form.intlCity) s += ' · ' + form.intlCity;
-      return s;
+  function regionPathJson(form) {
+    return deps.escapeHtml(JSON.stringify(form.regionPath || []));
+  }
+
+  function renderRegionPickerInlineHtml(form, settled) {
+    if (!form.regionPickerOpen || settled) return '';
+    const q = (form.regionSearch || '').trim();
+    const showBrowse = !q && form.regionPickerMode === 'browse';
+    const browsePath = showBrowse && DemoData.getRegionBrowsePath
+      ? DemoData.getRegionBrowsePath(form.regionBrowseParentId || '')
+      : [];
+    let bodyHtml = '';
+
+    if (q) {
+      const hits = DemoData.searchRegions ? DemoData.searchRegions(q) : [];
+      if (!hits.length) {
+        bodyHtml = '<p class="sc-card__meta sc-card__empty-hint">未找到匹配地区</p>';
+      } else {
+        bodyHtml =
+          '<div class="sc-region-picker__list sc-region-picker__list--search">' +
+          hits
+            .map(function (hit) {
+              const selected = form.regionCandidateId === hit.id;
+              return (
+                '<button type="button" class="sc-list-item sc-list-item--customer sc-region-picker__item' +
+                (selected ? ' is-selected' : '') +
+                '" data-action="region-picker-highlight" data-region-id="' +
+                deps.escapeHtml(hit.id) +
+                '"><span class="sc-list-item__main"><span class="sc-list-item__name">' +
+                deps.escapeHtml(hit.name) +
+                '</span><span class="sc-list-item__sub">' +
+                deps.escapeHtml(hit.fullPathLabel) +
+                '</span></span></button>'
+              );
+            })
+            .join('') +
+          '</div>';
+      }
+    } else if (showBrowse) {
+      const items = DemoData.getRegionChildren
+        ? DemoData.getRegionChildren(form.regionBrowseParentId || null)
+        : [];
+      let crumbHtml =
+        '<div class="sc-region-picker__crumb-row">' +
+        '<div class="sc-region-picker__crumb">';
+      if (!browsePath.length) {
+        crumbHtml += '<span class="sc-region-picker__crumb-item is-active">顶级</span>';
+      } else {
+        crumbHtml +=
+          '<button type="button" class="sc-region-picker__crumb-item" data-action="region-picker-crumb" data-region-id="">顶级</button>';
+        browsePath.forEach(function (node, idx) {
+          const isLast = idx === browsePath.length - 1;
+          crumbHtml +=
+            '<span class="sc-region-picker__crumb-sep" aria-hidden="true">›</span>' +
+            (isLast
+              ? '<span class="sc-region-picker__crumb-item is-active">' + deps.escapeHtml(node.name) + '</span>'
+              : '<button type="button" class="sc-region-picker__crumb-item" data-action="region-picker-crumb" data-region-id="' +
+                deps.escapeHtml(node.id) +
+                '">' +
+                deps.escapeHtml(node.name) +
+                '</button>');
+        });
+      }
+      crumbHtml += '</div>';
+      if (browsePath.length) {
+        crumbHtml +=
+          '<button type="button" class="sc-region-picker__back" data-action="region-picker-back">返回上级</button>';
+      }
+      crumbHtml += '</div>';
+
+      let listHtml = '';
+      if (!items.length) {
+        listHtml = '<p class="sc-card__meta sc-card__empty-hint">暂无下级地区，可点「确认选择」</p>';
+      } else {
+        listHtml =
+          '<div class="sc-region-picker__list">' +
+          items
+            .map(function (item) {
+              const isCandidate = form.regionCandidateId === item.id;
+              const drillBtn = item.hasChildren
+                ? '<button type="button" class="sc-region-picker__drill" data-action="region-picker-enter" data-region-id="' +
+                  deps.escapeHtml(item.id) +
+                  '" aria-label="进入下级">›</button>'
+                : '';
+              return (
+                '<div class="sc-region-picker__row' + (isCandidate ? ' is-candidate' : '') + '">' +
+                '<button type="button" class="sc-region-picker__row-main" data-action="region-picker-enter" data-region-id="' +
+                deps.escapeHtml(item.id) +
+                '"><span class="sc-list-item__name">' +
+                deps.escapeHtml(item.name) +
+                '</span></button>' +
+                drillBtn +
+                '</div>'
+              );
+            })
+            .join('') +
+          '</div>';
+      }
+      bodyHtml = crumbHtml + listHtml;
+    } else {
+      bodyHtml =
+        '<p class="sc-region-picker__hint">输入关键词搜索地区，或浏览地区树逐级选择。</p>';
     }
-    if (!form.province) return '';
-    let s = form.province;
-    if (form.city) s += ' · ' + form.city;
-    if (form.district) s += ' · ' + form.district;
-    return s;
+
+    const pathLabel = candidatePathLabel(form);
+    const footerPath = pathLabel
+      ? '当前：' + deps.escapeHtml(pathLabel)
+      : '当前：请搜索或浏览后选择';
+    const confirmDisabled = !form.regionCandidateId ? ' disabled' : '';
+
+    return (
+      '<div class="sc-region-picker" data-spec-id="card-region-picker">' +
+      '<input type="hidden" data-field="create-region-candidate-id" value="' +
+      deps.escapeHtml(form.regionCandidateId || '') +
+      '" />' +
+      '<input type="hidden" data-field="create-region-candidate-path" value="' +
+      deps.escapeHtml(JSON.stringify(form.regionCandidatePath || [])) +
+      '" />' +
+      '<input type="search" class="sc-search sc-card__search" data-action="create-region-search" data-field="create-region-search" value="' +
+      deps.escapeHtml(form.regionSearch || '') +
+      '" placeholder="搜索地区名称" autocomplete="off" />' +
+      (!q
+        ? '<button type="button" class="sc-region-picker__browse-link" data-action="region-picker-browse">浏览地区树</button>'
+        : '') +
+      bodyHtml +
+      '<div class="sc-region-picker__footer">' +
+      '<p class="sc-region-picker__footer-path">' +
+      footerPath +
+      '</p>' +
+      '<div class="sc-region-picker__footer-actions">' +
+      '<button type="button" class="sc-btn sc-btn--ghost sc-btn--sm" data-action="region-picker-cancel">取消</button>' +
+      '<button type="button" class="sc-btn sc-btn--primary sc-btn--sm" data-action="region-picker-confirm"' +
+      confirmDisabled +
+      '>确认选择</button>' +
+      '</div></div></div>'
+    );
   }
 
   function renderCustomerCreateCardHtml(form, errors, opts) {
@@ -373,27 +563,30 @@
     const tree = DemoData.customerCategoryTree || {};
     const cat1Keys = Object.keys(tree);
     const cat2List = form.cat1 && tree[form.cat1] ? tree[form.cat1] : [];
-    const domestic = DemoData.regionDomestic || {};
-    const intl = DemoData.regionInternational || {};
-    const provinces = Object.keys(domestic);
-    const cities = form.province && domestic[form.province] ? Object.keys(domestic[form.province]) : [];
-    const districts =
-      form.province && form.city && domestic[form.province][form.city]
-        ? domestic[form.province][form.city]
-        : [];
-    const countries = Object.keys(intl);
-    const states = form.country && intl[form.country] ? Object.keys(intl[form.country]) : [];
-    const intlCities =
-      form.country && form.state && intl[form.country][form.state]
-        ? intl[form.country][form.state]
-        : [];
-    const summary = regionSummary(form);
-    const isDomestic = form.regionScope !== 'international';
+    const hasRegion = !!(form.regionId && form.regionPath && form.regionPath.length);
+    const triggerTitle = hasRegion
+      ? deps.escapeHtml(form.regionPath[form.regionPath.length - 1].name)
+      : '请选择地区';
+    const triggerDesc = hasRegion
+      ? deps.escapeHtml(form.regionLabel || '')
+      : '搜索或浏览地区树，任意层级均可';
+    const triggerCls =
+      'sc-plan-entry__option sc-region-trigger' +
+      (hasRegion ? ' sc-region-trigger--filled' : '') +
+      (errors.region ? ' sc-region-trigger--error' : '') +
+      (form.regionPickerOpen ? ' is-expanded' : '');
 
     let html =
       '<div class="sc-card sc-card--compact sc-card--inline-form sc-card--customer-create"' +
       (settled ? ' data-create-settled="1"' : '') +
-      ' data-spec-id="card-customer-create">' +
+      ' data-spec-id="card-customer-create"' +
+      ' data-region-picker-open="' +
+      (form.regionPickerOpen ? '1' : '0') +
+      '" data-region-picker-mode="' +
+      deps.escapeHtml(form.regionPickerMode || 'search') +
+      '" data-region-browse-parent="' +
+      deps.escapeHtml(form.regionBrowseParentId || '') +
+      '">' +
       '<div class="sc-card__head sc-card__head--compact">新增客户</div>' +
       '<div class="sc-form-scroll sc-form-scroll--card sc-form-scroll--create">' +
       '<div class="sc-form-meta-row">' +
@@ -406,8 +599,14 @@
       '<input type="hidden" data-field="create-code" value="' +
       deps.escapeHtml(form.code) +
       '" />' +
-      '<input type="hidden" data-field="create-region-scope" value="' +
-      deps.escapeHtml(form.regionScope) +
+      '<input type="hidden" data-field="create-region-id" value="' +
+      deps.escapeHtml(form.regionId || '') +
+      '" />' +
+      '<input type="hidden" data-field="create-region-path" value="' +
+      regionPathJson(form) +
+      '" />' +
+      '<input type="hidden" data-field="create-region-label" value="' +
+      deps.escapeHtml(form.regionLabel || '') +
       '" />' +
       '<label class="sc-field-label">名称 <span class="sc-field-req">*</span></label>' +
       '<input class="sc-input sc-input--field' +
@@ -443,82 +642,25 @@
     html +=
       '<div class="sc-form-block">' +
       '<label class="sc-field-label">地区 <span class="sc-field-req">*</span></label>' +
-      '<div class="sc-segment" role="tablist">' +
-      '<button type="button" class="sc-segment__item' +
-      (isDomestic ? ' sc-segment__item--active' : '') +
+      '<button type="button" class="' +
+      triggerCls +
       '"' +
-      (settled ? ' disabled' : ' data-action="create-region-domestic"') +
-      ' role="tab">国内</button>' +
-      '<button type="button" class="sc-segment__item' +
-      (!isDomestic ? ' sc-segment__item--active' : '') +
-      '"' +
-      (settled ? ' disabled' : ' data-action="create-region-intl"') +
-      ' role="tab">国际</button></div>';
+      (settled ? ' disabled' : ' data-action="create-region-toggle"') +
+      '><span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">' +
+      triggerTitle +
+      '</span><span class="sc-plan-entry__option-desc">' +
+      triggerDesc +
+      '</span></span><span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>';
 
-    const selDis = function (baseDisabled) {
-      return baseDisabled || settled ? ' disabled' : '';
-    };
-
-    if (isDomestic) {
+    if (hasRegion && !form.regionPickerOpen) {
       html +=
-        '<label class="sc-field-label sc-field-label--sub">省/直辖市 <span class="sc-field-req">*</span></label>' +
-        '<select class="sc-input sc-input--field' +
-        (errors.region ? ' sc-input--error' : '') +
-        '" data-field="create-province"' +
-        selDis(false) +
-        '>' +
-        buildSelectOptions(provinces, form.province, '请选择') +
-        '</select>' +
-        '<div class="sc-field-row sc-field-row--2col">' +
-        '<div><label class="sc-field-label sc-field-label--sub">市 <span class="sc-field-req">*</span></label>' +
-        '<select class="sc-input sc-input--field' +
-        (!form.province || settled ? ' sc-select--disabled' : '') +
-        '" data-field="create-city"' +
-        selDis(!form.province) +
-        '>' +
-        buildSelectOptions(cities, form.city, form.province ? '请选择' : '请先选择省') +
-        '</select></div>' +
-        '<div><label class="sc-field-label sc-field-label--sub">区/县 <span class="sc-field-req">*</span></label>' +
-        '<select class="sc-input sc-input--field' +
-        (!form.city || settled ? ' sc-select--disabled' : '') +
-        '" data-field="create-district"' +
-        selDis(!form.city) +
-        '>' +
-        buildSelectOptions(districts, form.district, form.city ? '请选择' : '请先选择市') +
-        '</select></div></div>';
-    } else {
-      html +=
-        '<label class="sc-field-label sc-field-label--sub">国家 <span class="sc-field-req">*</span></label>' +
-        '<select class="sc-input sc-input--field' +
-        (errors.region ? ' sc-input--error' : '') +
-        '" data-field="create-country"' +
-        selDis(false) +
-        '>' +
-        buildSelectOptions(countries, form.country, '请选择') +
-        '</select>' +
-        '<div class="sc-field-row sc-field-row--2col">' +
-        '<div><label class="sc-field-label sc-field-label--sub">州/省 <span class="sc-field-req">*</span></label>' +
-        '<select class="sc-input sc-input--field' +
-        (!form.country || settled ? ' sc-select--disabled' : '') +
-        '" data-field="create-state"' +
-        selDis(!form.country) +
-        '>' +
-        buildSelectOptions(states, form.state, form.country ? '请选择' : '请先选择国家') +
-        '</select></div>' +
-        '<div><label class="sc-field-label sc-field-label--sub">城市 <span class="sc-field-req">*</span></label>' +
-        '<select class="sc-input sc-input--field' +
-        (!form.state || settled ? ' sc-select--disabled' : '') +
-        '" data-field="create-intl-city"' +
-        selDis(!form.state) +
-        '>' +
-        buildSelectOptions(intlCities, form.intlCity, form.state ? '请选择' : '请先选择州/省') +
-        '</select></div></div>';
+        '<p class="sc-region-summary">已选：' + deps.escapeHtml(form.regionLabel || '') + '</p>';
     }
 
-    if (summary) {
-      html +=
-        '<p class="sc-form-block__summary">✓ 已选：' + deps.escapeHtml(summary) + '</p>';
-    }
+    html += renderRegionPickerInlineHtml(form, settled);
+
+    html += '<p class="sc-field-hint">任意层级均可作为客户地区</p>';
+
     if (errors.region && !settled) {
       html += '<p class="sc-field-hint sc-field-hint--error">' + deps.escapeHtml(errors.region) + '</p>';
     }
@@ -533,6 +675,18 @@
     }
     html += '</div>';
     return html;
+  }
+
+  function applyRegionSelection(form, nodeId) {
+    const hit = DemoData.findRegionNodeById ? DemoData.findRegionNodeById(nodeId) : null;
+    if (!hit) return form;
+    form.regionId = nodeId;
+    form.regionPath = hit.path;
+    form.regionLabel = DemoData.formatRegionLabel
+      ? DemoData.formatRegionLabel(hit.path)
+      : hit.path.map(function (p) { return p.name; }).join(' / ');
+    closeRegionPickerOnForm(form);
+    return form;
   }
 
   function refreshCreateCard(card, form, errors, opts) {
@@ -578,12 +732,8 @@
     if (!name || name.length < 2) errors.name = '请输入客户名称（至少 2 字）';
     else if (enterpriseHasCustomerName(name)) errors.name = '该企业下已有同名客户';
     if (!form.cat1) errors.cat1 = '请选择一级类别';
-    if (form.regionScope === 'international') {
-      if (!form.country || !form.state || !form.intlCity) {
-        errors.region = '请完整选择国家、州/省、城市';
-      }
-    } else if (!form.province || !form.city || !form.district) {
-      errors.region = '请完整选择省、市、区/县';
+    if (!form.regionId || !form.regionPath || !form.regionPath.length) {
+      errors.region = '请选择地区';
     }
     return errors;
   }
@@ -595,7 +745,7 @@
       refreshCreateCard(card, form, errors);
       return;
     }
-    const regionLabel = regionSummary(form);
+    const regionLabel = form.regionLabel || '';
     const id = 'c-local-' + Date.now();
     const customer = {
       id: id,
@@ -605,13 +755,8 @@
       partnerType: 'customer',
       category: form.cat1,
       categoryL2: form.cat2 || '',
-      regionScope: form.regionScope,
-      regionProvince: form.province,
-      regionCity: form.city,
-      regionDistrict: form.district,
-      regionCountry: form.country,
-      regionState: form.state,
-      regionIntlCity: form.intlCity,
+      regionId: form.regionId,
+      regionPath: form.regionPath,
       regionLabel: regionLabel,
       address: regionLabel,
       contactAddress: regionLabel,
@@ -659,15 +804,70 @@
       deps.persistChatHistory();
       return true;
     }
-    if (action === 'create-region-domestic') {
-      form.regionScope = 'domestic';
-      form.country = form.state = form.intlCity = '';
+    if (action === 'create-region-toggle') {
+      if (form.regionPickerOpen) {
+        closeRegionPickerOnForm(form);
+      } else {
+        openRegionPickerOnForm(form);
+      }
+      refreshCreateCard(card, form);
+      if (deps.persistChatHistory) deps.persistChatHistory();
+      return true;
+    }
+    if (action === 'region-picker-cancel') {
+      closeRegionPickerOnForm(form);
+      refreshCreateCard(card, form);
+      if (deps.persistChatHistory) deps.persistChatHistory();
+      return true;
+    }
+    if (action === 'region-picker-confirm') {
+      if (!form.regionCandidateId) return true;
+      applyRegionSelection(form, form.regionCandidateId);
+      refreshCreateCard(card, form);
+      if (deps.persistChatHistory) deps.persistChatHistory();
+      return true;
+    }
+    if (action === 'region-picker-browse') {
+      form.regionPickerMode = 'browse';
+      form.regionSearch = '';
       refreshCreateCard(card, form);
       return true;
     }
-    if (action === 'create-region-intl') {
-      form.regionScope = 'international';
-      form.province = form.city = form.district = '';
+    if (action === 'region-picker-back') {
+      const browsePath = DemoData.getRegionBrowsePath(form.regionBrowseParentId || '');
+      form.regionBrowseParentId =
+        browsePath.length >= 2 ? browsePath[browsePath.length - 2].id : '';
+      if (form.regionBrowseParentId) {
+        setRegionCandidate(form, form.regionBrowseParentId);
+      } else {
+        form.regionCandidateId = '';
+        form.regionCandidatePath = [];
+      }
+      refreshCreateCard(card, form);
+      return true;
+    }
+    if (action === 'region-picker-crumb') {
+      form.regionBrowseParentId = btn.getAttribute('data-region-id') || '';
+      if (form.regionBrowseParentId) {
+        setRegionCandidate(form, form.regionBrowseParentId);
+      } else {
+        form.regionCandidateId = '';
+        form.regionCandidatePath = [];
+      }
+      refreshCreateCard(card, form);
+      return true;
+    }
+    if (action === 'region-picker-enter') {
+      const nodeId = btn.getAttribute('data-region-id') || '';
+      form.regionBrowseParentId = nodeId;
+      form.regionPickerMode = 'browse';
+      form.regionSearch = '';
+      setRegionCandidate(form, nodeId);
+      refreshCreateCard(card, form);
+      return true;
+    }
+    if (action === 'region-picker-highlight') {
+      setRegionCandidate(form, btn.getAttribute('data-region-id') || '');
       refreshCreateCard(card, form);
       return true;
     }
@@ -681,17 +881,23 @@
     const field = selectEl.getAttribute('data-field') || '';
     if (field === 'create-cat1') {
       form.cat2 = '';
-    } else if (field === 'create-province') {
-      form.city = form.district = '';
-    } else if (field === 'create-city') {
-      form.district = '';
-    } else if (field === 'create-country') {
-      form.state = form.intlCity = '';
-    } else if (field === 'create-state') {
-      form.intlCity = '';
     }
     refreshCreateCard(card, form);
     if (deps.persistChatHistory) deps.persistChatHistory();
+  }
+
+  function handleCreateRegionSearch(inputEl) {
+    const card =
+      (inputEl && inputEl.closest('[data-spec-id="card-customer-create"]')) ||
+      document.querySelector('[data-spec-id="card-customer-create"]:not([data-create-settled="1"])');
+    if (!card || card.getAttribute('data-create-settled') === '1') return;
+    const form = readCreateFormFromCard(card);
+    form.regionSearch = (inputEl && inputEl.value) || '';
+    if (form.regionSearch.trim()) {
+      form.regionPickerMode = 'search';
+    }
+    form.regionPickerOpen = true;
+    refreshCreateCard(card, form);
   }
 
   function patchRecentSectionInDom() {
@@ -719,6 +925,7 @@
     openCreateCustomerCard: openCreateCustomerCard,
     handleCreateAction: handleCreateAction,
     handleCreateSelectChange: handleCreateSelectChange,
+    handleCreateRegionSearch: handleCreateRegionSearch,
     isCreateCustomerIntent: isCreateCustomerIntent,
     renderCustomerCreateCardHtml: renderCustomerCreateCardHtml,
     patchRecentSectionInDom: patchRecentSectionInDom
