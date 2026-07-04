@@ -1319,6 +1319,11 @@
     bindRecentHandlers();
     scrollMessages();
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
+    if (window.Skills && Skills.initAllPaymentYearCarousels) {
+      requestAnimationFrame(function () {
+        Skills.initAllPaymentYearCarousels();
+      });
+    }
     patchRecentSectionInDom();
     return true;
   }

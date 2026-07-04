@@ -2294,7 +2294,18 @@ window.DemoData = {
       customerId && this.paymentAnalysisByCustomer && this.paymentAnalysisByCustomer[customerId]
         ? this.paymentAnalysisByCustomer[customerId]
         : this.paymentAnalysis;
-    var factor = year === 2024 ? 1 : year === 2023 ? 0.85 : year === 2022 ? 0.72 : year === 2021 ? 0.6 : 0.9;
+    var factor =
+      year === 2024
+        ? 1
+        : year === 2023
+          ? 0.85
+          : year === 2022
+            ? 0.72
+            : year === 2021
+              ? 0.6
+              : year >= 2012
+                ? Math.max(0.35, 0.6 - (2021 - year) * 0.05)
+                : 0.9;
     return {
       annualSalesAmount: Math.round(base.annualSalesAmount * factor),
       plannedCollectionAmount: Math.round(base.plannedCollectionAmount * factor),

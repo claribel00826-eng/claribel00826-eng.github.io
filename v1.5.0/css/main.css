@@ -1153,6 +1153,128 @@ a.sc-demo-reset-btn--link {
   border: 1px solid #10b981;
 }
 
+.sc-delivery-result__line-detail--toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sc-delivery-result__line-detail--toggle:hover {
+  filter: brightness(0.98);
+}
+
+.sc-delivery-result__line-detail--toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.sc-delivery-result__detail-chevron {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+  text-align: right;
+}
+
+.sc-delivery-result__detail-chevron-collapse {
+  display: none;
+}
+
+.sc-delivery-result__line.is-detail-expanded .sc-delivery-result__detail-chevron-expand {
+  display: none;
+}
+
+.sc-delivery-result__line.is-detail-expanded .sc-delivery-result__detail-chevron-collapse {
+  display: inline;
+}
+
+.sc-delivery-result__line .sc-delivery-result__issues-wrap {
+  margin-top: 8px;
+}
+
+.sc-delivery-result__line .sc-delivery-result__issues-wrap:not(.sc-hidden) {
+  margin-bottom: 0;
+}
+
+.sc-delivery-result__issue-section + .sc-delivery-result__issue-section {
+  margin-top: 10px;
+}
+
+.sc-delivery-result__issue-section-title {
+  margin: 0 0 8px;
+  padding-left: 8px;
+  border-left: 3px solid #f59e0b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #92400e;
+}
+
+.sc-delivery-result__issue-section--capacity .sc-delivery-result__issue-section-title {
+  border-left-color: #ef4444;
+  color: #b91c1c;
+}
+
+.sc-delivery-result__issue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.sc-delivery-result__issue-item {
+  padding: 10px 12px;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  background: #fffbeb;
+}
+
+.sc-delivery-result__issue-section--capacity .sc-delivery-result__issue-item {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.sc-delivery-result__issue-item-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-text, #18181b);
+}
+
+.sc-delivery-result__issue-rows {
+  margin: 0;
+  padding: 0;
+}
+
+.sc-delivery-result__issue-row {
+  display: grid;
+  grid-template-columns: 7em 1fr;
+  gap: 2px 8px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sc-delivery-result__issue-row:last-child {
+  margin-bottom: 0;
+}
+
+.sc-delivery-result__issue-row dt {
+  margin: 0;
+  color: var(--color-text-muted, #71717a);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sc-delivery-result__issue-row dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--color-text, #18181b);
+  word-break: break-word;
+}
+
 /* 状态标签样式 */
 .sc-delivery-result__status-tag {
   display: inline-block;
@@ -1422,6 +1544,10 @@ a.sc-demo-reset-btn--link {
   font-size: 13px;
   font-weight: 600;
   border-bottom: 1px solid #f4f4f5;
+}
+
+.sc-card--customer-create .sc-form-scroll--create > .sc-field-label:first-of-type {
+  margin-top: 0;
 }
 
 .sc-follow-list {
@@ -4781,11 +4907,62 @@ body.sc-spec-on #messages .sc-card--inventory.sc-spec-pin-host {
   color: var(--color-text-muted);
 }
 
+.sc-payment-year-carousel {
+  overflow: hidden;
+}
+
+.sc-payment-year-carousel__track {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.sc-payment-year-carousel__track::-webkit-scrollbar {
+  display: none;
+}
+
+.sc-payment-year-page {
+  flex: 0 0 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
 .sc-payment-year-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   padding: 12px;
+}
+
+.sc-payment-year-grid__empty {
+  min-height: 52px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.sc-payment-year-carousel__dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 4px;
+}
+
+.sc-payment-year-carousel__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d4d4d8;
+  transition: width 0.2s ease, background 0.2s ease, border-radius 0.2s ease;
+}
+
+.sc-payment-year-carousel__dot.is-active {
+  width: 16px;
+  border-radius: 3px;
+  background: var(--color-primary, #4f46e5);
 }
 
 .sc-payment-year-chip {
@@ -4794,7 +4971,8 @@ body.sc-spec-on #messages .sc-card--inventory.sc-spec-pin-host {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-height: 44px;
+  width: 100%;
+  min-height: 52px;
   padding: 8px 6px;
   border: 1px solid var(--color-border, #e4e4e7);
   border-radius: 8px;

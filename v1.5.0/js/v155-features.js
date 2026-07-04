@@ -7,7 +7,6 @@
   const RECENT_VISITS_KEY = 'sc-recent-visits';
 
   let deps = null;
-  let createSeq = 0;
 
   function init(api) {
     deps = api;
@@ -63,20 +62,25 @@
     });
   }
 
-  function nextCustomerCode() {
-    createSeq += 1;
-    const d = new Date();
-    const ymd =
-      String(d.getFullYear()) +
-      String(d.getMonth() + 1).padStart(2, '0') +
-      String(d.getDate()).padStart(2, '0');
-    return 'C-NEW-' + ymd + '-' + String(createSeq).padStart(3, '0');
-  }
-
   function enterpriseHasCustomerName(name) {
     const n = (name || '').trim();
     const ent = getEnterpriseId();
     return DemoData.customers.some((c) => c.enterpriseId === ent && c.name === n);
+  }
+
+  function enterpriseHasCustomerCode(code, excludeId) {
+    const c = (code || '').trim();
+    if (!c) return false;
+    const ent = getEnterpriseId();
+    return DemoData.customers.some(function (cust) {
+      if (cust.enterpriseId !== ent) return false;
+      if (excludeId && cust.id === excludeId) return false;
+      return (cust.code || '').trim().toUpperCase() === c.toUpperCase();
+    });
+  }
+
+  function isValidCustomerCodeFormat(code) {
+    return /^[A-Za-z0-9_-]+$/.test(code);
   }
 
   /* ── 最近访问 ── */
@@ -318,7 +322,7 @@
 
   function emptyCreateForm(prefillName) {
     return {
-      code: nextCustomerCode(),
+      code: '',
       name: prefillName || '',
       cat1: '',
       cat2: '',
@@ -355,7 +359,7 @@
       regionCandidatePath = [];
     }
     return {
-      code: g('[data-field="create-code"]') || nextCustomerCode(),
+      code: g('[data-field="create-code"]'),
       name: g('[data-field="create-name"]'),
       cat1: g('[data-field="create-cat1"]'),
       cat2: g('[data-field="create-cat2"]'),
@@ -589,16 +593,6 @@
       '">' +
       '<div class="sc-card__head sc-card__head--compact">新增客户</div>' +
       '<div class="sc-form-scroll sc-form-scroll--card sc-form-scroll--create">' +
-      '<div class="sc-form-meta-row">' +
-      '<div class="sc-form-meta-cell"><span class="sc-form-meta-cell__label">编码</span>' +
-      '<span class="sc-form-meta-cell__value">' +
-      deps.escapeHtml(form.code) +
-      '</span></div>' +
-      '<div class="sc-form-meta-cell"><span class="sc-form-meta-cell__label">性质</span>' +
-      '<span class="sc-form-meta-cell__value">客户</span></div></div>' +
-      '<input type="hidden" data-field="create-code" value="' +
-      deps.escapeHtml(form.code) +
-      '" />' +
       '<input type="hidden" data-field="create-region-id" value="' +
       deps.escapeHtml(form.regionId || '') +
       '" />' +
@@ -608,6 +602,21 @@
       '<input type="hidden" data-field="create-region-label" value="' +
       deps.escapeHtml(form.regionLabel || '') +
       '" />' +
+      '<label class="sc-field-label">客户编码 <span class="sc-field-req">*</span></label>' +
+      '<input class="sc-input sc-input--field' +
+      (errors.code ? ' sc-input--error' : '') +
+      '" data-field="create-code" type="text" value="' +
+      deps.escapeHtml(form.code) +
+      '" placeholder="请输入客户编码" autocomplete="off"' +
+      (settled ? ' readonly disabled' : '') +
+      ' />';
+    if (errors.code) {
+      html += '<p class="sc-field-hint sc-field-hint--error">' + deps.escapeHtml(errors.code) + '</p>';
+    } else if (!settled) {
+      html += '<p class="sc-field-hint">企业内唯一，支持字母、数字、短横线与下划线</p>';
+    }
+
+    html +=
       '<label class="sc-field-label">名称 <span class="sc-field-req">*</span></label>' +
       '<input class="sc-input sc-input--field' +
       (errors.name ? ' sc-input--error' : '') +
@@ -728,6 +737,14 @@
 
   function validateCreateForm(form) {
     const errors = {};
+    const code = (form.code || '').trim();
+    if (!code) errors.code = '请输入客户编码';
+    else if (code.length < 2) errors.code = '客户编码至少 2 个字符';
+    else if (!isValidCustomerCodeFormat(code)) {
+      errors.code = '编码仅支持字母、数字、短横线与下划线';
+    } else if (enterpriseHasCustomerCode(code)) {
+      errors.code = '该企业下已有相同客户编码';
+    }
     const name = (form.name || '').trim();
     if (!name || name.length < 2) errors.name = '请输入客户名称（至少 2 字）';
     else if (enterpriseHasCustomerName(name)) errors.name = '该企业下已有同名客户';
@@ -750,7 +767,7 @@
     const customer = {
       id: id,
       enterpriseId: getEnterpriseId(),
-      code: form.code,
+      code: form.code.trim(),
       name: form.name.trim(),
       partnerType: 'customer',
       category: form.cat1,

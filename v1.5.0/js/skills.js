@@ -5425,6 +5425,7 @@ function deliveryOpenFormForOrder(o) {
   function rescanAnnotationPins() {
     if (window.Annotation && Annotation.rescanSpecPins) window.Annotation.rescanSpecPins();
     else if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
+    requestAnimationFrame(initAllPaymentYearCarousels);
   }
 
   function refreshLastPlanPickCard() {
@@ -6842,41 +6843,195 @@ function deliveryOpenFormForOrder(o) {
     return [];
   }
 
+  function deliveryLineDemoIssueSeed(line) {
+    const key = (line.productId || '') + (line.inventoryName || '') + (line.skuId || '');
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    return h;
+  }
+
+  function resolveDeliveryLineIssueFlags(line, onTime) {
+    let hasMaterialIssue = line.materialStatus === 'shortage' || line.materialReady === false;
+    let hasCapacityIssue = line.capacityStatus === 'overload' || line.capacityReady === false;
+    if (!onTime && !hasMaterialIssue && !hasCapacityIssue) {
+      const mod = deliveryLineDemoIssueSeed(line) % 3;
+      if (mod === 0) {
+        hasMaterialIssue = true;
+      } else if (mod === 1) {
+        hasMaterialIssue = true;
+        hasCapacityIssue = true;
+      } else {
+        hasCapacityIssue = true;
+      }
+    }
+    return { hasMaterialIssue: hasMaterialIssue, hasCapacityIssue: hasCapacityIssue };
+  }
+
+  function deliveryIssueDateFromBase(baseDate, offsetDays) {
+    const d = new Date(baseDate || '');
+    if (isNaN(d.getTime())) return (baseDate || '').replace(/-/g, '/');
+    d.setDate(d.getDate() + (offsetDays || 0));
+    return d.toISOString().slice(0, 10).replace(/-/g, '/');
+  }
+
+  function buildDeliveryMaterialIssues(line, planDates, flags) {
+    if (!flags.hasMaterialIssue) return [];
+    const seed = deliveryLineDemoIssueSeed(line);
+    const count = 1 + (seed % 2);
+    const fallbackNames = ['密封圈', '钢套', '连杆', '法兰'];
+    const primaryName = line.inventoryName || '核心子件';
+    const issues = [];
+    for (let i = 0; i < count; i++) {
+      issues.push({
+        materialName: i === 0 ? primaryName : fallbackNames[(seed + i) % fallbackNames.length],
+        startTime: deliveryIssueDateFromBase(planDates.start, i * 2),
+        endTime: deliveryIssueDateFromBase(planDates.end, i * 2 + 1),
+        supplyDays: 3 + ((seed + i * 3) % 5)
+      });
+    }
+    return issues;
+  }
+
+  function buildDeliveryCapacityIssues(line, planDates, flags) {
+    if (!flags.hasCapacityIssue) return [];
+    const seed = deliveryLineDemoIssueSeed(line);
+    const count = 1 + ((seed >> 2) % 2);
+    const reviewLines = DemoData.deliveryReviewLines || ['机加工一线', '装配二线', '仓储发运线'];
+    const issues = [];
+    for (let i = 0; i < count; i++) {
+      issues.push({
+        lineName: reviewLines[(seed + i) % reviewLines.length],
+        startTime: deliveryIssueDateFromBase(planDates.start, 1 + i * 2),
+        endTime: deliveryIssueDateFromBase(planDates.end, 2 + i * 2)
+      });
+    }
+    return issues;
+  }
+
+  function buildDeliveryLineDetailSummary(materialIssues, capacityIssues) {
+    const mCount = (materialIssues || []).length;
+    const cCount = (capacityIssues || []).length;
+    if (mCount && !cCount) {
+      return '【物料异常】' + mCount + ' 项物料供应窗口无法满足交期，建议调整方案';
+    }
+    if (!mCount && cCount) {
+      return '【产能异常】' + cCount + ' 条产线时段冲突，建议调整方案';
+    }
+    if (mCount && cCount) {
+      return '【物料异常】【产能异常】物料与产线均存在冲突，建议调整方案';
+    }
+    return '【物料异常】交期无法保证，建议调整方案';
+  }
+
+  function renderDeliveryIssueRow(label, value) {
+    return (
+      '<div class="sc-delivery-result__issue-row">' +
+      '<dt>' +
+      App.escapeHtml(label) +
+      '</dt><dd>' +
+      App.escapeHtml(value == null ? '—' : String(value)) +
+      '</dd></div>'
+    );
+  }
+
+  function renderDeliveryMaterialIssueItem(item) {
+    return (
+      '<article class="sc-delivery-result__issue-item">' +
+      '<h4 class="sc-delivery-result__issue-item-title">' +
+      App.escapeHtml(item.materialName || '—') +
+      '</h4>' +
+      '<dl class="sc-delivery-result__issue-rows">' +
+      renderDeliveryIssueRow('预计开始时间', item.startTime) +
+      renderDeliveryIssueRow('预计结束时间', item.endTime) +
+      renderDeliveryIssueRow('保证供应天数', (item.supplyDays != null ? item.supplyDays : '—') + ' 天') +
+      '</dl></article>'
+    );
+  }
+
+  function renderDeliveryCapacityIssueItem(item) {
+    return (
+      '<article class="sc-delivery-result__issue-item">' +
+      '<h4 class="sc-delivery-result__issue-item-title">' +
+      App.escapeHtml(item.lineName || '—') +
+      '</h4>' +
+      '<dl class="sc-delivery-result__issue-rows">' +
+      renderDeliveryIssueRow('预计开始时间', item.startTime) +
+      renderDeliveryIssueRow('预计结束时间', item.endTime) +
+      '</dl></article>'
+    );
+  }
+
+  function renderDeliveryResultIssuesHtml(r) {
+    const materialIssues = r.materialIssues || [];
+    const capacityIssues = r.capacityIssues || [];
+    if (!materialIssues.length && !capacityIssues.length) return '';
+
+    let html = '<div class="sc-delivery-result__issues-wrap sc-hidden" data-role="delivery-detail-panel">';
+
+    if (materialIssues.length) {
+      html +=
+        '<section class="sc-delivery-result__issue-section sc-delivery-result__issue-section--material">' +
+        '<h3 class="sc-delivery-result__issue-section-title">物料异常（' +
+        materialIssues.length +
+        '）</h3>' +
+        '<div class="sc-delivery-result__issue-list">' +
+        materialIssues.map(renderDeliveryMaterialIssueItem).join('') +
+        '</div></section>';
+    }
+
+    if (capacityIssues.length) {
+      html +=
+        '<section class="sc-delivery-result__issue-section sc-delivery-result__issue-section--capacity">' +
+        '<h3 class="sc-delivery-result__issue-section-title">产能异常（' +
+        capacityIssues.length +
+        '）</h3>' +
+        '<div class="sc-delivery-result__issue-list">' +
+        capacityIssues.map(renderDeliveryCapacityIssueItem).join('') +
+        '</div></section>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function toggleDeliveryResultDetail(btn) {
+    const card = btn.closest('[data-spec-id="card-delivery"]');
+    if (!card) return;
+    const line = btn.closest('.sc-delivery-result__line');
+    if (!line) return;
+    const panel = line.querySelector('[data-role="delivery-detail-panel"]');
+    const willExpand = !line.classList.contains('is-detail-expanded');
+    card.querySelectorAll('.sc-delivery-result__line.is-detail-expanded').forEach(function (el) {
+      el.classList.remove('is-detail-expanded');
+      const p = el.querySelector('[data-role="delivery-detail-panel"]');
+      if (p) p.classList.add('sc-hidden');
+      const toggle = el.querySelector('[data-action="delivery-detail-toggle"]');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    });
+    if (willExpand && panel) {
+      line.classList.add('is-detail-expanded');
+      panel.classList.remove('sc-hidden');
+      btn.setAttribute('aria-expanded', 'true');
+    }
+  }
+
   function evaluateDeliveryLineReview(line, planDates, meta) {
     const expectedDate = line.expectedDate || '';
     const reverseSchedule = meta && meta.reverseSchedule != null ? !!meta.reverseSchedule : false;
     const compareDate = reverseSchedule ? planDates.start : planDates.end;
-    const fmt = function (d) {
-      return (d || '').replace(/-/g, '/');
-    };
-    
-    // 判断异常类型 - 只有明确标记为异常时才认为有问题
-    const hasMaterialIssue = line.materialStatus === 'shortage' || line.materialReady === false;
-    const hasCapacityIssue = line.capacityStatus === 'overload' || line.capacityReady === false;
+
     const onTime = expectedDate && new Date(expectedDate) >= new Date(compareDate);
-    
-    // 生成详情说明文案
+    const issueFlags = resolveDeliveryLineIssueFlags(line, onTime);
+    const materialIssues = onTime ? [] : buildDeliveryMaterialIssues(line, planDates, issueFlags);
+    const capacityIssues = onTime ? [] : buildDeliveryCapacityIssues(line, planDates, issueFlags);
+
     let detail = '';
     if (onTime) {
-      // status = 按期：直接显示评估通过
       detail = '【评估通过】起止时间满足客户交期，物料充足、产能空闲，可锁定排程按期投产。';
     } else {
-      // status = 交期异常：根据异常原因展示
-      if (hasMaterialIssue && !hasCapacityIssue) {
-        // 仅物料异常
-        detail = '【物料异常】部分核心物料缺货，预计实际结束时间时间为' + fmt(planDates.end) + '，建议调整方案';
-      } else if (!hasMaterialIssue && hasCapacityIssue) {
-        // 仅产能异常
-        detail = '【产能异常】产线当前时段超负荷，预计实际结束时间为' + fmt(planDates.end) + '，建议调整方案';
-      } else if (hasMaterialIssue && hasCapacityIssue) {
-        // 双重异常
-        detail = '【物料异常】【产能异常】：存在物料缺货，且产线当前超负荷，预计实际结束时间' + fmt(planDates.end) + '超出客户要求交期，建议调整方案';
-      } else {
-        // 无明确异常标记（兜底）
-        detail = '【物料异常】部分核心物料缺货，预计实际结束时间时间为' + fmt(planDates.end) + '，建议调整方案';
-      }
+      detail = buildDeliveryLineDetailSummary(materialIssues, capacityIssues);
     }
-    
+
     return {
       inventoryName: line.inventoryName || '—',
       freeAttrsText: deliveryLineFreeAttrsText(line),
@@ -6885,7 +7040,9 @@ function deliveryOpenFormForOrder(o) {
       expectedDate: expectedDate,
       onTime: onTime,
       status: onTime ? '按期' : '交期异常',
-      detail: detail
+      detail: detail,
+      materialIssues: materialIssues,
+      capacityIssues: capacityIssues
     };
   }
 
@@ -6943,23 +7100,39 @@ function deliveryOpenFormForOrder(o) {
     };
     
     const rows = lineResults
-      .map(function (r) {
+      .map(function (r, idx) {
         const badge = r.onTime ? 'sc-badge--new' : 'sc-badge--old';
         const status = r.status || (r.onTime ? '按期' : '交期异常');
         const fmt = function (v) {
           return App.escapeHtml((v || '').replace(/-/g, '/'));
         };
-        
-        // 判断详情区域样式
+
         let detailClass = 'sc-delivery-result__line-detail';
         if (r.detail && r.detail.includes('评估通过')) {
           detailClass += ' sc-delivery-result__line-detail--success';
         } else if (r.detail && (r.detail.includes('物料异常') || r.detail.includes('产能异常'))) {
           detailClass += ' sc-delivery-result__line-detail--warning';
         }
-        
+        if (!r.onTime) {
+          detailClass += ' sc-delivery-result__line-detail--toggle';
+        }
+
+        const detailToggleAttrs = !r.onTime
+          ? ' data-action="delivery-detail-toggle" data-line-idx="' +
+            idx +
+            '" role="button" tabindex="0" aria-expanded="false"'
+          : '';
+        const chevronHtml = !r.onTime
+          ? '<span class="sc-delivery-result__detail-chevron">' +
+            '<span class="sc-delivery-result__detail-chevron-expand">查看详情 ▾</span>' +
+            '<span class="sc-delivery-result__detail-chevron-collapse">收起 ▴</span>' +
+            '</span>'
+          : '';
+
         return (
-          '<div class="sc-delivery-result__line">' +
+          '<div class="sc-delivery-result__line" data-delivery-line-idx="' +
+          idx +
+          '">' +
           '<div class="sc-delivery-result__line-head">' +
           '<strong>' +
           App.escapeHtml(r.inventoryName || '—') +
@@ -6984,9 +7157,16 @@ function deliveryOpenFormForOrder(o) {
           '期望交期 ' +
           fmt(r.expectedDate) +
           '</p>' +
-          '<div class="' + detailClass + '">' +
+          '<div class="' +
+          detailClass +
+          '"' +
+          detailToggleAttrs +
+          '>' +
           formatDetail(r.detail || '') +
-          '</div></div>'
+          chevronHtml +
+          '</div>' +
+          renderDeliveryResultIssuesHtml(r) +
+          '</div>'
         );
       })
       .join('');
@@ -10313,10 +10493,21 @@ function openChangeSheet(oid, opts) {
 
   function getPaymentYearOptions() {
     var cur = new Date().getFullYear();
+    var start = 2012;
     var years = [];
     var y;
-    for (y = 2021; y <= cur; y++) years.push(y);
+    for (y = cur; y >= start; y--) years.push(y);
     return years;
+  }
+
+  function chunkPaymentYearPages(years, pageSize) {
+    pageSize = pageSize || 9;
+    var pages = [];
+    var i;
+    for (i = 0; i < years.length; i += pageSize) {
+      pages.push(years.slice(i, i + pageSize));
+    }
+    return pages;
   }
 
   function parsePaymentYearFromText(text) {
@@ -10328,7 +10519,7 @@ function openChangeSheet(oid, opts) {
     var m = t.match(/(20\d{2})\s*年?/);
     if (m) {
       var y = parseInt(m[1], 10);
-      if (y >= 2021 && y <= cur) return y;
+      if (y >= 2012 && y <= cur) return y;
     }
     return null;
   }
@@ -10363,34 +10554,81 @@ function openChangeSheet(oid, opts) {
     return y === cur ? '今年' : y + '年';
   }
 
+  function renderPaymentYearChip(y, pq) {
+    var cur = new Date().getFullYear();
+    var cls = 'sc-payment-year-chip';
+    var tags = '';
+    if (y === cur) cls += ' sc-payment-year-chip--recommended';
+    if (pq.prefillYear === y) cls += ' sc-payment-year-chip--prefill';
+    if (y === cur && pq.prefillYear !== y) {
+      tags += '<span class="sc-payment-year-chip__tag">★推荐</span>';
+    } else if (pq.prefillYear === y) {
+      tags += '<span class="sc-payment-year-chip__tag">待确认</span>';
+    }
+    return (
+      '<button type="button" class="' +
+      cls +
+      '" data-action="payment-pick-year" data-year="' +
+      y +
+      '">' +
+      '<span>' +
+      App.escapeHtml(paymentYearChipLabel(y)) +
+      '</span>' +
+      tags +
+      '</button>'
+    );
+  }
+
+  function renderPaymentYearPageGrid(pageYears, pq) {
+    var cells = pageYears.map(function (y) {
+      return renderPaymentYearChip(y, pq);
+    });
+    var emptyCount = 9 - pageYears.length;
+    var i;
+    for (i = 0; i < emptyCount; i++) {
+      cells.push('<div class="sc-payment-year-grid__empty" aria-hidden="true"></div>');
+    }
+    return (
+      '<div class="sc-payment-year-grid" role="group" aria-label="选择年份">' + cells.join('') + '</div>'
+    );
+  }
+
   function renderPaymentYearStepCard(pq) {
     var years = getPaymentYearOptions();
+    var pages = chunkPaymentYearPages(years, 9);
     var cur = new Date().getFullYear();
-    var chips = years
-      .map(function (y) {
-        var cls = 'sc-payment-year-chip';
-        var tags = '';
-        if (y === cur) cls += ' sc-payment-year-chip--recommended';
-        if (pq.prefillYear === y) cls += ' sc-payment-year-chip--prefill';
-        if (y === cur && pq.prefillYear !== y) {
-          tags += '<span class="sc-payment-year-chip__tag">★推荐</span>';
-        } else if (pq.prefillYear === y) {
-          tags += '<span class="sc-payment-year-chip__tag">待确认</span>';
-        }
+    var targetYear = pq.prefillYear || cur;
+    var pageHtml = pages
+      .map(function (pageYears, idx) {
         return (
-          '<button type="button" class="' +
-          cls +
-          '" data-action="payment-pick-year" data-year="' +
-          y +
+          '<div class="sc-payment-year-page" data-page-index="' +
+          idx +
+          '" data-years="' +
+          pageYears.join(',') +
           '">' +
-          '<span>' +
-          App.escapeHtml(paymentYearChipLabel(y)) +
-          '</span>' +
-          tags +
-          '</button>'
+          renderPaymentYearPageGrid(pageYears, pq) +
+          '</div>'
         );
       })
       .join('');
+    var dotsHtml =
+      pages.length > 1
+        ? '<div class="sc-payment-year-carousel__dots" aria-hidden="true">' +
+          pages
+            .map(function (_, idx) {
+              return (
+                '<span class="sc-payment-year-carousel__dot' +
+                (idx === 0 ? ' is-active' : '') +
+                '"></span>'
+              );
+            })
+            .join('') +
+          '</div>'
+        : '';
+    var hint =
+      pages.length > 1
+        ? '左右滑动切换年份页，点选后进入范围选择'
+        : '点选年份后进入范围选择';
     return (
       '<div class="sc-card sc-card--compact sc-card--payment-step" data-spec-id="card-payment-year">' +
       '<div class="sc-payment-step__head">' +
@@ -10398,12 +10636,53 @@ function openChangeSheet(oid, opts) {
       '<span class="sc-payment-step__badge">Step 1/2</span>' +
       '</div>' +
       '<p class="sc-payment-step__subtitle">请选择年份</p>' +
-      '<div class="sc-payment-year-grid" role="group" aria-label="选择年份">' +
-      chips +
+      '<div class="sc-payment-year-carousel" data-target-year="' +
+      targetYear +
+      '">' +
+      '<div class="sc-payment-year-carousel__track">' +
+      pageHtml +
       '</div>' +
-      '<p class="sc-payment-step__hint">点选年份后将进入范围选择</p>' +
+      dotsHtml +
+      '</div>' +
+      '<p class="sc-payment-step__hint">' +
+      hint +
+      '</p>' +
       '</div>'
     );
+  }
+
+  function initPaymentYearCarousel(root) {
+    if (!root || root.dataset.carouselInited === '1') return;
+    root.dataset.carouselInited = '1';
+    var track = root.querySelector('.sc-payment-year-carousel__track');
+    if (!track) return;
+    var targetYear = parseInt(root.getAttribute('data-target-year'), 10);
+    var pages = track.querySelectorAll('.sc-payment-year-page');
+    var targetPage = 0;
+    pages.forEach(function (page, idx) {
+      var ys = (page.getAttribute('data-years') || '').split(',');
+      if (ys.indexOf(String(targetYear)) !== -1) targetPage = idx;
+    });
+    var scrollToPage = function () {
+      track.scrollLeft = targetPage * track.clientWidth;
+    };
+    scrollToPage();
+    requestAnimationFrame(scrollToPage);
+    var dots = root.querySelectorAll('.sc-payment-year-carousel__dot');
+    if (dots.length <= 1) return;
+    var syncDots = function () {
+      var w = track.clientWidth || 1;
+      var idx = Math.round(track.scrollLeft / w);
+      dots.forEach(function (dot, i) {
+        dot.classList.toggle('is-active', i === idx);
+      });
+    };
+    track.addEventListener('scroll', syncDots, { passive: true });
+    syncDots();
+  }
+
+  function initAllPaymentYearCarousels() {
+    document.querySelectorAll('#messages .sc-payment-year-carousel').forEach(initPaymentYearCarousel);
   }
 
   function renderPaymentScopeStepCard(pq) {
@@ -10463,10 +10742,7 @@ function openChangeSheet(oid, opts) {
   }
 
   function pushPaymentYearStep(pq) {
-    App.pushAiHtml(
-      '<p class="sc-reply-lead">好的，先确认查询哪一年的回款。可以说「今年」或「2024年」，也可以点下面选项。</p>' +
-        renderPaymentYearStepCard(pq)
-    );
+    App.pushAiHtml(renderPaymentYearStepCard(pq));
     rescanAnnotationPins();
   }
 
@@ -11986,6 +12262,10 @@ function openChangeSheet(oid, opts) {
       }
       return true;
     }
+    if (action === 'delivery-detail-toggle') {
+      toggleDeliveryResultDetail(btn);
+      return true;
+    }
     if (action === 'delivery-adjust') {
       adjustDeliveryFromResult();
       return true;
@@ -12977,6 +13257,7 @@ function openChangeSheet(oid, opts) {
     onPickFreeAttrChange,
     onDeliveryFormExpectedDateChange,
     refreshLastQuoteConfirmCard,
-    runPayment
+    runPayment,
+    initAllPaymentYearCarousels
   };
 })();
