@@ -2274,6 +2274,33 @@ button.is-flow-stale,
   min-width: 88px;
 }
 
+.sc-sheet--region-picker {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+
+.sc-sheet--region-picker .sc-region-picker__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sc-sheet--region-picker .sc-region-picker {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.sc-sheet--region-picker .sc-region-picker__list {
+  max-height: none;
+}
+
+body.sc-region-modal-open .sc-app {
+  overflow: hidden;
+}
+
 .sc-segment {
   display: grid;
   grid-template-columns: 1fr 1fr;

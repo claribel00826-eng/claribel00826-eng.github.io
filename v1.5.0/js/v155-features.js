@@ -7,10 +7,33 @@
   const RECENT_VISITS_KEY = 'sc-recent-visits';
 
   let deps = null;
+  let createRegionModal = { card: null, draft: null };
 
   function init(api) {
     deps = api;
     syncLocalCustomersIntoDemo();
+    bindCreateRegionModal();
+  }
+
+  function bindCreateRegionModal() {
+    const overlay = document.getElementById('overlay-create-region');
+    if (!overlay || overlay.dataset.bound === '1') return;
+    overlay.dataset.bound = '1';
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) handleRegionModalAction('region-picker-cancel', overlay);
+    });
+    const sheet = overlay.querySelector('[data-spec-id="sheet-create-region"]');
+    if (sheet) {
+      sheet.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        handleRegionModalAction(btn.getAttribute('data-action'), btn);
+      });
+      sheet.addEventListener('input', function (e) {
+        const inp = e.target.closest('[data-action="create-region-search"]');
+        if (inp) handleCreateRegionSearch(inp);
+      });
+    }
   }
 
   function storageKey(base) {
@@ -330,12 +353,45 @@
       regionPath: [],
       regionLabel: '',
       regionPickerOpen: false,
-      regionPickerMode: 'search',
+      regionPickerMode: 'browse',
       regionBrowseParentId: '',
       regionSearch: '',
       regionCandidateId: '',
       regionCandidatePath: []
     };
+  }
+
+  function encodeJsonAttr(value) {
+    return encodeURIComponent(JSON.stringify(value == null ? [] : value));
+  }
+
+  function decodeJsonAttr(raw) {
+    if (!raw) return [];
+    try {
+      return JSON.parse(decodeURIComponent(raw));
+    } catch (e) {
+      try {
+        return JSON.parse(raw);
+      } catch (e2) {
+        return [];
+      }
+    }
+  }
+
+  function ensureCreateFormRegion(form) {
+    if (!form.regionId && form.regionCandidateId) {
+      applyRegionSelection(form, form.regionCandidateId);
+    }
+    if (form.regionId && (!form.regionPath || !form.regionPath.length)) {
+      const hit = DemoData.findRegionNodeById ? DemoData.findRegionNodeById(form.regionId) : null;
+      if (hit) {
+        form.regionPath = hit.path;
+        form.regionLabel = DemoData.formatRegionLabel
+          ? DemoData.formatRegionLabel(hit.path)
+          : hit.path.map(function (p) { return p.name; }).join(' / ');
+      }
+    }
+    return form;
   }
 
   function readCreateFormFromCard(card) {
@@ -344,20 +400,8 @@
       const el = card.querySelector(sel);
       return el ? el.value : '';
     };
-    let regionPath = [];
-    try {
-      const raw = g('[data-field="create-region-path"]');
-      if (raw) regionPath = JSON.parse(raw);
-    } catch (e) {
-      regionPath = [];
-    }
-    let regionCandidatePath = [];
-    try {
-      const candRaw = g('[data-field="create-region-candidate-path"]');
-      if (candRaw) regionCandidatePath = JSON.parse(candRaw);
-    } catch (e) {
-      regionCandidatePath = [];
-    }
+    let regionPath = decodeJsonAttr(g('[data-field="create-region-path"]'));
+    let regionCandidatePath = decodeJsonAttr(g('[data-field="create-region-candidate-path"]'));
     return {
       code: g('[data-field="create-code"]'),
       name: g('[data-field="create-name"]'),
@@ -367,7 +411,7 @@
       regionPath: regionPath,
       regionLabel: g('[data-field="create-region-label"]'),
       regionPickerOpen: card.getAttribute('data-region-picker-open') === '1',
-      regionPickerMode: card.getAttribute('data-region-picker-mode') || 'search',
+      regionPickerMode: card.getAttribute('data-region-picker-mode') || 'browse',
       regionBrowseParentId: card.getAttribute('data-region-browse-parent') || '',
       regionSearch: g('[data-field="create-region-search"]') || '',
       regionCandidateId: g('[data-field="create-region-candidate-id"]') || '',
@@ -391,7 +435,7 @@
 
   function openRegionPickerOnForm(form) {
     form.regionPickerOpen = true;
-    form.regionPickerMode = 'search';
+    form.regionPickerMode = 'browse';
     form.regionBrowseParentId = '';
     form.regionSearch = '';
     form.regionCandidateId = form.regionId || '';
@@ -422,16 +466,16 @@
   }
 
   function regionPathJson(form) {
-    return deps.escapeHtml(JSON.stringify(form.regionPath || []));
+    return deps.escapeHtml(encodeJsonAttr(form.regionPath || []));
   }
 
-  function renderRegionPickerInlineHtml(form, settled) {
-    if (!form.regionPickerOpen || settled) return '';
-    const q = (form.regionSearch || '').trim();
-    const showBrowse = !q && form.regionPickerMode === 'browse';
-    const browsePath = showBrowse && DemoData.getRegionBrowsePath
-      ? DemoData.getRegionBrowsePath(form.regionBrowseParentId || '')
-      : [];
+  function renderRegionPickerBodyHtml(draft) {
+    draft = draft || {};
+    const q = (draft.regionSearch || '').trim();
+    const browsePath =
+      !q && DemoData.getRegionBrowsePath
+        ? DemoData.getRegionBrowsePath(draft.regionBrowseParentId || '')
+        : [];
     let bodyHtml = '';
 
     if (q) {
@@ -443,7 +487,7 @@
           '<div class="sc-region-picker__list sc-region-picker__list--search">' +
           hits
             .map(function (hit) {
-              const selected = form.regionCandidateId === hit.id;
+              const selected = draft.regionCandidateId === hit.id;
               return (
                 '<button type="button" class="sc-list-item sc-list-item--customer sc-region-picker__item' +
                 (selected ? ' is-selected' : '') +
@@ -459,9 +503,9 @@
             .join('') +
           '</div>';
       }
-    } else if (showBrowse) {
+    } else {
       const items = DemoData.getRegionChildren
-        ? DemoData.getRegionChildren(form.regionBrowseParentId || null)
+        ? DemoData.getRegionChildren(draft.regionBrowseParentId || null)
         : [];
       let crumbHtml =
         '<div class="sc-region-picker__crumb-row">' +
@@ -499,7 +543,7 @@
           '<div class="sc-region-picker__list">' +
           items
             .map(function (item) {
-              const isCandidate = form.regionCandidateId === item.id;
+              const isCandidate = draft.regionCandidateId === item.id;
               const drillBtn = item.hasChildren
                 ? '<button type="button" class="sc-region-picker__drill" data-action="region-picker-enter" data-region-id="' +
                   deps.escapeHtml(item.id) +
@@ -520,31 +564,25 @@
           '</div>';
       }
       bodyHtml = crumbHtml + listHtml;
-    } else {
-      bodyHtml =
-        '<p class="sc-region-picker__hint">输入关键词搜索地区，或浏览地区树逐级选择。</p>';
     }
 
-    const pathLabel = candidatePathLabel(form);
+    const pathLabel = candidatePathLabel(draft);
     const footerPath = pathLabel
       ? '当前：' + deps.escapeHtml(pathLabel)
-      : '当前：请搜索或浏览后选择';
-    const confirmDisabled = !form.regionCandidateId ? ' disabled' : '';
+      : '当前：请在列表中选择';
+    const confirmDisabled = !draft.regionCandidateId ? ' disabled' : '';
 
     return (
       '<div class="sc-region-picker" data-spec-id="card-region-picker">' +
       '<input type="hidden" data-field="create-region-candidate-id" value="' +
-      deps.escapeHtml(form.regionCandidateId || '') +
+      deps.escapeHtml(draft.regionCandidateId || '') +
       '" />' +
       '<input type="hidden" data-field="create-region-candidate-path" value="' +
-      deps.escapeHtml(JSON.stringify(form.regionCandidatePath || [])) +
+      deps.escapeHtml(encodeJsonAttr(draft.regionCandidatePath || [])) +
       '" />' +
       '<input type="search" class="sc-search sc-card__search" data-action="create-region-search" data-field="create-region-search" value="' +
-      deps.escapeHtml(form.regionSearch || '') +
+      deps.escapeHtml(draft.regionSearch || '') +
       '" placeholder="搜索地区名称" autocomplete="off" />' +
-      (!q
-        ? '<button type="button" class="sc-region-picker__browse-link" data-action="region-picker-browse">浏览地区树</button>'
-        : '') +
       bodyHtml +
       '<div class="sc-region-picker__footer">' +
       '<p class="sc-region-picker__footer-path">' +
@@ -573,24 +611,16 @@
       : '请选择地区';
     const triggerDesc = hasRegion
       ? deps.escapeHtml(form.regionLabel || '')
-      : '搜索或浏览地区树，任意层级均可';
+      : '点击打开弹窗选择地区';
     const triggerCls =
       'sc-plan-entry__option sc-region-trigger' +
       (hasRegion ? ' sc-region-trigger--filled' : '') +
-      (errors.region ? ' sc-region-trigger--error' : '') +
-      (form.regionPickerOpen ? ' is-expanded' : '');
+      (errors.region ? ' sc-region-trigger--error' : '');
 
     let html =
       '<div class="sc-card sc-card--compact sc-card--inline-form sc-card--customer-create"' +
       (settled ? ' data-create-settled="1"' : '') +
-      ' data-spec-id="card-customer-create"' +
-      ' data-region-picker-open="' +
-      (form.regionPickerOpen ? '1' : '0') +
-      '" data-region-picker-mode="' +
-      deps.escapeHtml(form.regionPickerMode || 'search') +
-      '" data-region-browse-parent="' +
-      deps.escapeHtml(form.regionBrowseParentId || '') +
-      '">' +
+      ' data-spec-id="card-customer-create">' +
       '<div class="sc-card__head sc-card__head--compact">新增客户</div>' +
       '<div class="sc-form-scroll sc-form-scroll--card sc-form-scroll--create">' +
       '<input type="hidden" data-field="create-region-id" value="' +
@@ -661,12 +691,10 @@
       triggerDesc +
       '</span></span><span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>';
 
-    if (hasRegion && !form.regionPickerOpen) {
+    if (hasRegion) {
       html +=
         '<p class="sc-region-summary">已选：' + deps.escapeHtml(form.regionLabel || '') + '</p>';
     }
-
-    html += renderRegionPickerInlineHtml(form, settled);
 
     html += '<p class="sc-field-hint">任意层级均可作为客户地区</p>';
 
@@ -684,6 +712,113 @@
     }
     html += '</div>';
     return html;
+  }
+
+  function openRegionPickerModal(card) {
+    if (!card || card.getAttribute('data-create-settled') === '1') return;
+    bindCreateRegionModal();
+    const form = readCreateFormFromCard(card);
+    createRegionModal.card = card;
+    createRegionModal.draft = {
+      regionPickerMode: 'browse',
+      regionBrowseParentId: '',
+      regionSearch: '',
+      regionCandidateId: form.regionId || '',
+      regionCandidatePath: form.regionPath ? form.regionPath.slice() : []
+    };
+    const overlay = document.getElementById('overlay-create-region');
+    const mount = document.getElementById('create-region-mount');
+    if (!overlay || !mount) return;
+    mount.innerHTML = renderRegionPickerBodyHtml(createRegionModal.draft);
+    overlay.classList.remove('sc-hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('sc-region-modal-open');
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
+  }
+
+  function closeRegionPickerModal() {
+    const overlay = document.getElementById('overlay-create-region');
+    if (overlay) {
+      overlay.classList.add('sc-hidden');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+    document.body.classList.remove('sc-region-modal-open');
+    createRegionModal = { card: null, draft: null };
+  }
+
+  function refreshRegionPickerModal() {
+    const mount = document.getElementById('create-region-mount');
+    if (!mount || !createRegionModal.draft) return;
+    mount.innerHTML = renderRegionPickerBodyHtml(createRegionModal.draft);
+    const q = (createRegionModal.draft.regionSearch || '').trim();
+    if (q) {
+      const searchInp = mount.querySelector('[data-field="create-region-search"]');
+      if (searchInp) {
+        searchInp.focus();
+        const len = searchInp.value.length;
+        searchInp.setSelectionRange(len, len);
+      }
+    }
+    if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
+  }
+
+  function handleRegionModalAction(action, btn) {
+    const card = createRegionModal.card;
+    const draft = createRegionModal.draft;
+    if (!card || !draft) return false;
+
+    if (action === 'region-picker-cancel') {
+      closeRegionPickerModal();
+      return true;
+    }
+    if (action === 'region-picker-confirm') {
+      if (!draft.regionCandidateId) return true;
+      let form = readCreateFormFromCard(card);
+      applyRegionSelection(form, draft.regionCandidateId);
+      closeRegionPickerModal();
+      refreshCreateCard(card, form);
+      if (deps.persistChatHistory) deps.persistChatHistory();
+      return true;
+    }
+    if (action === 'region-picker-back') {
+      const browsePath = DemoData.getRegionBrowsePath(draft.regionBrowseParentId || '');
+      draft.regionBrowseParentId =
+        browsePath.length >= 2 ? browsePath[browsePath.length - 2].id : '';
+      if (draft.regionBrowseParentId) {
+        setRegionCandidate(draft, draft.regionBrowseParentId);
+      } else {
+        draft.regionCandidateId = '';
+        draft.regionCandidatePath = [];
+      }
+      refreshRegionPickerModal();
+      return true;
+    }
+    if (action === 'region-picker-crumb') {
+      draft.regionBrowseParentId = (btn && btn.getAttribute('data-region-id')) || '';
+      if (draft.regionBrowseParentId) {
+        setRegionCandidate(draft, draft.regionBrowseParentId);
+      } else {
+        draft.regionCandidateId = '';
+        draft.regionCandidatePath = [];
+      }
+      refreshRegionPickerModal();
+      return true;
+    }
+    if (action === 'region-picker-enter') {
+      const nodeId = (btn && btn.getAttribute('data-region-id')) || '';
+      draft.regionBrowseParentId = nodeId;
+      draft.regionPickerMode = 'browse';
+      draft.regionSearch = '';
+      setRegionCandidate(draft, nodeId);
+      refreshRegionPickerModal();
+      return true;
+    }
+    if (action === 'region-picker-highlight') {
+      setRegionCandidate(draft, (btn && btn.getAttribute('data-region-id')) || '');
+      refreshRegionPickerModal();
+      return true;
+    }
+    return false;
   }
 
   function applyRegionSelection(form, nodeId) {
@@ -756,7 +891,7 @@
   }
 
   function submitCreateForm(card) {
-    const form = readCreateFormFromCard(card);
+    let form = ensureCreateFormRegion(readCreateFormFromCard(card));
     const errors = validateCreateForm(form);
     if (Object.keys(errors).length) {
       refreshCreateCard(card, form, errors);
@@ -799,14 +934,19 @@
     deps.pushUserMsg('新增客户：' + customer.name.trim());
     lockCreateFormCard(card, form);
     deps.pushSystem('已新增客户：' + customer.name);
-    deps.switchCustomer(id, { skipCustomerAnnounce: true });
-    deps.pushAiHtml(deps.renderNextStepCard(id));
+    deps.switchCustomer(id, { skipCustomerAnnounce: true, showDetail: true });
+    if (deps.switchActiveSkill) {
+      deps.switchActiveSkill('customer-create', { skipSkillAnnounce: true });
+    }
     if (deps.scrollMessages) deps.scrollMessages();
     if (deps.persistChatHistory) deps.persistChatHistory();
     if (window.Annotation && Annotation.scanHosts) window.Annotation.scanHosts();
   }
 
   function handleCreateAction(action, btn) {
+    if (btn && btn.closest('[data-spec-id="sheet-create-region"]')) {
+      return handleRegionModalAction(action, btn);
+    }
     const card = btn.closest('[data-spec-id="card-customer-create"]');
     if (!card) return false;
     if (card.getAttribute('data-create-settled') === '1') return false;
@@ -822,15 +962,16 @@
       return true;
     }
     if (action === 'create-region-toggle') {
-      if (form.regionPickerOpen) {
-        closeRegionPickerOnForm(form);
-      } else {
-        openRegionPickerOnForm(form);
-      }
-      refreshCreateCard(card, form);
-      if (deps.persistChatHistory) deps.persistChatHistory();
+      openRegionPickerModal(card);
       return true;
     }
+    if (card.querySelector('[data-spec-id="card-region-picker"]')) {
+      return handleLegacyInlineRegionAction(action, btn, card, form);
+    }
+    return false;
+  }
+
+  function handleLegacyInlineRegionAction(action, btn, card, form) {
     if (action === 'region-picker-cancel') {
       closeRegionPickerOnForm(form);
       refreshCreateCard(card, form);
@@ -842,12 +983,6 @@
       applyRegionSelection(form, form.regionCandidateId);
       refreshCreateCard(card, form);
       if (deps.persistChatHistory) deps.persistChatHistory();
-      return true;
-    }
-    if (action === 'region-picker-browse') {
-      form.regionPickerMode = 'browse';
-      form.regionSearch = '';
-      refreshCreateCard(card, form);
       return true;
     }
     if (action === 'region-picker-back') {
@@ -904,15 +1039,22 @@
   }
 
   function handleCreateRegionSearch(inputEl) {
+    if (inputEl && inputEl.closest('[data-spec-id="sheet-create-region"]')) {
+      if (!createRegionModal.draft) return;
+      createRegionModal.draft.regionSearch = inputEl.value || '';
+      createRegionModal.draft.regionPickerMode = createRegionModal.draft.regionSearch.trim()
+        ? 'search'
+        : 'browse';
+      refreshRegionPickerModal();
+      return;
+    }
     const card =
       (inputEl && inputEl.closest('[data-spec-id="card-customer-create"]')) ||
       document.querySelector('[data-spec-id="card-customer-create"]:not([data-create-settled="1"])');
     if (!card || card.getAttribute('data-create-settled') === '1') return;
     const form = readCreateFormFromCard(card);
     form.regionSearch = (inputEl && inputEl.value) || '';
-    if (form.regionSearch.trim()) {
-      form.regionPickerMode = 'search';
-    }
+    form.regionPickerMode = form.regionSearch.trim() ? 'search' : 'browse';
     form.regionPickerOpen = true;
     refreshCreateCard(card, form);
   }
@@ -943,6 +1085,7 @@
     handleCreateAction: handleCreateAction,
     handleCreateSelectChange: handleCreateSelectChange,
     handleCreateRegionSearch: handleCreateRegionSearch,
+    closeRegionPickerModal: closeRegionPickerModal,
     isCreateCustomerIntent: isCreateCustomerIntent,
     renderCustomerCreateCardHtml: renderCustomerCreateCardHtml,
     patchRecentSectionInDom: patchRecentSectionInDom

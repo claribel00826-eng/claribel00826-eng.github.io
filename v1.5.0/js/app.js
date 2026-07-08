@@ -1837,6 +1837,7 @@
     const pdf = $('#pdf-modal');
     if (pdf) pdf.classList.add('sc-hidden');
     document.body.classList.remove('sc-pdf-open');
+    if (window.V155 && V155.closeRegionPickerModal) V155.closeRegionPickerModal();
   }
 
   function openCustomerSheet(prefillQuery) {
