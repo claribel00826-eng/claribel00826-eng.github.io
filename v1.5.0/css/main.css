@@ -1148,6 +1148,11 @@ a.sc-demo-reset-btn--link {
   border: 1px solid #fcd34d;
 }
 
+.sc-delivery-result__line-detail--capacity {
+  background: #fff7ed;
+  border-color: #fdba74;
+}
+
 .sc-delivery-result__line-detail--success {
   background: #ecfdf5;
   border: 1px solid #10b981;
@@ -1167,60 +1172,90 @@ a.sc-demo-reset-btn--link {
   outline-offset: 2px;
 }
 
-.sc-delivery-result__detail-chevron {
+.sc-delivery-result__summary-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sc-delivery-result__summary-stack--readonly {
+  margin-bottom: 10px;
+}
+
+.sc-delivery-result__summary-stack .sc-delivery-result__line-detail {
+  margin: 0;
+}
+
+.sc-delivery-issue-detail__tabs {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.sc-delivery-issue-pick__current {
+  opacity: 0.72;
+  pointer-events: none;
+  cursor: default;
+}
+
+.sc-delivery-issue-pick__current .sc-follow-row__main,
+.sc-follow-row__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.sc-card--delivery-issue-detail .sc-delivery-result__metric-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.sc-delivery-result__metric {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #fafafa;
+  border: 1px solid var(--color-border, #e4e4e7);
+}
+
+.sc-delivery-result__metric-label {
   display: block;
-  margin-top: 8px;
   font-size: 11px;
-  font-weight: 600;
-  color: #b45309;
-  text-align: right;
+  color: var(--color-text-muted, #71717a);
+  margin-bottom: 2px;
 }
 
-.sc-delivery-result__detail-chevron-collapse {
-  display: none;
-}
-
-.sc-delivery-result__line.is-detail-expanded .sc-delivery-result__detail-chevron-expand {
-  display: none;
-}
-
-.sc-delivery-result__line.is-detail-expanded .sc-delivery-result__detail-chevron-collapse {
-  display: inline;
-}
-
-.sc-delivery-result__line .sc-delivery-result__issues-wrap {
-  margin-top: 8px;
-}
-
-.sc-delivery-result__line .sc-delivery-result__issues-wrap:not(.sc-hidden) {
-  margin-bottom: 0;
-}
-
-.sc-delivery-result__issue-section + .sc-delivery-result__issue-section {
-  margin-top: 10px;
-}
-
-.sc-delivery-result__issue-section-title {
-  margin: 0 0 8px;
-  padding-left: 8px;
-  border-left: 3px solid #f59e0b;
+.sc-delivery-result__metric-value {
+  display: block;
   font-size: 12px;
   font-weight: 600;
-  line-height: 1.4;
-  color: #92400e;
+  color: var(--color-text, #18181b);
+  word-break: break-word;
 }
 
-.sc-delivery-result__issue-section--capacity .sc-delivery-result__issue-section-title {
-  border-left-color: #ef4444;
-  color: #b91c1c;
+.sc-delivery-result__summary-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #374151;
+}
+
+.sc-delivery-result__summary-hint--top {
+  margin-bottom: 10px;
 }
 
 .sc-delivery-result__issue-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 240px;
-  overflow-y: auto;
+}
+
+.sc-delivery-result__issue-list--detail {
+  max-height: none;
+  margin-top: 10px;
 }
 
 .sc-delivery-result__issue-item {
@@ -1230,6 +1265,7 @@ a.sc-demo-reset-btn--link {
   background: #fffbeb;
 }
 
+.sc-delivery-result__issue-item--capacity,
 .sc-delivery-result__issue-section--capacity .sc-delivery-result__issue-item {
   border-color: #fecaca;
   background: #fef2f2;
@@ -1275,6 +1311,23 @@ a.sc-demo-reset-btn--link {
   word-break: break-word;
 }
 
+.sc-delivery-issue-detail__more-meta {
+  margin: 10px 0 8px !important;
+}
+
+.sc-delivery-issue-detail__switch {
+  margin-top: 12px;
+}
+
+.sc-delivery-issue-detail__switch .sc-btn {
+  flex: 1;
+}
+
+.sc-btn--block {
+  display: block;
+  width: 100%;
+}
+
 /* 状态标签样式 */
 .sc-delivery-result__status-tag {
   display: inline-block;
@@ -1284,6 +1337,7 @@ a.sc-demo-reset-btn--link {
   font-weight: 600;
   margin-right: 6px;
   margin-bottom: 4px;
+  vertical-align: baseline;
 }
 
 .sc-delivery-result__status-tag--ok {
@@ -2731,6 +2785,22 @@ body.sc-region-modal-open .sc-app {
 
 .sc-list-item--customer .sc-badge {
   flex-shrink: 0;
+}
+
+.sc-card--intent-clarify {
+  padding-top: 4px;
+}
+
+.sc-card--intent-clarify .sc-follow-list--clarify .sc-list-item--clarify:last-child {
+  border-bottom: none;
+}
+
+.sc-follow-list--clarify .sc-list-item--clarify {
+  gap: 12px;
+}
+
+.sc-card--intent-clarify .sc-card__meta {
+  margin-bottom: 8px;
 }
 
 .sc-list-item {

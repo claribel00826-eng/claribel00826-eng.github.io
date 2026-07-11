@@ -16,6 +16,9 @@ window.AnnotationSpecScope = {
     'card-plan-preview',
     'card-quote-pick',
     'card-order-cart',
-    'sheet-quote-setup'
+    'sheet-quote-setup',
+    'card-delivery',
+    'card-delivery-issue-detail',
+    'card-delivery-issue-pick'
   ]
 };

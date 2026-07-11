@@ -150,6 +150,83 @@ if (html.includes('plan-template-voice-bar') && html.includes('quote-template-vo
   ok('index.html 双模板语音条');
 else fail('index.html 模板语音条');
 
+function loadIntentMatch() {
+  const ctx = { window: {} };
+  const context = vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(root, 'js/intent-qa.generated.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(path.join(root, 'js/intent-match.js'), 'utf8'), context);
+  return ctx.window.IntentMatch;
+}
+
+function namesOf(match, text) {
+  return match.matchMainFunctions(text).map((x) => x.name).sort();
+}
+
+console.log('\n=== 6. QA 主功能匹配（方案 C · Excel 词典） ===\n');
+const IntentMatch = loadIntentMatch();
+const IntentQa = (() => {
+  const ctx = { window: {} };
+  vm.runInContext(fs.readFileSync(path.join(root, 'js/intent-qa.generated.js'), 'utf8'), vm.createContext(ctx));
+  return ctx.window.IntentQa;
+})();
+
+if (IntentQa && IntentQa.pairs && IntentQa.pairs.length > 0) {
+  ok('intent-qa.generated.js 已加载 · pairs=' + IntentQa.pairs.length);
+} else {
+  fail('intent-qa.generated.js 无 pairs');
+}
+
+let pairMiss = 0;
+IntentQa.pairs.forEach(({ q, a }) => {
+  const got = namesOf(IntentMatch, q);
+  if (!got.includes(a)) {
+    pairMiss++;
+    if (pairMiss <= 5) fail('Q→A 行：「' + q + '」应含 ' + a, 'got ' + got.join(','));
+  }
+});
+if (pairMiss === 0) ok('全部 ' + IntentQa.pairs.length + ' 行 Q 自匹配含对应 A');
+else if (pairMiss > 5) fail('另有 ' + (pairMiss - 5) + ' 行 Q 自匹配失败');
+
+(IntentQa.multiQ || []).forEach(({ q, a: want }) => {
+  const got = namesOf(IntentMatch, q);
+  const wantSorted = [...want].sort();
+  const same =
+    got.length === wantSorted.length && got.every((x, i) => x === wantSorted[i]);
+  if (same) ok('多 A：「' + q + '」→ ' + wantSorted.join(' + '));
+  else fail('多 A：「' + q + '」', 'want ' + wantSorted.join(',') + ' got ' + got.join(','));
+});
+
+[
+  ['加购', []],
+  ['第2条', []],
+  ['筛选 伺服', []],
+  ['确认需求', []],
+  ['下一步：逐项报价', []],
+  ['保存这个方案', []],
+  ['伺服电机 报价 4200', []]
+].forEach(([text, want]) => {
+  const got = namesOf(IntentMatch, text);
+  const same =
+    got.length === want.length && got.every((x, i) => x === [...want].sort()[i]);
+  if (same) ok('流程内不误召回：「' + text + '」');
+  else fail('流程内误召回：「' + text + '」', 'got ' + got.join(','));
+});
+
+[
+  ['配个方案', ['方案速配']],
+  ['给华东精密报价', ['产品报价']],
+  ['切换客户到华东精密', ['切换客户']],
+  ['还能接单吗', ['产能分析', '交期评审']],
+  ['配个方案并报价', ['方案速配', '产品报价']]
+].forEach(([text, want]) => {
+  const got = namesOf(IntentMatch, text);
+  const wantSorted = [...want].sort();
+  const okAll = wantSorted.every((a) => got.includes(a));
+  const sameSize = got.length === wantSorted.length;
+  if (okAll && sameSize) ok('召回：「' + text + '」=' + wantSorted.join(' + '));
+  else fail('召回：「' + text + '」', 'want ' + wantSorted.join(',') + ' got ' + got.join(','));
+});
+
 console.log('\n=== 结果 ===');
 console.log('通过 ' + passed + '，失败 ' + failed + '\n');
 process.exit(failed > 0 ? 1 : 0);

@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node _selftest.mjs"
+    "test": "node _selftest.mjs",
+    "build:intent-qa": "python3 scripts/build-intent-qa.py",
+    "test:intent": "node scripts/intent-smoke.mjs"
   },
   "keywords": [],
   "author": "",

@@ -2,6 +2,7 @@ window.Skills = (function () {
   let App;
   const PLAN_MORE_PAGE_SIZE = 5;
   const COPY_ORDER_LIST_PAGE_SIZE = 10;
+  const DELIVERY_ISSUE_PAGE_SIZE = 5;
   let pickMoreObserver = null;
   let inventoryCardState = null;
 
@@ -6868,25 +6869,86 @@ function deliveryOpenFormForOrder(o) {
   }
 
   function deliveryIssueDateFromBase(baseDate, offsetDays) {
-    const d = new Date(baseDate || '');
+    const raw = String(baseDate || '').replace(/\//g, '-');
+    const d = new Date(raw);
     if (isNaN(d.getTime())) return (baseDate || '').replace(/-/g, '/');
     d.setDate(d.getDate() + (offsetDays || 0));
     return d.toISOString().slice(0, 10).replace(/-/g, '/');
   }
 
+  function deliveryParseDate(str) {
+    if (!str) return null;
+    const d = new Date(String(str).replace(/\//g, '-'));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function deliveryFormatSlashDate(str) {
+    return String(str || '').replace(/-/g, '/');
+  }
+
+  /** 目标日相对期望交期的延误天数（自然日，不早于 0） */
+  function deliveryDelayDays(targetDate, expectedDate) {
+    const t = deliveryParseDate(targetDate);
+    const e = deliveryParseDate(expectedDate);
+    if (!t || !e) return 0;
+    return Math.max(0, Math.round((t.getTime() - e.getTime()) / 86400000));
+  }
+
+  function deliveryMaxDateStr(dates) {
+    let best = '';
+    let bestT = null;
+    (dates || []).forEach(function (s) {
+      const d = deliveryParseDate(s);
+      if (!d) return;
+      if (!bestT || d > bestT) {
+        bestT = d;
+        best = deliveryFormatSlashDate(s);
+      }
+    });
+    return best;
+  }
+
+  function pickDeliveryBottleneck(issues, nameKey, dateKey) {
+    if (!issues || !issues.length) return null;
+    let best = issues[0];
+    for (let i = 1; i < issues.length; i++) {
+      const cur = issues[i];
+      const curDelay = cur.delayDays || 0;
+      const bestDelay = best.delayDays || 0;
+      if (curDelay > bestDelay) {
+        best = cur;
+        continue;
+      }
+      if (curDelay === bestDelay) {
+        const curD = deliveryParseDate(cur[dateKey]);
+        const bestD = deliveryParseDate(best[dateKey]);
+        if (curD && bestD && curD > bestD) best = cur;
+      }
+    }
+    return best;
+  }
+
   function buildDeliveryMaterialIssues(line, planDates, flags) {
     if (!flags.hasMaterialIssue) return [];
     const seed = deliveryLineDemoIssueSeed(line);
-    const count = 1 + (seed % 2);
-    const fallbackNames = ['密封圈', '钢套', '连杆', '法兰'];
+    const count = 4 + (seed % 4);
+    const fallbackNames = ['密封圈', '钢套', '连杆', '法兰', '轴承', '垫片', '油封'];
     const primaryName = line.inventoryName || '核心子件';
+    const expectedDate = line.expectedDate || '';
+    const baseForKit = expectedDate || planDates.end || planDates.start;
     const issues = [];
     for (let i = 0; i < count; i++) {
+      const kitOffset = 2 + i * 2 + ((seed + i) % 3);
+      const kitReadyDate = deliveryIssueDateFromBase(baseForKit, kitOffset);
+      const endTime = deliveryIssueDateFromBase(kitReadyDate, -1);
+      const startTime = deliveryIssueDateFromBase(endTime, - (2 + (i % 3)));
       issues.push({
         materialName: i === 0 ? primaryName : fallbackNames[(seed + i) % fallbackNames.length],
-        startTime: deliveryIssueDateFromBase(planDates.start, i * 2),
-        endTime: deliveryIssueDateFromBase(planDates.end, i * 2 + 1),
-        supplyDays: 3 + ((seed + i * 3) % 5)
+        startTime: startTime,
+        endTime: endTime,
+        supplyDays: 3 + ((seed + i * 3) % 5),
+        kitReadyDate: kitReadyDate,
+        delayDays: deliveryDelayDays(kitReadyDate, expectedDate)
       });
     }
     return issues;
@@ -6895,32 +6957,151 @@ function deliveryOpenFormForOrder(o) {
   function buildDeliveryCapacityIssues(line, planDates, flags) {
     if (!flags.hasCapacityIssue) return [];
     const seed = deliveryLineDemoIssueSeed(line);
-    const count = 1 + ((seed >> 2) % 2);
-    const reviewLines = DemoData.deliveryReviewLines || ['机加工一线', '装配二线', '仓储发运线'];
+    const count = 2 + ((seed >> 2) % 3);
+    const reviewLines = DemoData.deliveryReviewLines || ['机加工一线', '装配二线', '仓储发运线', '精加工三线'];
+    const expectedDate = line.expectedDate || '';
+    const baseForReady = expectedDate || planDates.end || planDates.start;
     const issues = [];
     for (let i = 0; i < count; i++) {
+      const readyOffset = 1 + i * 3 + ((seed >> 1) + i) % 4;
+      const readyDate = deliveryIssueDateFromBase(baseForReady, readyOffset);
+      const endTime = deliveryIssueDateFromBase(readyDate, -1);
+      const startTime = deliveryIssueDateFromBase(endTime, - (3 + (i % 2)));
       issues.push({
         lineName: reviewLines[(seed + i) % reviewLines.length],
-        startTime: deliveryIssueDateFromBase(planDates.start, 1 + i * 2),
-        endTime: deliveryIssueDateFromBase(planDates.end, 2 + i * 2)
+        startTime: startTime,
+        endTime: endTime,
+        readyDate: readyDate,
+        delayDays: deliveryDelayDays(readyDate, expectedDate)
       });
     }
     return issues;
   }
 
-  function buildDeliveryLineDetailSummary(materialIssues, capacityIssues) {
-    const mCount = (materialIssues || []).length;
-    const cCount = (capacityIssues || []).length;
-    if (mCount && !cCount) {
-      return '【物料异常】' + mCount + ' 项物料供应窗口无法满足交期，建议调整方案';
+  function buildMaterialSummary(materialIssues) {
+    if (!materialIssues || !materialIssues.length) return null;
+    const bottleneck = pickDeliveryBottleneck(materialIssues, 'materialName', 'kitReadyDate');
+    let maxDelayDays = 0;
+    materialIssues.forEach(function (it) {
+      maxDelayDays = Math.max(maxDelayDays, it.delayDays || 0);
+    });
+    return {
+      count: materialIssues.length,
+      maxDelayDays: maxDelayDays,
+      latestKitDate: deliveryMaxDateStr(
+        materialIssues.map(function (it) {
+          return it.kitReadyDate;
+        })
+      ),
+      bottleneckName: (bottleneck && bottleneck.materialName) || '—',
+      bottleneckDelayDays: (bottleneck && bottleneck.delayDays) || 0
+    };
+  }
+
+  function buildCapacitySummary(capacityIssues) {
+    if (!capacityIssues || !capacityIssues.length) return null;
+    const bottleneck = pickDeliveryBottleneck(capacityIssues, 'lineName', 'readyDate');
+    let maxDelayDays = 0;
+    capacityIssues.forEach(function (it) {
+      maxDelayDays = Math.max(maxDelayDays, it.delayDays || 0);
+    });
+    return {
+      count: capacityIssues.length,
+      maxDelayDays: maxDelayDays,
+      latestReadyDate: deliveryMaxDateStr(
+        capacityIssues.map(function (it) {
+          return it.readyDate;
+        })
+      ),
+      bottleneckName: (bottleneck && bottleneck.lineName) || '—',
+      bottleneckDelayDays: (bottleneck && bottleneck.delayDays) || 0
+    };
+  }
+
+  function buildMaterialSummaryHint(summary, hasExpectedDate) {
+    if (!summary) return '';
+    if (!hasExpectedDate) {
+      return (
+        '共 ' +
+        summary.count +
+        ' 种物料异常，最晚齐套 ' +
+        deliveryFormatSlashDate(summary.latestKitDate) +
+        '，瓶颈为 ' +
+        summary.bottleneckName +
+        '。'
+      );
     }
-    if (!mCount && cCount) {
-      return '【产能异常】' + cCount + ' 条产线时段冲突，建议调整方案';
+    if (!summary.maxDelayDays) {
+      return (
+        '共 ' +
+        summary.count +
+        ' 种物料异常，齐套均未晚于期望交期，最晚齐套 ' +
+        deliveryFormatSlashDate(summary.latestKitDate) +
+        '，关注项为 ' +
+        summary.bottleneckName +
+        '。'
+      );
     }
-    if (mCount && cCount) {
-      return '【物料异常】【产能异常】物料与产线均存在冲突，建议调整方案';
+    return (
+      '共 ' +
+      summary.count +
+      ' 种物料异常，最长延误 ' +
+      summary.maxDelayDays +
+      ' 天，最晚齐套 ' +
+      deliveryFormatSlashDate(summary.latestKitDate) +
+      '，瓶颈为 ' +
+      summary.bottleneckName +
+      '。'
+    );
+  }
+
+  function buildCapacitySummaryHint(summary, hasExpectedDate) {
+    if (!summary) return '';
+    if (!hasExpectedDate) {
+      return (
+        '共 ' +
+        summary.count +
+        ' 条产线冲突，最晚可排 ' +
+        deliveryFormatSlashDate(summary.latestReadyDate) +
+        '，瓶颈为 ' +
+        summary.bottleneckName +
+        '。'
+      );
     }
-    return '【物料异常】交期无法保证，建议调整方案';
+    if (!summary.maxDelayDays) {
+      return (
+        '共 ' +
+        summary.count +
+        ' 条产线冲突，可排均未晚于期望交期，最晚可排 ' +
+        deliveryFormatSlashDate(summary.latestReadyDate) +
+        '，关注项为 ' +
+        summary.bottleneckName +
+        '。'
+      );
+    }
+    return (
+      '共 ' +
+      summary.count +
+      ' 条产线冲突，最长延误 ' +
+      summary.maxDelayDays +
+      ' 天，最晚可排 ' +
+      deliveryFormatSlashDate(summary.latestReadyDate) +
+      '，瓶颈为 ' +
+      summary.bottleneckName +
+      '。'
+    );
+  }
+
+  function buildDeliveryLineDetailSummary(materialSummary, capacitySummary, hasExpectedDate) {
+    const parts = [];
+    if (materialSummary) {
+      parts.push('【物料异常】' + buildMaterialSummaryHint(materialSummary, hasExpectedDate));
+    }
+    if (capacitySummary) {
+      parts.push('【产能异常】' + buildCapacitySummaryHint(capacitySummary, hasExpectedDate));
+    }
+    if (parts.length) return parts.join('');
+    return '【物料异常】交期无法保证，建议调整方案。';
   }
 
   function renderDeliveryIssueRow(label, value) {
@@ -6943,6 +7124,8 @@ function deliveryOpenFormForOrder(o) {
       '<dl class="sc-delivery-result__issue-rows">' +
       renderDeliveryIssueRow('预计开始时间', item.startTime) +
       renderDeliveryIssueRow('预计结束时间', item.endTime) +
+      renderDeliveryIssueRow('齐套日期', deliveryFormatSlashDate(item.kitReadyDate)) +
+      renderDeliveryIssueRow('延误天数', (item.delayDays != null ? item.delayDays : '—') + ' 天') +
       renderDeliveryIssueRow('保证供应天数', (item.supplyDays != null ? item.supplyDays : '—') + ' 天') +
       '</dl></article>'
     );
@@ -6950,69 +7133,360 @@ function deliveryOpenFormForOrder(o) {
 
   function renderDeliveryCapacityIssueItem(item) {
     return (
-      '<article class="sc-delivery-result__issue-item">' +
+      '<article class="sc-delivery-result__issue-item sc-delivery-result__issue-item--capacity">' +
       '<h4 class="sc-delivery-result__issue-item-title">' +
       App.escapeHtml(item.lineName || '—') +
       '</h4>' +
       '<dl class="sc-delivery-result__issue-rows">' +
-      renderDeliveryIssueRow('预计开始时间', item.startTime) +
-      renderDeliveryIssueRow('预计结束时间', item.endTime) +
+      renderDeliveryIssueRow('冲突开始', item.startTime) +
+      renderDeliveryIssueRow('冲突结束', item.endTime) +
+      renderDeliveryIssueRow('可排日期', deliveryFormatSlashDate(item.readyDate)) +
+      renderDeliveryIssueRow('延误天数', (item.delayDays != null ? item.delayDays : '—') + ' 天') +
       '</dl></article>'
     );
   }
 
-  function renderDeliveryResultIssuesHtml(r) {
-    const materialIssues = r.materialIssues || [];
-    const capacityIssues = r.capacityIssues || [];
-    if (!materialIssues.length && !capacityIssues.length) return '';
-
-    let html = '<div class="sc-delivery-result__issues-wrap sc-hidden" data-role="delivery-detail-panel">';
-
-    if (materialIssues.length) {
-      html +=
-        '<section class="sc-delivery-result__issue-section sc-delivery-result__issue-section--material">' +
-        '<h3 class="sc-delivery-result__issue-section-title">物料异常（' +
-        materialIssues.length +
-        '）</h3>' +
-        '<div class="sc-delivery-result__issue-list">' +
-        materialIssues.map(renderDeliveryMaterialIssueItem).join('') +
-        '</div></section>';
+  function renderDeliveryStatusTag(kind) {
+    if (kind === 'ok') {
+      return '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--ok">评估通过</span>';
     }
-
-    if (capacityIssues.length) {
-      html +=
-        '<section class="sc-delivery-result__issue-section sc-delivery-result__issue-section--capacity">' +
-        '<h3 class="sc-delivery-result__issue-section-title">产能异常（' +
-        capacityIssues.length +
-        '）</h3>' +
-        '<div class="sc-delivery-result__issue-list">' +
-        capacityIssues.map(renderDeliveryCapacityIssueItem).join('') +
-        '</div></section>';
+    if (kind === 'capacity') {
+      return '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--capacity">产能异常</span>';
     }
+    return '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--material">物料异常</span>';
+  }
 
+  /** 结果卡异常条：标签 + 完整汇总句，点击进该货品异常详情 */
+  function renderDeliveryMaterialSummaryBlock(summary, lineIdx, hasExpectedDate) {
+    if (!summary) return '';
+    return (
+      '<div class="sc-delivery-result__line-detail sc-delivery-result__line-detail--warning sc-delivery-result__line-detail--toggle" data-action="delivery-open-issue-detail" data-line-idx="' +
+      lineIdx +
+      '" data-tab="material" role="button" tabindex="0">' +
+      renderDeliveryStatusTag('material') +
+      App.escapeHtml(buildMaterialSummaryHint(summary, hasExpectedDate)) +
+      '</div>'
+    );
+  }
+
+  function renderDeliveryCapacitySummaryBlock(summary, lineIdx, hasExpectedDate) {
+    if (!summary) return '';
+    return (
+      '<div class="sc-delivery-result__line-detail sc-delivery-result__line-detail--warning sc-delivery-result__line-detail--capacity sc-delivery-result__line-detail--toggle" data-action="delivery-open-issue-detail" data-line-idx="' +
+      lineIdx +
+      '" data-tab="capacity" role="button" tabindex="0">' +
+      renderDeliveryStatusTag('capacity') +
+      App.escapeHtml(buildCapacitySummaryHint(summary, hasExpectedDate)) +
+      '</div>'
+    );
+  }
+
+  function renderDeliveryResultSummariesHtml(r, lineIdx) {
+    const hasExpectedDate = !!(r && r.expectedDate);
+    return (
+      '<div class="sc-delivery-result__summary-stack">' +
+      renderDeliveryMaterialSummaryBlock(r.materialSummary, lineIdx, hasExpectedDate) +
+      renderDeliveryCapacitySummaryBlock(r.capacitySummary, lineIdx, hasExpectedDate) +
+      '</div>'
+    );
+  }
+
+  function getDeliveryLineResultByIdx(lineIdx) {
+    const idx = parseInt(lineIdx, 10);
+    const list = ((ctx().delivery || {}).lineResults) || [];
+    if (isNaN(idx) || idx < 0 || idx >= list.length) return null;
+    return { line: list[idx], idx: idx };
+  }
+
+  function listDeliveryAbnormalLineResults() {
+    const list = ((ctx().delivery || {}).lineResults) || [];
+    const out = [];
+    list.forEach(function (line, idx) {
+      if (line.onTime) return;
+      const hasM = !!(line.materialIssues && line.materialIssues.length);
+      const hasC = !!(line.capacityIssues && line.capacityIssues.length);
+      if (!hasM && !hasC) return;
+      out.push({ line: line, idx: idx });
+    });
+    return out;
+  }
+
+  function renderDeliveryIssueDetailList(items, renderItem) {
+    if (!items.length) {
+      return '<p class="sc-card__meta">暂无明细</p>';
+    }
+    return (
+      '<div class="sc-delivery-result__issue-list sc-delivery-result__issue-list--detail">' +
+      items.map(renderItem).join('') +
+      '</div>'
+    );
+  }
+
+  /** 详情卡顶栏：复用结果卡汇总句（只读） */
+  function renderDeliveryIssueOverviewHtml(r) {
+    const hasExpectedDate = !!(r && r.expectedDate);
+    let html = '<div class="sc-delivery-result__summary-stack sc-delivery-result__summary-stack--readonly">';
+    if (r.materialSummary) {
+      html +=
+        '<div class="sc-delivery-result__line-detail sc-delivery-result__line-detail--warning">' +
+        renderDeliveryStatusTag('material') +
+        App.escapeHtml(buildMaterialSummaryHint(r.materialSummary, hasExpectedDate)) +
+        '</div>';
+    }
+    if (r.capacitySummary) {
+      html +=
+        '<div class="sc-delivery-result__line-detail sc-delivery-result__line-detail--warning sc-delivery-result__line-detail--capacity">' +
+        renderDeliveryStatusTag('capacity') +
+        App.escapeHtml(buildCapacitySummaryHint(r.capacitySummary, hasExpectedDate)) +
+        '</div>';
+    }
     html += '</div>';
     return html;
   }
 
-  function toggleDeliveryResultDetail(btn) {
-    const card = btn.closest('[data-spec-id="card-delivery"]');
-    if (!card) return;
-    const line = btn.closest('.sc-delivery-result__line');
-    if (!line) return;
-    const panel = line.querySelector('[data-role="delivery-detail-panel"]');
-    const willExpand = !line.classList.contains('is-detail-expanded');
-    card.querySelectorAll('.sc-delivery-result__line.is-detail-expanded').forEach(function (el) {
-      el.classList.remove('is-detail-expanded');
-      const p = el.querySelector('[data-role="delivery-detail-panel"]');
-      if (p) p.classList.add('sc-hidden');
-      const toggle = el.querySelector('[data-action="delivery-detail-toggle"]');
-      if (toggle) toggle.setAttribute('aria-expanded', 'false');
-    });
-    if (willExpand && panel) {
-      line.classList.add('is-detail-expanded');
-      panel.classList.remove('sc-hidden');
-      btn.setAttribute('aria-expanded', 'true');
+  function renderDeliveryIssuePanelHtml(kind, issues, visibleCount) {
+    const shown = Math.min(visibleCount || DELIVERY_ISSUE_PAGE_SIZE, issues.length);
+    const slice = issues.slice(0, shown);
+    const hasMore = shown < issues.length;
+    const renderItem =
+      kind === 'capacity' ? renderDeliveryCapacityIssueItem : renderDeliveryMaterialIssueItem;
+    const loadAction =
+      kind === 'capacity' ? 'delivery-issue-capacity-load-more' : 'delivery-issue-material-load-more';
+    return (
+      '<div class="sc-delivery-issue-detail__panel" data-panel="' +
+      kind +
+      '">' +
+      renderDeliveryIssueDetailList(slice, renderItem) +
+      (hasMore
+        ? '<p class="sc-card__meta sc-delivery-issue-detail__more-meta">已显示 ' +
+          shown +
+          ' / ' +
+          issues.length +
+          '</p>' +
+          '<button type="button" class="sc-btn sc-btn--ghost sc-btn--block" data-action="' +
+          loadAction +
+          '">加载更多</button>'
+        : '') +
+      '</div>'
+    );
+  }
+
+  function renderDeliveryIssueDetailCard(r, lineIdx, viewState) {
+    viewState = viewState || {};
+    const materialIssues = r.materialIssues || [];
+    const capacityIssues = r.capacityIssues || [];
+    const hasM = materialIssues.length > 0;
+    const hasC = capacityIssues.length > 0;
+    let activeTab = viewState.activeTab || (hasM ? 'material' : 'capacity');
+    if (activeTab === 'material' && !hasM) activeTab = 'capacity';
+    if (activeTab === 'capacity' && !hasC) activeTab = 'material';
+
+    const mVis = Math.min(
+      viewState.materialVisible != null ? viewState.materialVisible : DELIVERY_ISSUE_PAGE_SIZE,
+      materialIssues.length || DELIVERY_ISSUE_PAGE_SIZE
+    );
+    const cVis = Math.min(
+      viewState.capacityVisible != null ? viewState.capacityVisible : DELIVERY_ISSUE_PAGE_SIZE,
+      capacityIssues.length || DELIVERY_ISSUE_PAGE_SIZE
+    );
+
+    const showTabs = hasM && hasC;
+    let tabsHtml = '';
+    if (showTabs) {
+      tabsHtml =
+        '<div class="sc-segment sc-delivery-issue-detail__tabs" role="tablist">' +
+        '<button type="button" class="sc-segment__item' +
+        (activeTab === 'material' ? ' sc-segment__item--active' : '') +
+        '" data-action="delivery-issue-tab" data-tab="material" role="tab" aria-selected="' +
+        (activeTab === 'material' ? 'true' : 'false') +
+        '">物料异常</button>' +
+        '<button type="button" class="sc-segment__item' +
+        (activeTab === 'capacity' ? ' sc-segment__item--active' : '') +
+        '" data-action="delivery-issue-tab" data-tab="capacity" role="tab" aria-selected="' +
+        (activeTab === 'capacity' ? 'true' : 'false') +
+        '">产能异常</button></div>';
     }
+
+    const panelHtml =
+      activeTab === 'capacity' && hasC
+        ? renderDeliveryIssuePanelHtml('capacity', capacityIssues, cVis)
+        : renderDeliveryIssuePanelHtml('material', materialIssues, mVis);
+
+    const otherCount = listDeliveryAbnormalLineResults().filter(function (x) {
+      return x.idx !== lineIdx;
+    }).length;
+    const switchHtml = otherCount
+      ? '<div class="sc-card__actions-inline sc-delivery-issue-detail__switch">' +
+        '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="delivery-open-issue-pick" data-line-idx="' +
+        lineIdx +
+        '">查看其他货品异常</button></div>'
+      : '';
+
+    return (
+      '<div class="sc-card sc-card--delivery-issue-detail" data-spec-id="card-delivery-issue-detail" data-line-idx="' +
+      lineIdx +
+      '" data-active-tab="' +
+      activeTab +
+      '" data-material-visible="' +
+      (hasM ? mVis : 0) +
+      '" data-capacity-visible="' +
+      (hasC ? cVis : 0) +
+      '">' +
+      '<div class="sc-card__head sc-card__head--compact">异常详情 · ' +
+      App.escapeHtml(r.inventoryName || '—') +
+      '</div>' +
+      '<div class="sc-card__row sc-card__row--compact">' +
+      renderDeliveryIssueOverviewHtml(r) +
+      tabsHtml +
+      panelHtml +
+      switchHtml +
+      '</div></div>'
+    );
+  }
+
+  function remountDeliveryIssueDetailCard(card, viewState) {
+    if (!card) return;
+    const lineIdx = card.getAttribute('data-line-idx');
+    const found = getDeliveryLineResultByIdx(lineIdx);
+    if (!found) return;
+    const html = renderDeliveryIssueDetailCard(found.line, found.idx, viewState);
+    const bubble = card.closest('.sc-bubble--ai');
+    if (bubble) {
+      bubble.innerHTML = html;
+    } else {
+      card.outerHTML = html;
+    }
+    if (App.persistChatHistory) App.persistChatHistory();
+  }
+
+  function readDeliveryIssueDetailViewState(card) {
+    return {
+      activeTab: card.getAttribute('data-active-tab') || 'material',
+      materialVisible:
+        parseInt(card.getAttribute('data-material-visible'), 10) || DELIVERY_ISSUE_PAGE_SIZE,
+      capacityVisible:
+        parseInt(card.getAttribute('data-capacity-visible'), 10) || DELIVERY_ISSUE_PAGE_SIZE
+    };
+  }
+
+  function openDeliveryIssueDetailCard(lineIdx, opts) {
+    opts = opts || {};
+    const found = getDeliveryLineResultByIdx(lineIdx);
+    if (!found) {
+      App.toast('暂无异常明细');
+      return;
+    }
+    const hasM = !!(found.line.materialIssues && found.line.materialIssues.length);
+    const hasC = !!(found.line.capacityIssues && found.line.capacityIssues.length);
+    if (found.line.onTime || (!hasM && !hasC)) {
+      App.toast('暂无异常明细');
+      return;
+    }
+    let activeTab = opts.activeTab || 'material';
+    if (activeTab === 'material' && !hasM) activeTab = 'capacity';
+    if (activeTab === 'capacity' && !hasC) activeTab = 'material';
+    if (opts.simulateUserMsg !== false) {
+      simulateUserUtterance('查看' + (found.line.inventoryName || '货品') + '异常详情');
+    }
+    App.pushAiHtml(
+      renderDeliveryIssueDetailCard(found.line, found.idx, {
+        activeTab: activeTab,
+        materialVisible: opts.materialVisible || DELIVERY_ISSUE_PAGE_SIZE,
+        capacityVisible: opts.capacityVisible || DELIVERY_ISSUE_PAGE_SIZE
+      })
+    );
+  }
+
+  function switchDeliveryIssueDetailTab(btn) {
+    const card = btn.closest('[data-spec-id="card-delivery-issue-detail"]');
+    if (!card) return;
+    const tab = btn.getAttribute('data-tab') || 'material';
+    const state = readDeliveryIssueDetailViewState(card);
+    if (state.activeTab === tab) return;
+    state.activeTab = tab;
+    remountDeliveryIssueDetailCard(card, state);
+  }
+
+  function deliveryIssueDetailLoadMore(btn, kind) {
+    const card = btn.closest('[data-spec-id="card-delivery-issue-detail"]');
+    if (!card) return;
+    const found = getDeliveryLineResultByIdx(card.getAttribute('data-line-idx'));
+    if (!found) return;
+    const state = readDeliveryIssueDetailViewState(card);
+    const issues =
+      kind === 'capacity' ? found.line.capacityIssues || [] : found.line.materialIssues || [];
+    if (kind === 'capacity') {
+      state.capacityVisible = Math.min(
+        (state.capacityVisible || DELIVERY_ISSUE_PAGE_SIZE) + DELIVERY_ISSUE_PAGE_SIZE,
+        issues.length
+      );
+      state.activeTab = 'capacity';
+    } else {
+      state.materialVisible = Math.min(
+        (state.materialVisible || DELIVERY_ISSUE_PAGE_SIZE) + DELIVERY_ISSUE_PAGE_SIZE,
+        issues.length
+      );
+      state.activeTab = 'material';
+    }
+    remountDeliveryIssueDetailCard(card, state);
+  }
+
+  function renderDeliveryIssuePickCard(currentLineIdx) {
+    const cur = parseInt(currentLineIdx, 10);
+    const items = listDeliveryAbnormalLineResults();
+    const rows = items
+      .map(function (item) {
+        const r = item.line;
+        const isCurrent = item.idx === cur;
+        const tags = [];
+        if (r.materialSummary) tags.push('物料 ' + r.materialSummary.count + ' 种');
+        if (r.capacitySummary) tags.push('产线 ' + r.capacitySummary.count + ' 条');
+        const meta = tags.join(' · ') || '交期异常';
+        if (isCurrent) {
+          return (
+            '<div class="sc-follow-row sc-follow-row--disabled sc-delivery-issue-pick__current">' +
+            '<div class="sc-follow-row__main"><strong>' +
+            App.escapeHtml(r.inventoryName || '—') +
+            '</strong>' +
+            '<span class="sc-badge sc-badge--old">当前</span></div>' +
+            '<p class="sc-card__meta">' +
+            App.escapeHtml(meta) +
+            '</p></div>'
+          );
+        }
+        return (
+          '<button type="button" class="sc-follow-row sc-follow-row--select" data-action="delivery-issue-pick" data-line-idx="' +
+          item.idx +
+          '"><div class="sc-follow-row__main"><strong>' +
+          App.escapeHtml(r.inventoryName || '—') +
+          '</strong></div><p class="sc-card__meta">' +
+          App.escapeHtml(meta) +
+          '</p></button>'
+        );
+      })
+      .join('');
+
+    return (
+      '<div class="sc-card sc-card--compact" data-spec-id="card-delivery-issue-pick" data-current-line-idx="' +
+      (isNaN(cur) ? '' : cur) +
+      '">' +
+      '<div class="sc-card__head sc-card__head--compact">选择异常货品</div>' +
+      '<div class="sc-follow-list">' +
+      (rows || '<p class="sc-card__meta">暂无其他异常货品</p>') +
+      '</div></div>'
+    );
+  }
+
+  function openDeliveryIssuePickCard(currentLineIdx) {
+    const others = listDeliveryAbnormalLineResults().filter(function (x) {
+      return String(x.idx) !== String(currentLineIdx);
+    });
+    if (!others.length) {
+      App.toast('暂无其他异常货品');
+      return;
+    }
+    simulateUserUtterance('查看其他货品异常');
+    App.pushAiHtml(renderDeliveryIssuePickCard(currentLineIdx));
   }
 
   function evaluateDeliveryLineReview(line, planDates, meta) {
@@ -7024,12 +7498,14 @@ function deliveryOpenFormForOrder(o) {
     const issueFlags = resolveDeliveryLineIssueFlags(line, onTime);
     const materialIssues = onTime ? [] : buildDeliveryMaterialIssues(line, planDates, issueFlags);
     const capacityIssues = onTime ? [] : buildDeliveryCapacityIssues(line, planDates, issueFlags);
+    const materialSummary = buildMaterialSummary(materialIssues);
+    const capacitySummary = buildCapacitySummary(capacityIssues);
 
     let detail = '';
     if (onTime) {
       detail = '【评估通过】起止时间满足客户交期，物料充足、产能空闲，可锁定排程按期投产。';
     } else {
-      detail = buildDeliveryLineDetailSummary(materialIssues, capacityIssues);
+      detail = buildDeliveryLineDetailSummary(materialSummary, capacitySummary, !!expectedDate);
     }
 
     return {
@@ -7042,7 +7518,9 @@ function deliveryOpenFormForOrder(o) {
       status: onTime ? '按期' : '交期异常',
       detail: detail,
       materialIssues: materialIssues,
-      capacityIssues: capacityIssues
+      capacityIssues: capacityIssues,
+      materialSummary: materialSummary,
+      capacitySummary: capacitySummary
     };
   }
 
@@ -7087,18 +7565,7 @@ function deliveryOpenFormForOrder(o) {
   function renderDeliveryResultLinesHtml(lineResults) {
     lineResults = lineResults || [];
     if (!lineResults.length) return '';
-    
-    // 状态标签样式化处理
-    const formatDetail = function(detail) {
-      if (!detail) return '';
-      // 替换状态标签为带样式的span
-      let formatted = detail
-        .replace(/【评估通过】/g, '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--ok">评估通过</span>')
-        .replace(/【物料异常】/g, '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--material">物料异常</span>')
-        .replace(/【产能异常】/g, '<span class="sc-delivery-result__status-tag sc-delivery-result__status-tag--capacity">产能异常</span>');
-      return formatted;
-    };
-    
+
     const rows = lineResults
       .map(function (r, idx) {
         const badge = r.onTime ? 'sc-badge--new' : 'sc-badge--old';
@@ -7107,27 +7574,18 @@ function deliveryOpenFormForOrder(o) {
           return App.escapeHtml((v || '').replace(/-/g, '/'));
         };
 
-        let detailClass = 'sc-delivery-result__line-detail';
-        if (r.detail && r.detail.includes('评估通过')) {
-          detailClass += ' sc-delivery-result__line-detail--success';
-        } else if (r.detail && (r.detail.includes('物料异常') || r.detail.includes('产能异常'))) {
-          detailClass += ' sc-delivery-result__line-detail--warning';
+        let bodyExtra = '';
+        if (r.onTime) {
+          bodyExtra =
+            '<div class="sc-delivery-result__line-detail sc-delivery-result__line-detail--success">' +
+            renderDeliveryStatusTag('ok') +
+            App.escapeHtml(
+              String(r.detail || '').replace(/^【评估通过】/, '')
+            ) +
+            '</div>';
+        } else {
+          bodyExtra = renderDeliveryResultSummariesHtml(r, idx);
         }
-        if (!r.onTime) {
-          detailClass += ' sc-delivery-result__line-detail--toggle';
-        }
-
-        const detailToggleAttrs = !r.onTime
-          ? ' data-action="delivery-detail-toggle" data-line-idx="' +
-            idx +
-            '" role="button" tabindex="0" aria-expanded="false"'
-          : '';
-        const chevronHtml = !r.onTime
-          ? '<span class="sc-delivery-result__detail-chevron">' +
-            '<span class="sc-delivery-result__detail-chevron-expand">查看详情 ▾</span>' +
-            '<span class="sc-delivery-result__detail-chevron-collapse">收起 ▴</span>' +
-            '</span>'
-          : '';
 
         return (
           '<div class="sc-delivery-result__line" data-delivery-line-idx="' +
@@ -7157,15 +7615,7 @@ function deliveryOpenFormForOrder(o) {
           '期望交期 ' +
           fmt(r.expectedDate) +
           '</p>' +
-          '<div class="' +
-          detailClass +
-          '"' +
-          detailToggleAttrs +
-          '>' +
-          formatDetail(r.detail || '') +
-          chevronHtml +
-          '</div>' +
-          renderDeliveryResultIssuesHtml(r) +
+          bodyExtra +
           '</div>'
         );
       })
@@ -12262,8 +12712,35 @@ function openChangeSheet(oid, opts) {
       }
       return true;
     }
-    if (action === 'delivery-detail-toggle') {
-      toggleDeliveryResultDetail(btn);
+    if (action === 'delivery-open-issue-detail') {
+      openDeliveryIssueDetailCard(btn.getAttribute('data-line-idx'), {
+        activeTab: btn.getAttribute('data-tab') || 'material'
+      });
+      return true;
+    }
+    if (action === 'delivery-issue-tab') {
+      switchDeliveryIssueDetailTab(btn);
+      return true;
+    }
+    if (action === 'delivery-issue-material-load-more') {
+      deliveryIssueDetailLoadMore(btn, 'material');
+      return true;
+    }
+    if (action === 'delivery-issue-capacity-load-more') {
+      deliveryIssueDetailLoadMore(btn, 'capacity');
+      return true;
+    }
+    if (action === 'delivery-open-issue-pick') {
+      openDeliveryIssuePickCard(btn.getAttribute('data-line-idx'));
+      return true;
+    }
+    if (action === 'delivery-issue-pick') {
+      const pickIdx = btn.getAttribute('data-line-idx');
+      const found = getDeliveryLineResultByIdx(pickIdx);
+      simulateUserUtterance(
+        '查看' + ((found && found.line && found.line.inventoryName) || '货品') + '异常详情'
+      );
+      openDeliveryIssueDetailCard(pickIdx, { simulateUserMsg: false });
       return true;
     }
     if (action === 'delivery-adjust') {
@@ -13206,10 +13683,56 @@ function openChangeSheet(oid, opts) {
     }
   }
 
+  function isInActiveBusinessStep() {
+    const c = ctx();
+    if (c.plan && !c.planSkillAtEntry) return true;
+    if (c.quoteDraft && !c.quoteSkillAtEntry) return true;
+    if (c.orderDraft && !c.orderSkillAtEntry) return true;
+    if (c.delivery && !c.deliverySkillAtEntry) return true;
+    if (c.copyPick || c.copyLinePickLines || c.copyPickMode) return true;
+    if (c.changePickMode || c.changeOrderId) return true;
+    if (c.progressPick || c.progressPickMode) return true;
+    if (
+      App.state.activeSkill === 'payment' &&
+      c.paymentQuery &&
+      c.paymentQuery.step !== 'done'
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  /** 流程中或功能入口卡上：优先走 tryIntent 上下文路由，不走 QA 主功能表 */
+  function shouldPrioritizeContextIntent() {
+    if (isInActiveBusinessStep()) return true;
+    const c = ctx();
+    const skill = App.state.activeSkill;
+    if (
+      skill &&
+      (c.planSkillAtEntry ||
+        c.quoteSkillAtEntry ||
+        c.orderSkillAtEntry ||
+        c.deliverySkillAtEntry)
+    ) {
+      return true;
+    }
+    if (skill === 'copy' || skill === 'change' || skill === 'progress') return true;
+    if (
+      skill === 'followup' &&
+      App.isLatestFlowCardActive &&
+      App.isLatestFlowCardActive('sheet-followup')
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   return {
     init,
     run,
     tryIntent,
+    shouldPrioritizeContextIntent,
+    isInActiveBusinessStep,
     tryCrossSkillEntry,
     tryGuideAfterIntentFail,
     guideMissingSlot,

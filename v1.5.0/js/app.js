@@ -1622,6 +1622,11 @@
     const action = btn.getAttribute('data-action');
     const tag = (btn.tagName || '').toUpperCase();
     if (tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (window.IntentClarify && IntentClarify.handleAction(action, btn)) {
+      scrollMessages();
+      persistChatHistory();
+      return;
+    }
     if (window.Skills && Skills.handleAction(action, btn)) return;
     if (action === 'open-customer-sheet') {
       openCustomerSheet();
@@ -1773,6 +1778,9 @@
         );
         return;
       }
+      if (window.IntentClarify && IntentClarify.tryBreakPendingForQa(t)) {
+        return;
+      }
       setTimeout(() => {
         pushAiHtml(
           '未找到「' +
@@ -1784,10 +1792,8 @@
       }, 300);
       return;
     }
-    if (/待跟进|跟进哪些|今天要跟/.test(t)) {
-      switchActiveSkill('followup', { skipSkillAnnounce: true });
-      setTimeout(showFollowUpList, 300);
-      return;
+    if (window.Skills && Skills.shouldPrioritizeContextIntent && Skills.shouldPrioritizeContextIntent()) {
+      if (Skills.tryIntent(t)) return;
     }
     if (isWriteFollowIntent(t)) {
       handleWriteFollowIntent(t, { delayMs: 300, fromVoice: false });
@@ -1802,16 +1808,26 @@
       }, 300);
       return;
     }
-    if (/切换客户|换客户|选择客户|选客户/.test(t)) {
-      switchActiveSkill(null, { skipSkillAnnounce: true });
-      state.pendingSkillRun = 'switch-customer';
-      setTimeout(() => {
-        pushAiHtml(buildSwitchCustomerPromptHtml());
-        scrollMessages();
-        persistChatHistory();
-        if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
-      }, 300);
+    if (window.IntentClarify && IntentClarify.isQaIntentEnabled() && IntentClarify.tryQaIntentRoute(t)) {
       return;
+    }
+    if (!window.IntentClarify || !IntentClarify.isQaIntentEnabled()) {
+      if (/待跟进|跟进哪些|今天要跟/.test(t)) {
+        switchActiveSkill('followup', { skipSkillAnnounce: true });
+        setTimeout(showFollowUpList, 300);
+        return;
+      }
+      if (/切换客户|换客户|选择客户|选客户/.test(t)) {
+        switchActiveSkill(null, { skipSkillAnnounce: true });
+        state.pendingSkillRun = 'switch-customer';
+        setTimeout(() => {
+          pushAiHtml(buildSwitchCustomerPromptHtml());
+          scrollMessages();
+          persistChatHistory();
+          if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
+        }, 300);
+        return;
+      }
     }
     if (window.Skills && Skills.tryIntent(t)) return;
     if (window.Skills && Skills.tryGuideAfterIntentFail && Skills.tryGuideAfterIntentFail(t)) return;
@@ -2281,6 +2297,24 @@
       getLatestFlowCard,
       recordRecentVisit
     });
+
+    if (window.IntentClarify && IntentClarify.init) {
+      IntentClarify.init({
+        state: state,
+        DemoData: DemoData,
+        escapeHtml: escapeHtml,
+        pushAiHtml: pushAiHtml,
+        pushUserMsg: pushUserMsg,
+        switchActiveSkill: switchActiveSkill,
+        runSkillEntry: runSkillEntry,
+        buildSwitchCustomerPromptHtml: buildSwitchCustomerPromptHtml,
+        advanceFlowPage: advanceFlowPage,
+        scrollMessages: scrollMessages,
+        persistChatHistory: persistChatHistory,
+        isLatestFlowCardActive: isLatestFlowCardActive,
+        toast: toast
+      });
+    }
 
     if (window.V155 && V155.init) {
       V155.init({
