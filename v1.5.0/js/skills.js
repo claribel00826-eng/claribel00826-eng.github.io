@@ -6934,21 +6934,18 @@ function deliveryOpenFormForOrder(o) {
     const count = 4 + (seed % 4);
     const fallbackNames = ['密封圈', '钢套', '连杆', '法兰', '轴承', '垫片', '油封'];
     const primaryName = line.inventoryName || '核心子件';
-    const expectedDate = line.expectedDate || '';
-    const baseForKit = expectedDate || planDates.end || planDates.start;
+    const baseForPlan = planDates.end || planDates.start;
     const issues = [];
     for (let i = 0; i < count; i++) {
-      const kitOffset = 2 + i * 2 + ((seed + i) % 3);
-      const kitReadyDate = deliveryIssueDateFromBase(baseForKit, kitOffset);
-      const endTime = deliveryIssueDateFromBase(kitReadyDate, -1);
-      const startTime = deliveryIssueDateFromBase(endTime, - (2 + (i % 3)));
+      const endOffset = 2 + i * 2 + ((seed + i) % 3);
+      const supplyDays = 3 + ((seed + i * 3) % 5);
+      const endTime = deliveryIssueDateFromBase(baseForPlan, endOffset);
+      const startTime = deliveryIssueDateFromBase(endTime, -Math.max(1, supplyDays - 1));
       issues.push({
         materialName: i === 0 ? primaryName : fallbackNames[(seed + i) % fallbackNames.length],
         startTime: startTime,
         endTime: endTime,
-        supplyDays: 3 + ((seed + i * 3) % 5),
-        kitReadyDate: kitReadyDate,
-        delayDays: deliveryDelayDays(kitReadyDate, expectedDate)
+        supplyDays: supplyDays
       });
     }
     return issues;
@@ -6960,19 +6957,17 @@ function deliveryOpenFormForOrder(o) {
     const count = 2 + ((seed >> 2) % 3);
     const reviewLines = DemoData.deliveryReviewLines || ['机加工一线', '装配二线', '仓储发运线', '精加工三线'];
     const expectedDate = line.expectedDate || '';
-    const baseForReady = expectedDate || planDates.end || planDates.start;
+    const baseForPlan = planDates.end || planDates.start;
     const issues = [];
     for (let i = 0; i < count; i++) {
-      const readyOffset = 1 + i * 3 + ((seed >> 1) + i) % 4;
-      const readyDate = deliveryIssueDateFromBase(baseForReady, readyOffset);
-      const endTime = deliveryIssueDateFromBase(readyDate, -1);
-      const startTime = deliveryIssueDateFromBase(endTime, - (3 + (i % 2)));
+      const endOffset = 1 + i * 3 + ((seed >> 1) + i) % 4;
+      const endTime = deliveryIssueDateFromBase(baseForPlan, endOffset);
+      const startTime = deliveryIssueDateFromBase(endTime, -(3 + (i % 2)));
       issues.push({
         lineName: reviewLines[(seed + i) % reviewLines.length],
         startTime: startTime,
         endTime: endTime,
-        readyDate: readyDate,
-        delayDays: deliveryDelayDays(readyDate, expectedDate)
+        delayDays: deliveryDelayDays(endTime, expectedDate)
       });
     }
     return issues;
@@ -6980,27 +6975,19 @@ function deliveryOpenFormForOrder(o) {
 
   function buildMaterialSummary(materialIssues) {
     if (!materialIssues || !materialIssues.length) return null;
-    const bottleneck = pickDeliveryBottleneck(materialIssues, 'materialName', 'kitReadyDate');
-    let maxDelayDays = 0;
-    materialIssues.forEach(function (it) {
-      maxDelayDays = Math.max(maxDelayDays, it.delayDays || 0);
-    });
     return {
       count: materialIssues.length,
-      maxDelayDays: maxDelayDays,
       latestKitDate: deliveryMaxDateStr(
         materialIssues.map(function (it) {
-          return it.kitReadyDate;
+          return it.endTime;
         })
-      ),
-      bottleneckName: (bottleneck && bottleneck.materialName) || '—',
-      bottleneckDelayDays: (bottleneck && bottleneck.delayDays) || 0
+      )
     };
   }
 
   function buildCapacitySummary(capacityIssues) {
     if (!capacityIssues || !capacityIssues.length) return null;
-    const bottleneck = pickDeliveryBottleneck(capacityIssues, 'lineName', 'readyDate');
+    const bottleneck = pickDeliveryBottleneck(capacityIssues, 'lineName', 'endTime');
     let maxDelayDays = 0;
     capacityIssues.forEach(function (it) {
       maxDelayDays = Math.max(maxDelayDays, it.delayDays || 0);
@@ -7008,9 +6995,9 @@ function deliveryOpenFormForOrder(o) {
     return {
       count: capacityIssues.length,
       maxDelayDays: maxDelayDays,
-      latestReadyDate: deliveryMaxDateStr(
+      latestDeliveryDate: deliveryMaxDateStr(
         capacityIssues.map(function (it) {
-          return it.readyDate;
+          return it.endTime;
         })
       ),
       bottleneckName: (bottleneck && bottleneck.lineName) || '—',
@@ -7018,39 +7005,13 @@ function deliveryOpenFormForOrder(o) {
     };
   }
 
-  function buildMaterialSummaryHint(summary, hasExpectedDate) {
+  function buildMaterialSummaryHint(summary) {
     if (!summary) return '';
-    if (!hasExpectedDate) {
-      return (
-        '共 ' +
-        summary.count +
-        ' 种物料异常，最晚齐套 ' +
-        deliveryFormatSlashDate(summary.latestKitDate) +
-        '，瓶颈为 ' +
-        summary.bottleneckName +
-        '。'
-      );
-    }
-    if (!summary.maxDelayDays) {
-      return (
-        '共 ' +
-        summary.count +
-        ' 种物料异常，齐套均未晚于期望交期，最晚齐套 ' +
-        deliveryFormatSlashDate(summary.latestKitDate) +
-        '，关注项为 ' +
-        summary.bottleneckName +
-        '。'
-      );
-    }
     return (
       '共 ' +
       summary.count +
-      ' 种物料异常，最长延误 ' +
-      summary.maxDelayDays +
-      ' 天，最晚齐套 ' +
+      ' 种物料异常，最晚齐套 ' +
       deliveryFormatSlashDate(summary.latestKitDate) +
-      '，瓶颈为 ' +
-      summary.bottleneckName +
       '。'
     );
   }
@@ -7061,8 +7022,8 @@ function deliveryOpenFormForOrder(o) {
       return (
         '共 ' +
         summary.count +
-        ' 条产线冲突，最晚可排 ' +
-        deliveryFormatSlashDate(summary.latestReadyDate) +
+        ' 条产线冲突，预计交付时间 ' +
+        deliveryFormatSlashDate(summary.latestDeliveryDate) +
         '，瓶颈为 ' +
         summary.bottleneckName +
         '。'
@@ -7072,8 +7033,8 @@ function deliveryOpenFormForOrder(o) {
       return (
         '共 ' +
         summary.count +
-        ' 条产线冲突，可排均未晚于期望交期，最晚可排 ' +
-        deliveryFormatSlashDate(summary.latestReadyDate) +
+        ' 条产线冲突，预计交付均未晚于期望交期，预计交付时间 ' +
+        deliveryFormatSlashDate(summary.latestDeliveryDate) +
         '，关注项为 ' +
         summary.bottleneckName +
         '。'
@@ -7084,8 +7045,8 @@ function deliveryOpenFormForOrder(o) {
       summary.count +
       ' 条产线冲突，最长延误 ' +
       summary.maxDelayDays +
-      ' 天，最晚可排 ' +
-      deliveryFormatSlashDate(summary.latestReadyDate) +
+      ' 天，预计交付时间 ' +
+      deliveryFormatSlashDate(summary.latestDeliveryDate) +
       '，瓶颈为 ' +
       summary.bottleneckName +
       '。'
@@ -7095,7 +7056,7 @@ function deliveryOpenFormForOrder(o) {
   function buildDeliveryLineDetailSummary(materialSummary, capacitySummary, hasExpectedDate) {
     const parts = [];
     if (materialSummary) {
-      parts.push('【物料异常】' + buildMaterialSummaryHint(materialSummary, hasExpectedDate));
+      parts.push('【物料异常】' + buildMaterialSummaryHint(materialSummary));
     }
     if (capacitySummary) {
       parts.push('【产能异常】' + buildCapacitySummaryHint(capacitySummary, hasExpectedDate));
@@ -7124,8 +7085,6 @@ function deliveryOpenFormForOrder(o) {
       '<dl class="sc-delivery-result__issue-rows">' +
       renderDeliveryIssueRow('预计开始时间', item.startTime) +
       renderDeliveryIssueRow('预计结束时间', item.endTime) +
-      renderDeliveryIssueRow('齐套日期', deliveryFormatSlashDate(item.kitReadyDate)) +
-      renderDeliveryIssueRow('延误天数', (item.delayDays != null ? item.delayDays : '—') + ' 天') +
       renderDeliveryIssueRow('保证供应天数', (item.supplyDays != null ? item.supplyDays : '—') + ' 天') +
       '</dl></article>'
     );
@@ -7138,10 +7097,8 @@ function deliveryOpenFormForOrder(o) {
       App.escapeHtml(item.lineName || '—') +
       '</h4>' +
       '<dl class="sc-delivery-result__issue-rows">' +
-      renderDeliveryIssueRow('冲突开始', item.startTime) +
-      renderDeliveryIssueRow('冲突结束', item.endTime) +
-      renderDeliveryIssueRow('可排日期', deliveryFormatSlashDate(item.readyDate)) +
-      renderDeliveryIssueRow('延误天数', (item.delayDays != null ? item.delayDays : '—') + ' 天') +
+      renderDeliveryIssueRow('预计开始时间', item.startTime) +
+      renderDeliveryIssueRow('预计结束时间', item.endTime) +
       '</dl></article>'
     );
   }
@@ -7164,7 +7121,7 @@ function deliveryOpenFormForOrder(o) {
       lineIdx +
       '" data-tab="material" role="button" tabindex="0">' +
       renderDeliveryStatusTag('material') +
-      App.escapeHtml(buildMaterialSummaryHint(summary, hasExpectedDate)) +
+      App.escapeHtml(buildMaterialSummaryHint(summary)) +
       '</div>'
     );
   }
@@ -7211,6 +7168,42 @@ function deliveryOpenFormForOrder(o) {
     return out;
   }
 
+  /** 按异常类型展开：同一货品有物料+产能则两条 */
+  function listDeliveryAbnormalIssueEntries() {
+    const out = [];
+    listDeliveryAbnormalLineResults().forEach(function (item) {
+      const r = item.line;
+      if (r.materialIssues && r.materialIssues.length) {
+        out.push({ line: r, idx: item.idx, kind: 'material' });
+      }
+      if (r.capacityIssues && r.capacityIssues.length) {
+        out.push({ line: r, idx: item.idx, kind: 'capacity' });
+      }
+    });
+    return out;
+  }
+
+  function deliveryIssueKindLabel(kind) {
+    return kind === 'capacity' ? '产能异常' : '物料异常';
+  }
+
+  function deliveryIssueEntryMeta(entry) {
+    const r = entry.line;
+    const name = r.inventoryName || '—';
+    const hasExpectedDate = !!(r && r.expectedDate);
+    if (entry.kind === 'capacity' && r.capacitySummary) {
+      return name + ' · ' + buildCapacitySummaryHint(r.capacitySummary, hasExpectedDate);
+    }
+    if (entry.kind === 'material' && r.materialSummary) {
+      return name + ' · ' + buildMaterialSummaryHint(r.materialSummary);
+    }
+    return name;
+  }
+
+  function isCurrentDeliveryIssueEntry(entry, lineIdx, kind) {
+    return String(entry.idx) === String(lineIdx) && entry.kind === kind;
+  }
+
   function renderDeliveryIssueDetailList(items, renderItem) {
     if (!items.length) {
       return '<p class="sc-card__meta">暂无明细</p>';
@@ -7230,7 +7223,7 @@ function deliveryOpenFormForOrder(o) {
       html +=
         '<div class="sc-delivery-result__line-detail sc-delivery-result__line-detail--warning">' +
         renderDeliveryStatusTag('material') +
-        App.escapeHtml(buildMaterialSummaryHint(r.materialSummary, hasExpectedDate)) +
+        App.escapeHtml(buildMaterialSummaryHint(r.materialSummary)) +
         '</div>';
     }
     if (r.capacitySummary) {
@@ -7312,14 +7305,16 @@ function deliveryOpenFormForOrder(o) {
         ? renderDeliveryIssuePanelHtml('capacity', capacityIssues, cVis)
         : renderDeliveryIssuePanelHtml('material', materialIssues, mVis);
 
-    const otherCount = listDeliveryAbnormalLineResults().filter(function (x) {
-      return x.idx !== lineIdx;
+    const otherCount = listDeliveryAbnormalIssueEntries().filter(function (e) {
+      return !isCurrentDeliveryIssueEntry(e, lineIdx, activeTab);
     }).length;
     const switchHtml = otherCount
       ? '<div class="sc-card__actions-inline sc-delivery-issue-detail__switch">' +
         '<button type="button" class="sc-btn sc-btn--ghost-primary" data-action="delivery-open-issue-pick" data-line-idx="' +
         lineIdx +
-        '">查看其他货品异常</button></div>'
+        '" data-issue-kind="' +
+        activeTab +
+        '">查看其他异常</button></div>'
       : '';
 
     return (
@@ -7431,22 +7426,20 @@ function deliveryOpenFormForOrder(o) {
     remountDeliveryIssueDetailCard(card, state);
   }
 
-  function renderDeliveryIssuePickCard(currentLineIdx) {
+  function renderDeliveryIssuePickCard(currentLineIdx, currentKind) {
     const cur = parseInt(currentLineIdx, 10);
-    const items = listDeliveryAbnormalLineResults();
+    const kind = currentKind || 'material';
+    const items = listDeliveryAbnormalIssueEntries();
     const rows = items
-      .map(function (item) {
-        const r = item.line;
-        const isCurrent = item.idx === cur;
-        const tags = [];
-        if (r.materialSummary) tags.push('物料 ' + r.materialSummary.count + ' 种');
-        if (r.capacitySummary) tags.push('产线 ' + r.capacitySummary.count + ' 条');
-        const meta = tags.join(' · ') || '交期异常';
+      .map(function (entry) {
+        const isCurrent = isCurrentDeliveryIssueEntry(entry, cur, kind);
+        const title = deliveryIssueKindLabel(entry.kind);
+        const meta = deliveryIssueEntryMeta(entry);
         if (isCurrent) {
           return (
             '<div class="sc-follow-row sc-follow-row--disabled sc-delivery-issue-pick__current">' +
             '<div class="sc-follow-row__main"><strong>' +
-            App.escapeHtml(r.inventoryName || '—') +
+            App.escapeHtml(title) +
             '</strong>' +
             '<span class="sc-badge sc-badge--old">当前</span></div>' +
             '<p class="sc-card__meta">' +
@@ -7456,9 +7449,11 @@ function deliveryOpenFormForOrder(o) {
         }
         return (
           '<button type="button" class="sc-follow-row sc-follow-row--select" data-action="delivery-issue-pick" data-line-idx="' +
-          item.idx +
+          entry.idx +
+          '" data-issue-kind="' +
+          entry.kind +
           '"><div class="sc-follow-row__main"><strong>' +
-          App.escapeHtml(r.inventoryName || '—') +
+          App.escapeHtml(title) +
           '</strong></div><p class="sc-card__meta">' +
           App.escapeHtml(meta) +
           '</p></button>'
@@ -7469,24 +7464,27 @@ function deliveryOpenFormForOrder(o) {
     return (
       '<div class="sc-card sc-card--compact" data-spec-id="card-delivery-issue-pick" data-current-line-idx="' +
       (isNaN(cur) ? '' : cur) +
+      '" data-current-issue-kind="' +
+      App.escapeHtml(kind) +
       '">' +
-      '<div class="sc-card__head sc-card__head--compact">选择异常货品</div>' +
+      '<div class="sc-card__head sc-card__head--compact">选择异常</div>' +
       '<div class="sc-follow-list">' +
-      (rows || '<p class="sc-card__meta">暂无其他异常货品</p>') +
+      (rows || '<p class="sc-card__meta">暂无其他异常</p>') +
       '</div></div>'
     );
   }
 
-  function openDeliveryIssuePickCard(currentLineIdx) {
-    const others = listDeliveryAbnormalLineResults().filter(function (x) {
-      return String(x.idx) !== String(currentLineIdx);
+  function openDeliveryIssuePickCard(currentLineIdx, currentKind) {
+    const kind = currentKind || 'material';
+    const others = listDeliveryAbnormalIssueEntries().filter(function (e) {
+      return !isCurrentDeliveryIssueEntry(e, currentLineIdx, kind);
     });
     if (!others.length) {
-      App.toast('暂无其他异常货品');
+      App.toast('暂无其他异常');
       return;
     }
-    simulateUserUtterance('查看其他货品异常');
-    App.pushAiHtml(renderDeliveryIssuePickCard(currentLineIdx));
+    simulateUserUtterance('查看其他异常');
+    App.pushAiHtml(renderDeliveryIssuePickCard(currentLineIdx, kind));
   }
 
   function evaluateDeliveryLineReview(line, planDates, meta) {
@@ -12731,16 +12729,26 @@ function openChangeSheet(oid, opts) {
       return true;
     }
     if (action === 'delivery-open-issue-pick') {
-      openDeliveryIssuePickCard(btn.getAttribute('data-line-idx'));
+      openDeliveryIssuePickCard(
+        btn.getAttribute('data-line-idx'),
+        btn.getAttribute('data-issue-kind') || 'material'
+      );
       return true;
     }
     if (action === 'delivery-issue-pick') {
       const pickIdx = btn.getAttribute('data-line-idx');
+      const pickKind = btn.getAttribute('data-issue-kind') || 'material';
       const found = getDeliveryLineResultByIdx(pickIdx);
       simulateUserUtterance(
-        '查看' + ((found && found.line && found.line.inventoryName) || '货品') + '异常详情'
+        '查看' +
+          deliveryIssueKindLabel(pickKind) +
+          ' · ' +
+          ((found && found.line && found.line.inventoryName) || '货品')
       );
-      openDeliveryIssueDetailCard(pickIdx, { simulateUserMsg: false });
+      openDeliveryIssueDetailCard(pickIdx, {
+        activeTab: pickKind,
+        simulateUserMsg: false
+      });
       return true;
     }
     if (action === 'delivery-adjust') {
