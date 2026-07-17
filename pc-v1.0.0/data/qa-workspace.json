@@ -1,0 +1,1247 @@
+{
+  "version": "v1.5.0",
+  "algorithm": "C",
+  "updatedAt": "2026-07-17T02:23:45.919Z",
+  "pairs": [
+    {
+      "id": 1,
+      "q": "今日待跟进",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 2,
+      "q": "今天有哪些待跟进",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 3,
+      "q": "今天要跟进哪些客户",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 4,
+      "q": "看看今天有哪些待跟进",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 5,
+      "q": "待跟进列表",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 6,
+      "q": "有哪些客户要跟",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 7,
+      "q": "帮我写一下跟进",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "写跟进归入今日待跟",
+      "status": "published"
+    },
+    {
+      "id": 8,
+      "q": "写跟进",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 9,
+      "q": "写一下跟进",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 10,
+      "q": "给华东精密写跟进",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 11,
+      "q": "跟进一下",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 12,
+      "q": "记录跟进",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 13,
+      "q": "新增客户",
+      "a": "新增客户",
+      "aId": "customer-create",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 14,
+      "q": "添加客户",
+      "a": "新增客户",
+      "aId": "customer-create",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 15,
+      "q": "建档",
+      "a": "新增客户",
+      "aId": "customer-create",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 16,
+      "q": "创建客户",
+      "a": "新增客户",
+      "aId": "customer-create",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 17,
+      "q": "新建客户",
+      "a": "新增客户",
+      "aId": "customer-create",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 18,
+      "q": "录个新客户",
+      "a": "新增客户",
+      "aId": "customer-create",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 19,
+      "q": "登记新客户",
+      "a": "新增客户",
+      "aId": "customer-create",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 20,
+      "q": "配个方案",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 21,
+      "q": "方案速配",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 22,
+      "q": "帮我配个方案",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 23,
+      "q": "我想做方案速配",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 24,
+      "q": "做个方案",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 25,
+      "q": "配置方案",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 26,
+      "q": "新建一个方案",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 27,
+      "q": "创建新方案",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 28,
+      "q": "给深圳创源配个方案",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 29,
+      "q": "给华东精密配个方案",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 30,
+      "q": "配技术方案",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 31,
+      "q": "做个技术方案",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 32,
+      "q": "报价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 33,
+      "q": "产品报价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 34,
+      "q": "我要报价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 35,
+      "q": "帮我做报价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 36,
+      "q": "做报价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 37,
+      "q": "给华东精密报价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 38,
+      "q": "给深圳创源报个价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 39,
+      "q": "按方案报价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 40,
+      "q": "按方案给我报个价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 41,
+      "q": "新建一份报价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 42,
+      "q": "做个报价单",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 43,
+      "q": "出报价单",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 44,
+      "q": "报个价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 45,
+      "q": "查交期",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 46,
+      "q": "评估交期",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 47,
+      "q": "交期评审",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 48,
+      "q": "什么时候能交货",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 49,
+      "q": "能不能按期交付",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 50,
+      "q": "交期怎么样",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 51,
+      "q": "按报价单评估交期",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 52,
+      "q": "按订单评估交期",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 53,
+      "q": "自选商品评估交期",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 54,
+      "q": "这单什么时候能交",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 55,
+      "q": "评估一下交期",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 56,
+      "q": "生成订单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 57,
+      "q": "确认下单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 58,
+      "q": "帮我确认下单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 59,
+      "q": "下单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 60,
+      "q": "给华东精密下单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 61,
+      "q": "按报价单下单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 62,
+      "q": "直接选品下单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 63,
+      "q": "提交订单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 64,
+      "q": "落单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 65,
+      "q": "我要下单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 66,
+      "q": "复制订单",
+      "a": "复制订单",
+      "aId": "copy",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 67,
+      "q": "复制上次订单",
+      "a": "复制订单",
+      "aId": "copy",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 68,
+      "q": "复制老订单",
+      "a": "复制订单",
+      "aId": "copy",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 69,
+      "q": "照上次的单再来一单",
+      "a": "复制订单",
+      "aId": "copy",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 70,
+      "q": "从历史单复制",
+      "a": "复制订单",
+      "aId": "copy",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 71,
+      "q": "再来一单",
+      "a": "复制订单",
+      "aId": "copy",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 72,
+      "q": "照着上次下单",
+      "a": "复制订单",
+      "aId": "copy",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 73,
+      "q": "变更订单",
+      "a": "订单变更",
+      "aId": "change",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 74,
+      "q": "修改订单",
+      "a": "订单变更",
+      "aId": "change",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 75,
+      "q": "改一下订单",
+      "a": "订单变更",
+      "aId": "change",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 76,
+      "q": "订单变更申请",
+      "a": "订单变更",
+      "aId": "change",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 77,
+      "q": "申请改单",
+      "a": "订单变更",
+      "aId": "change",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 78,
+      "q": "订单要改一下",
+      "a": "订单变更",
+      "aId": "change",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 79,
+      "q": "查订单进度",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 80,
+      "q": "订单进度",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 81,
+      "q": "看看订单到哪了",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 82,
+      "q": "订单履约情况",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 83,
+      "q": "华东精密订单进度",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 84,
+      "q": "订单怎么样了",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 85,
+      "q": "查一下订单进度",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 86,
+      "q": "订单走到哪一步了",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 87,
+      "q": "发货了吗",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 88,
+      "q": "产能分析",
+      "a": "产能分析",
+      "aId": "capacity",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 89,
+      "q": "查产能",
+      "a": "产能分析",
+      "aId": "capacity",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 90,
+      "q": "排到哪天了",
+      "a": "产能分析",
+      "aId": "capacity",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 91,
+      "q": "产线负荷",
+      "a": "产能分析",
+      "aId": "capacity",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 92,
+      "q": "工厂忙不忙",
+      "a": "产能分析",
+      "aId": "capacity",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 93,
+      "q": "产线排到哪了",
+      "a": "产能分析",
+      "aId": "capacity",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 94,
+      "q": "产能怎么样",
+      "a": "产能分析",
+      "aId": "capacity",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 95,
+      "q": "还能接单吗",
+      "a": "产能分析",
+      "aId": "capacity",
+      "note": "问整体产能",
+      "status": "published"
+    },
+    {
+      "id": 96,
+      "q": "还能接单吗",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "问单笔交期",
+      "status": "published"
+    },
+    {
+      "id": 97,
+      "q": "库存查询",
+      "a": "库存查询",
+      "aId": "inventory",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 98,
+      "q": "查库存",
+      "a": "库存查询",
+      "aId": "inventory",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 99,
+      "q": "看看库存",
+      "a": "库存查询",
+      "aId": "inventory",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 100,
+      "q": "还有多少货",
+      "a": "库存查询",
+      "aId": "inventory",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 101,
+      "q": "存货情况",
+      "a": "库存查询",
+      "aId": "inventory",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 102,
+      "q": "库存够不够",
+      "a": "库存查询",
+      "aId": "inventory",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 103,
+      "q": "有货吗",
+      "a": "库存查询",
+      "aId": "inventory",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 104,
+      "q": "业务分析",
+      "a": "业务分析",
+      "aId": "biz-analysis",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 105,
+      "q": "全部客户排行",
+      "a": "业务分析",
+      "aId": "biz-analysis",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 106,
+      "q": "业务员排行",
+      "a": "业务分析",
+      "aId": "biz-analysis",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 107,
+      "q": "谁卖得好",
+      "a": "业务分析",
+      "aId": "biz-analysis",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 108,
+      "q": "销售业绩",
+      "a": "业务分析",
+      "aId": "biz-analysis",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 109,
+      "q": "经营情况怎么样",
+      "a": "业务分析",
+      "aId": "biz-analysis",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 110,
+      "q": "销售排行",
+      "a": "业务分析",
+      "aId": "biz-analysis",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 111,
+      "q": "业绩分析",
+      "a": "业务分析",
+      "aId": "biz-analysis",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 112,
+      "q": "回款分析",
+      "a": "回款分析",
+      "aId": "payment",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 113,
+      "q": "查回款",
+      "a": "回款分析",
+      "aId": "payment",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 114,
+      "q": "应收账款",
+      "a": "回款分析",
+      "aId": "payment",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 115,
+      "q": "回款情况",
+      "a": "回款分析",
+      "aId": "payment",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 116,
+      "q": "逾期回款",
+      "a": "回款分析",
+      "aId": "payment",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 117,
+      "q": "回款怎么样",
+      "a": "回款分析",
+      "aId": "payment",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 118,
+      "q": "应收多少",
+      "a": "回款分析",
+      "aId": "payment",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 119,
+      "q": "切换客户",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 120,
+      "q": "换个客户",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 121,
+      "q": "选客户",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 122,
+      "q": "选一下客户",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 123,
+      "q": "帮我切换客户",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 124,
+      "q": "帮我切换客户到华东精密",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 125,
+      "q": "切换到深圳创源",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 126,
+      "q": "重新选个客户",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 127,
+      "q": "换一个客户",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 128,
+      "q": "帮我搜一下华东的客户",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 129,
+      "q": "帮我切换到华东精密，要报价",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 130,
+      "q": "帮我切换到华东精密，要报价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 131,
+      "q": "帮我切换到华东精密，确认下单",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 132,
+      "q": "帮我切换到华东精密，确认下单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 133,
+      "q": "帮我切换到深圳创源，配个方案",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 134,
+      "q": "帮我切换到深圳创源，配个方案",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 135,
+      "q": "帮我切换到华东精密，写跟进",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 136,
+      "q": "帮我切换到华东精密，写跟进",
+      "a": "今日待跟",
+      "aId": "followup",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 137,
+      "q": "帮我切换到华东精密，评估交期",
+      "a": "切换客户",
+      "aId": "switch-customer",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 138,
+      "q": "帮我切换到华东精密，评估交期",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 139,
+      "q": "配个方案并报价",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 140,
+      "q": "配个方案并报价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 141,
+      "q": "先配方案再报价",
+      "a": "方案速配",
+      "aId": "plan",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 142,
+      "q": "先配方案再报价",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 143,
+      "q": "报价并下单",
+      "a": "产品报价",
+      "aId": "quote",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 144,
+      "q": "报价并下单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 145,
+      "q": "评估交期后下单",
+      "a": "交期评审",
+      "aId": "delivery",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 146,
+      "q": "评估交期后下单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 147,
+      "q": "看看历史订单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 148,
+      "q": "看看历史订单",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 149,
+      "q": "看看历史订单",
+      "a": "复制订单",
+      "aId": "copy",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 150,
+      "q": "查一下订单",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 151,
+      "q": "查一下订单",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 152,
+      "q": "订单相关的事",
+      "a": "订单进度",
+      "aId": "progress",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 153,
+      "q": "订单相关的事",
+      "a": "订单变更",
+      "aId": "change",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 154,
+      "q": "订单相关的事",
+      "a": "复制订单",
+      "aId": "copy",
+      "note": "",
+      "status": "published"
+    },
+    {
+      "id": 155,
+      "q": "订单相关的事",
+      "a": "确认下单",
+      "aId": "order",
+      "note": "",
+      "status": "published"
+    }
+  ]
+}

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>主功能 QA 对维护 · PC v1.0.0</title>
+  <link rel="stylesheet" href="css/main.css" />
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="app-nav">
+      <div class="app-nav__brand">
+        <span class="app-nav__logo">销售助手 PC</span>
+        <span class="app-nav__divider">/</span>
+        <span class="app-nav__module">意图 QA 维护</span>
+      </div>
+    </header>
+
+    <div class="app-body">
+      <aside class="app-sidenav card">
+        <nav class="sidenav-nav">
+          <a class="sidenav-nav__item is-active" href="#">主功能 QA 对</a>
+        </nav>
+      </aside>
+
+      <main class="app-content">
+        <div class="page-header">
+          <div class="page-header__text">
+            <h1>主功能 QA 对维护</h1>
+            <p class="page-header__desc">L0 主功能识别 · PC v1.0.0</p>
+          </div>
+          <div class="page-header__actions">
+            <button type="button" class="btn btn--ghost" id="btn-trial-toggle">试跑验证</button>
+            <button type="button" class="btn btn--ghost" id="btn-import-xlsx">导入 Excel</button>
+            <button type="button" class="btn btn--ghost" id="btn-export-xlsx">导出 Excel</button>
+            <button type="button" class="btn btn--primary" id="btn-add">新增</button>
+          </div>
+        </div>
+
+        <section class="filter-bar card">
+          <div class="filter-bar__fields">
+            <label class="filter-field filter-field--grow">
+              <span class="filter-field__label">搜索 Q</span>
+              <input type="search" id="filter-q" class="input input--sm" placeholder="模糊搜索用户说法" />
+            </label>
+            <label class="filter-field">
+              <span class="filter-field__label">主功能 A</span>
+              <select id="filter-a" class="input input--sm"></select>
+            </label>
+            <label class="filter-field">
+              <span class="filter-field__label">状态</span>
+              <select id="filter-status" class="input input--sm">
+                <option value="">全部</option>
+                <option value="draft">草稿</option>
+                <option value="published">已上线</option>
+                <option value="offline">已下线</option>
+              </select>
+            </label>
+            <label class="filter-field filter-field--check">
+              <input type="checkbox" id="filter-multi" />
+              <span>仅歧义 Q</span>
+            </label>
+          </div>
+          <button type="button" class="btn btn--ghost btn--sm" id="btn-reset-filters">重置筛选</button>
+        </section>
+
+        <section class="stats-bar card">
+          <div class="stats stats--horizontal">
+            <div class="stats__item"><span class="stats__n" id="stat-pairs">0</span><span class="stats__l">QA 对</span></div>
+            <div class="stats__item"><span class="stats__n" id="stat-unique-q">0</span><span class="stats__l">唯一 Q</span></div>
+            <div class="stats__item"><span class="stats__n" id="stat-multi">0</span><span class="stats__l">歧义 Q</span></div>
+          </div>
+        </section>
+
+        <section class="content-card card">
+          <div class="content-card__toolbar">
+            <div class="tabs">
+              <button type="button" class="tabs__item is-active" id="tab-list">QA 对列表</button>
+              <button type="button" class="tabs__item" id="tab-multi">歧义 Q 索引</button>
+            </div>
+            <div class="content-card__toolbar-actions">
+              <button type="button" class="btn btn--ghost btn--sm" id="btn-batch-delete">批量删除</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="qa-table">
+              <thead id="qa-table-head">
+                <tr>
+                  <th class="col-check"><input type="checkbox" id="check-all" /></th>
+                  <th class="col-no">序号</th>
+                  <th>用户说法 Q</th>
+                  <th class="col-sortable" data-sort="a">目标主功能 A</th>
+                  <th>备注</th>
+                  <th>状态</th>
+                  <th class="col-actions">操作</th>
+                </tr>
+              </thead>
+              <tbody id="qa-table-body"></tbody>
+            </table>
+          </div>
+
+          <div class="pager">
+            <button type="button" class="btn btn--ghost btn--sm" id="btn-prev">上一页</button>
+            <span id="page-info" class="pager__info">—</span>
+            <button type="button" class="btn btn--ghost btn--sm" id="btn-next">下一页</button>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="drawer-backdrop" class="drawer-backdrop"></div>
+  <aside id="drawer" class="drawer">
+    <div class="drawer__head">
+      <h2 id="editor-title">编辑 QA 对</h2>
+      <button type="button" class="icon-btn" id="drawer-close" aria-label="关闭">×</button>
+    </div>
+    <div class="drawer__body">
+      <p id="editor-error" class="form-error"></p>
+      <label class="field">
+        <span class="field__label">用户说法 Q <em>*</em></span>
+        <textarea id="field-q" class="input input--area" rows="3"></textarea>
+      </label>
+      <label class="field">
+        <span class="field__label">目标主功能 A <em>*</em></span>
+        <p class="field__hint">仅限 14 个主功能枚举；子卡片路由不在本页维护。</p>
+        <select id="field-a" class="input"></select>
+      </label>
+      <label class="field">
+        <span class="field__label">备注</span>
+        <textarea id="field-note" class="input input--area" rows="2"></textarea>
+      </label>
+      <p id="editor-status-hint" class="editor-status-hint muted" hidden></p>
+    </div>
+    <div class="drawer__foot">
+      <div class="drawer__foot-actions">
+        <button type="button" class="btn btn--ghost" id="editor-cancel">取消</button>
+        <button type="button" class="btn btn--primary" id="editor-save">保存</button>
+      </div>
+    </div>
+  </aside>
+
+  <div id="modal-import" class="modal">
+    <div class="modal__panel modal__panel--import">
+      <div class="modal__head">
+        <div>
+          <h2>导入 Excel</h2>
+          <p class="modal__subtitle muted">请先下载模板填写，再上传文件导入</p>
+        </div>
+        <button type="button" class="icon-btn" id="modal-import-close" aria-label="关闭">×</button>
+      </div>
+      <div class="modal__body modal__body--import">
+        <section class="import-section">
+          <h3 class="import-section__title">文档模板</h3>
+          <button type="button" class="btn btn--ghost" id="btn-download-template">下载 Excel 模板</button>
+        </section>
+        <section class="import-section">
+          <h3 class="import-section__title">上传文件</h3>
+          <div id="import-dropzone" class="import-dropzone" tabindex="0" role="button" aria-label="选择或拖入 Excel 文件">
+            <input type="file" id="file-import" accept=".xlsx,.xls" hidden />
+            <div class="import-dropzone__icon" aria-hidden="true"><span class="import-dropzone__badge">XLS</span></div>
+            <p class="import-dropzone__title">点击选择文件，或将文件拖拽到此处</p>
+            <p class="import-dropzone__hint muted">支持 .xlsx、.xls，单次导入一个文件</p>
+            <p id="import-file-name" class="import-dropzone__file" hidden></p>
+          </div>
+        </section>
+      </div>
+      <div class="modal__foot">
+        <button type="button" class="btn btn--ghost" id="modal-import-cancel">取消</button>
+        <button type="button" class="btn btn--primary" id="btn-import-start" disabled>开始导入</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-trial" class="modal">
+    <div class="modal__panel modal__panel--trial">
+      <div class="modal__head">
+        <div>
+          <h2>试跑验证</h2>
+          <p class="modal__subtitle muted">输入用户话术，验证 L0 主功能识别结果</p>
+        </div>
+        <button type="button" class="icon-btn" id="modal-trial-close" aria-label="关闭">×</button>
+      </div>
+      <div class="modal__body modal__body--trial">
+        <div class="trial-panel__row">
+          <input type="text" id="trial-input" class="input trial-panel__input" placeholder="例如：今天有哪些待跟进" />
+          <button type="button" class="btn btn--primary" id="btn-trial">试跑</button>
+        </div>
+        <div id="trial-result" class="trial-panel__result"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-dialog" class="modal modal--dialog" aria-hidden="true">
+    <div class="modal__panel modal__panel--dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <div class="modal-dialog__head">
+        <div class="dialog-icon dialog-icon--info" id="dialog-icon" aria-hidden="true">i</div>
+        <div class="modal-dialog__titles">
+          <h2 id="dialog-title">提示</h2>
+        </div>
+      </div>
+      <div class="modal-dialog__body">
+        <p id="dialog-message" class="dialog-message"></p>
+        <ul id="dialog-list" class="dialog-list" hidden></ul>
+      </div>
+      <div class="modal__foot modal-dialog__foot">
+        <button type="button" class="btn btn--ghost" id="dialog-cancel" hidden>取消</button>
+        <button type="button" class="btn btn--primary" id="dialog-confirm">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/feature-ids.js"></script>
+  <script src="js/intent-match-pc.js"></script>
+  <script src="js/qa-core.js"></script>
+  <script src="js/dialog.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

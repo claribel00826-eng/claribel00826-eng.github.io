@@ -4,9 +4,18 @@
 
 ## 本版范围
 
-| 功能 | 说明 |
-|------|------|
-| **意图识别 QA 对维护** | 维护主功能口语映射（Q→A），导出供 H5 构建 `intent-qa.generated.js` |
+| 功能 | 说明 | 状态 |
+|------|------|------|
+| **主功能 QA 对维护** | 维护 L0 主功能口语映射（Q→A，14 枚举），**不含子卡片**；导出供 H5 构建 `intent-qa.generated.js` | ✅ v1.0.0 已实现 |
+
+## 快速启动
+
+```bash
+npx --yes serve -l 3456 -c serve.json
+# 打开 http://localhost:3456/pc-v1.0.0/index.html
+```
+
+GitHub Pages：`https://<user>.github.io/<repo>/pc-v1.0.0/`
 
 ## 文档
 
