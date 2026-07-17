@@ -4,7 +4,7 @@
  * - 子目录（如 annotation-docs）向上回溯到版本目录之上
  */
 (function (global) {
-  var VERSION_RE = /^v\d+\.\d+\.\d+$/;
+  var VERSION_RE = /^(?:v\d+\.\d+\.\d+|pc-v\d+\.\d+\.\d+)$/;
   var PORTAL_SUBDIRS = ['annotation-docs', 'docs'];
 
   function pathnameParts() {
@@ -39,7 +39,7 @@
       if (/\/annotation-docs\//i.test(path)) {
         return '../../index.html';
       }
-      if (/\/v\d+\.\d+\.\d+/.test(path)) {
+      if (/\/v\d+\.\d+\.\d+/.test(path) || /\/pc-v\d+\.\d+\.\d+/.test(path)) {
         return '../index.html';
       }
       if (document.querySelector('.sc-demo-shell')) {
@@ -91,7 +91,7 @@
         el.setAttribute('href', portalHref(rel));
       }
     });
-    scope.querySelectorAll('.version-card__links a[href], .portal__shared a[href]').forEach(function (a) {
+    scope.querySelectorAll('.version-card__entry[href], .version-card__links a[href], .portal__shared a[href]').forEach(function (a) {
       var href = a.getAttribute('href');
       if (!href || /^https?:\/\//i.test(href) || href.charAt(0) === '#' || href.charAt(0) === '/') return;
       a.setAttribute('href', portalHref(href));
