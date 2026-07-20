@@ -7,12 +7,13 @@
 
   var state = {
     workspace: null,
-    view: 'list',
     sortBy: 'id',
     sortDir: 'asc',
-    filters: { a: '', status: '', pairType: '', multiOnly: false, q: '', categoryId: 'all' },
+    filters: { a: '', status: '', pairType: '', role: '', q: '', categoryId: 'all' },
     categoryKeyword: '',
     categoryEditorId: null,
+    /** 收起的分类 id；未收录则视为展开 */
+    categoryCollapsed: new Set(),
     page: 1,
     selected: new Set(),
     editorIndex: null,
@@ -154,24 +155,70 @@
     );
   }
 
-  function countPairsByCategory() {
-    var map = { '': 0 };
-    (state.workspace.categories || []).forEach(function (c) {
-      map[String(c.id)] = 0;
+  function countPairsInSubtree(categoryId) {
+    var ids = QaCore.getDescendantCategoryIds(state.workspace.categories, categoryId);
+    var set = {};
+    ids.forEach(function (id) {
+      set[id] = true;
     });
+    var n = 0;
     (state.workspace.pairs || []).forEach(function (p) {
-      var key = p.categoryId == null || p.categoryId === '' ? '' : String(p.categoryId);
-      if (map[key] == null) map[key] = 0;
-      map[key] += 1;
+      if (p.categoryId != null && p.categoryId !== '' && set[String(p.categoryId)]) n += 1;
     });
-    return map;
+    return n;
+  }
+
+  function countUncategorizedPairs() {
+    var n = 0;
+    (state.workspace.pairs || []).forEach(function (p) {
+      if (p.categoryId == null || p.categoryId === '') n += 1;
+    });
+    return n;
+  }
+
+  function isCategoryCollapsed(id) {
+    return state.categoryCollapsed.has(String(id));
+  }
+
+  function toggleCategoryExpand(id) {
+    var sid = String(id);
+    if (state.categoryCollapsed.has(sid)) state.categoryCollapsed.delete(sid);
+    else state.categoryCollapsed.add(sid);
+    renderCategoryList();
+  }
+
+  /** 搜索时自动展开匹配路径上的祖先 */
+  function ensureAncestorsExpanded(categoryId) {
+    var id = String(categoryId || '');
+    var guard = 0;
+    while (id && guard < 32) {
+      var cat = QaCore.findCategory(state.workspace.categories, id);
+      if (!cat) break;
+      var parentId = QaCore.normalizeParentId(cat.parentId);
+      if (parentId) state.categoryCollapsed.delete(parentId);
+      id = parentId;
+      guard += 1;
+    }
+  }
+
+  function isHiddenByCollapse(cat) {
+    var parentId = QaCore.normalizeParentId(cat.parentId);
+    var guard = 0;
+    while (parentId && guard < 32) {
+      if (isCategoryCollapsed(parentId)) return true;
+      var parent = QaCore.findCategory(state.workspace.categories, parentId);
+      if (!parent) break;
+      parentId = QaCore.normalizeParentId(parent.parentId);
+      guard += 1;
+    }
+    return false;
   }
 
   function renderCategoryList() {
     var box = $('#category-list');
     if (!box || !state.workspace) return;
     var kw = (state.categoryKeyword || '').trim().toLowerCase();
-    var counts = countPairsByCategory();
+    var searching = !!kw;
     var total = state.workspace.pairs.length;
     var html = '';
 
@@ -186,6 +233,7 @@
     if (matchKw('', '全部')) {
       html +=
         '<li class="category-list__row">' +
+        '<span class="category-list__twist category-list__twist--spacer" aria-hidden="true"></span>' +
         '<button type="button" class="category-list__item' +
         (state.filters.categoryId === 'all' ? ' is-active' : '') +
         '" data-category-id="all">' +
@@ -197,25 +245,77 @@
     if (matchKw('', '未分类')) {
       html +=
         '<li class="category-list__row">' +
+        '<span class="category-list__twist category-list__twist--spacer" aria-hidden="true"></span>' +
         '<button type="button" class="category-list__item' +
         (state.filters.categoryId === 'uncategorized' ? ' is-active' : '') +
         '" data-category-id="uncategorized">' +
         '<span class="category-list__main"><span class="category-list__name">未分类</span></span>' +
         '<span class="category-list__count">' +
-        (counts[''] || 0) +
+        countUncategorizedPairs() +
         '</span></button></li>';
     }
 
-    var cats = (state.workspace.categories || []).filter(function (c) {
-      return matchKw(c.code, c.name);
-    });
-    cats.forEach(function (c) {
+    var flat = QaCore.flattenCategoryTree(state.workspace.categories);
+    if (searching) {
+      flat.forEach(function (node) {
+        if (matchKw(node.cat.code, node.cat.name)) {
+          ensureAncestorsExpanded(node.cat.id);
+        }
+      });
+      flat = flat.filter(function (node) {
+        return matchKw(node.cat.code, node.cat.name) || !isHiddenByCollapse(node.cat);
+      });
+      // 搜索时：匹配节点及其可见祖先都展示
+      var keep = {};
+      flat.forEach(function (node) {
+        if (!matchKw(node.cat.code, node.cat.name)) return;
+        keep[String(node.cat.id)] = true;
+        var pid = QaCore.normalizeParentId(node.cat.parentId);
+        var g = 0;
+        while (pid && g < 32) {
+          keep[pid] = true;
+          var p = QaCore.findCategory(state.workspace.categories, pid);
+          if (!p) break;
+          pid = QaCore.normalizeParentId(p.parentId);
+          g += 1;
+        }
+      });
+      flat = QaCore.flattenCategoryTree(state.workspace.categories).filter(function (node) {
+        return keep[String(node.cat.id)];
+      });
+    }
+
+    flat.forEach(function (node) {
+      var c = node.cat;
       var id = String(c.id);
+      if (!searching && isHiddenByCollapse(c)) return;
       var active = state.filters.categoryId === id;
+      var children = QaCore.getChildCategories(state.workspace.categories, id);
+      var hasChildren = children.length > 0;
+      var expanded = !isCategoryCollapsed(id);
+      var pad = Math.min(node.depth, 6) * 14;
+      var twist = hasChildren
+        ? '<button type="button" class="category-list__twist' +
+          (expanded ? ' is-expanded' : '') +
+          '" data-category-toggle="' +
+          escapeHtml(id) +
+          '" title="' +
+          (expanded ? '收起' : '展开') +
+          '" aria-label="' +
+          (expanded ? '收起' : '展开') +
+          '" style="margin-left:' +
+          pad +
+          'px">' +
+          (expanded ? '▼' : '▶') +
+          '</button>'
+        : '<span class="category-list__twist category-list__twist--spacer" aria-hidden="true" style="margin-left:' +
+          pad +
+          'px"></span>';
       html +=
         '<li class="category-list__row' +
         (active ? ' is-active-row' : '') +
         '">' +
+        twist +
         '<button type="button" class="category-list__item' +
         (active ? ' is-active' : '') +
         '" data-category-id="' +
@@ -229,7 +329,7 @@
         escapeHtml(c.name) +
         '</span></span>' +
         '<span class="category-list__count">' +
-        (counts[id] || 0) +
+        countPairsInSubtree(id) +
         '</span></button>' +
         '<div class="category-list__ops">' +
         '<button type="button" class="link-action link-action--muted" data-category-op="edit" data-category-id="' +
@@ -252,15 +352,13 @@
     if (!sel) return;
     var opts =
       '<option value="">未分类</option>' +
-      (state.workspace.categories || [])
-        .map(function (c) {
+      QaCore.flattenCategoryTree(state.workspace.categories)
+        .map(function (node) {
           return (
             '<option value="' +
-            escapeHtml(String(c.id)) +
-            '">[' +
-            escapeHtml(c.code) +
-            '] ' +
-            escapeHtml(c.name) +
+            escapeHtml(String(node.cat.id)) +
+            '">' +
+            escapeHtml(QaCore.categoryLabel(node.cat, node.depth)) +
             '</option>'
           );
         })
@@ -269,19 +367,58 @@
     sel.value = selectedId == null || selectedId === '' ? '' : String(selectedId);
   }
 
+  function fillCategoryParentSelect(selectedParentId, editingId) {
+    var sel = $('#field-category-parent');
+    if (!sel) return;
+    var banned = editingId
+      ? QaCore.getDescendantCategoryIds(state.workspace.categories, editingId)
+      : [];
+    var bannedSet = {};
+    banned.forEach(function (id) {
+      bannedSet[id] = true;
+    });
+    var opts = '<option value="">无（作为一级分类）</option>';
+    QaCore.flattenCategoryTree(state.workspace.categories).forEach(function (node) {
+      var id = String(node.cat.id);
+      if (bannedSet[id]) return;
+      opts +=
+        '<option value="' +
+        escapeHtml(id) +
+        '">' +
+        escapeHtml(QaCore.categoryLabel(node.cat, node.depth)) +
+        '</option>';
+    });
+    sel.innerHTML = opts;
+    var parent = QaCore.normalizeParentId(selectedParentId);
+    if (parent && !bannedSet[parent]) sel.value = parent;
+    else sel.value = '';
+  }
+
   function openCategoryEditor(id) {
     state.categoryEditorId = id == null ? null : String(id);
     var isNew = state.categoryEditorId == null;
+    var defaultParent = '';
+    if (
+      isNew &&
+      state.filters.categoryId &&
+      state.filters.categoryId !== 'all' &&
+      state.filters.categoryId !== 'uncategorized'
+    ) {
+      defaultParent = String(state.filters.categoryId);
+    }
     var cat = isNew
       ? {
           code: QaCore.nextCategoryCode(state.workspace.categories),
-          name: ''
+          name: '',
+          parentId: defaultParent
         }
       : QaCore.findCategory(state.workspace.categories, state.categoryEditorId) || {
           code: '',
-          name: ''
+          name: '',
+          parentId: ''
         };
     $('#category-editor-title').textContent = isNew ? '新增分类' : '修改分类';
+    fillCategoryParentSelect(cat.parentId, state.categoryEditorId);
     $('#field-category-code').value = cat.code || '';
     $('#field-category-name').value = cat.name || '';
     $('#category-editor-error').textContent = '';
@@ -297,7 +434,8 @@
   function saveCategoryEditor() {
     var code = $('#field-category-code').value.trim();
     var name = $('#field-category-name').value.trim();
-    var draft = { code: code, name: name };
+    var parentId = QaCore.normalizeParentId($('#field-category-parent').value);
+    var draft = { code: code, name: name, parentId: parentId };
     var errors = QaCore.validateCategory(
       draft,
       state.workspace.categories,
@@ -312,7 +450,8 @@
         QaCore.enrichCategory({
           id: QaCore.nextCategoryId(state.workspace.categories),
           code: code,
-          name: name
+          name: name,
+          parentId: parentId
         })
       );
     } else {
@@ -323,6 +462,7 @@
       }
       target.code = code;
       target.name = name;
+      target.parentId = parentId;
     }
     rebuildWorkspace();
     persistWorkspace();
@@ -333,6 +473,14 @@
   function deleteCategory(id) {
     var cat = QaCore.findCategory(state.workspace.categories, id);
     if (!cat) return;
+    var childCount = QaCore.getChildCategories(state.workspace.categories, id).length;
+    if (childCount) {
+      QaDialog.alert('请先删除或移走其子分类（共 ' + childCount + ' 个），再删除本分类。', {
+        type: 'warning',
+        title: '无法删除'
+      });
+      return;
+    }
     var count = state.workspace.pairs.filter(function (p) {
       return String(p.categoryId || '') === String(id);
     }).length;
@@ -370,7 +518,6 @@
   }
 
   function applyListSort(pairs) {
-    if (state.filters.multiOnly) return QaCore.sortPairsMultiFilter(pairs);
     var dir = state.sortDir === 'desc' ? -1 : 1;
     return pairs.slice().sort(function (a, b) {
       var cmp = 0;
@@ -399,13 +546,19 @@
   }
 
   function getFilteredPairs() {
-    var multi = QaCore.multiQSet(state.workspace.pairs);
     var f = state.filters;
+    var categorySet = null;
+    if (f.categoryId && f.categoryId !== 'all' && f.categoryId !== 'uncategorized') {
+      categorySet = {};
+      QaCore.getDescendantCategoryIds(state.workspace.categories, f.categoryId).forEach(function (id) {
+        categorySet[id] = true;
+      });
+    }
     var filtered = state.workspace.pairs.filter(function (p) {
       if (f.categoryId === 'uncategorized') {
         if (p.categoryId != null && p.categoryId !== '') return false;
-      } else if (f.categoryId && f.categoryId !== 'all') {
-        if (String(p.categoryId || '') !== String(f.categoryId)) return false;
+      } else if (categorySet) {
+        if (!p.categoryId || !categorySet[String(p.categoryId)]) return false;
       }
       if (f.pairType) {
         var want = QaCore.normalizePairType(f.pairType);
@@ -420,8 +573,10 @@
         var feats = QaCore.normalizeFeatures(p.features != null ? p.features : p.feature);
         if (feats.indexOf(f.a) < 0) return false;
       }
+      if (f.role) {
+        if (QaCore.normalizeRole(p.role) !== QaCore.normalizeRole(f.role)) return false;
+      }
       if (f.status && p.status !== f.status) return false;
-      if (f.multiOnly && !multi.has(p.q)) return false;
       if (f.q) {
         var q = f.q.trim().toLowerCase();
         if (p.q.toLowerCase().indexOf(q) < 0 && QaCore.normalizeQ(p.q).indexOf(QaCore.normalizeQ(q)) < 0) {
@@ -434,20 +589,16 @@
   }
 
   function sortTh(label, field, extraClass) {
-    var disabled = state.filters.multiOnly;
-    var active = !disabled && state.sortBy === field;
+    var active = state.sortBy === field;
     var ascOn = active && state.sortDir === 'asc';
     var descOn = active && state.sortDir === 'desc';
     return (
       '<th class="col-sortable' +
       (extraClass ? ' ' + extraClass : '') +
       (active ? ' is-active' : '') +
-      (disabled ? ' is-disabled' : '') +
       '" data-sort="' +
       field +
-      '" title="' +
-      (disabled ? '仅歧义 Q 模式下固定按 Q 排序' : '点击切换排序') +
-      '">' +
+      '" title="点击切换排序">' +
       label +
       '<span class="th-sort" aria-hidden="true">' +
       '<span class="th-sort__btn' +
@@ -461,7 +612,6 @@
   }
 
   function toggleSort(field) {
-    if (state.filters.multiOnly) return;
     if (state.sortBy === field) {
       state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
     } else {
@@ -586,49 +736,12 @@
   function renderAll() {
     if (!state.workspace) return;
     renderCategoryList();
-    renderStats();
     renderTable();
-  }
-
-  function renderStats() {
-    var pairs = state.workspace.pairs;
-    var multi = state.workspace.multiQ || [];
-    var fn = 0;
-    var kn = 0;
-    pairs.forEach(function (p) {
-      var feats = QaCore.normalizeFeatures(p.features != null ? p.features : p.feature);
-      if (feats.length) fn += 1;
-      if (p.reply) kn += 1;
-    });
-    $('#stat-function').textContent = String(fn);
-    $('#stat-knowledge').textContent = String(kn);
-    $('#stat-unique-q').textContent = String(
-      new Set(
-        pairs.map(function (p) {
-          return p.q;
-        })
-      ).size
-    );
-    $('#stat-multi').textContent = String(multi.length);
   }
 
   function renderTableHead() {
     var head = $('#qa-table-head');
-    var batchBtn = $('#btn-batch-delete');
     if (!head) return;
-    if (state.view === 'multi') {
-      head.innerHTML =
-        '<tr>' +
-        '<th class="col-no">序号</th>' +
-        '<th>用户说法 Q</th>' +
-        '<th>命中主功能 A</th>' +
-        '<th class="col-actions">操作</th>' +
-        '</tr>';
-      if (batchBtn) batchBtn.hidden = true;
-      var sep = $('#toolbar-actions-sep');
-      if (sep) sep.hidden = true;
-      return;
-    }
     head.innerHTML =
       '<tr>' +
       '<th class="col-check"><input type="checkbox" id="check-all" /></th>' +
@@ -641,9 +754,6 @@
       '<th>状态</th>' +
       '<th class="col-actions">操作</th>' +
       '</tr>';
-    if (batchBtn) batchBtn.hidden = false;
-    var sep = $('#toolbar-actions-sep');
-    if (sep) sep.hidden = false;
   }
 
   function onCheckAllChange(e) {
@@ -661,10 +771,6 @@
   function renderTable() {
     renderTableHead();
     var tbody = $('#qa-table-body');
-    if (state.view === 'multi') {
-      renderMultiTable(tbody);
-      return;
-    }
     var filtered = getFilteredPairs();
     var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     if (state.page > totalPages) state.page = totalPages;
@@ -752,46 +858,9 @@
       totalPages +
       ' 页 · 共 ' +
       filtered.length +
-      ' 条' +
-      (state.filters.multiOnly
-        ? ' · ' + QaCore.buildMultiQ(state.workspace.pairs).length + ' 个歧义 Q'
-        : ' · 已选 ' + state.selected.size + ' 条');
-    $('#btn-prev').disabled = state.page <= 1;
-    $('#btn-next').disabled = state.page >= totalPages;
-  }
-
-  function renderMultiTable(tbody) {
-    var multi = state.workspace.multiQ || [];
-    var totalPages = Math.max(1, Math.ceil(multi.length / PAGE_SIZE));
-    if (state.page > totalPages) state.page = totalPages;
-    var start = (state.page - 1) * PAGE_SIZE;
-    var pageItems = multi.slice(start, start + PAGE_SIZE);
-
-    tbody.innerHTML = pageItems
-      .map(function (m, i) {
-        return (
-          '<tr>' +
-          '<td class="col-no">' +
-          (start + i + 1) +
-          '</td>' +
-          '<td class="col-q">' +
-          escapeHtml(m.q) +
-          '</td>' +
-          '<td>' +
-          m.a.map(tagHtml).join(' ') +
-          '</td>' +
-          '<td class="col-actions">' +
-          '<button type="button" class="btn btn--ghost btn--sm" data-action="filter-q" data-q="' +
-          escapeHtml(m.q) +
-          '">筛选此 Q</button></td></tr>'
-        );
-      })
-      .join('');
-    if (!pageItems.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty-cell">暂无歧义 Q</td></tr>';
-    }
-    $('#page-info').textContent =
-      '第 ' + state.page + ' / ' + totalPages + ' 页 · 歧义 Q 共 ' + multi.length + ' 条';
+      ' 条 · 已选 ' +
+      state.selected.size +
+      ' 条';
     $('#btn-prev').disabled = state.page <= 1;
     $('#btn-next').disabled = state.page >= totalPages;
   }
@@ -1224,6 +1293,23 @@
     roleSel.innerHTML = QaCore.ROLE_OPTIONS.map(function (n) {
       return '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>';
     }).join('');
+    var filterRole = $('#filter-role');
+    if (filterRole) {
+      filterRole.innerHTML =
+        '<option value="">全部角色</option>' +
+        QaCore.ROLE_OPTIONS.filter(function (n) {
+          return n !== QaCore.ROLE_ALL;
+        })
+          .map(function (n) {
+            return '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>';
+          })
+          .join('') +
+        '<option value="' +
+        escapeHtml(QaCore.ROLE_ALL) +
+        '">' +
+        escapeHtml(QaCore.ROLE_ALL) +
+        '</option>';
+    }
     state.editorFeatures = [];
     renderEditorFeatures();
     var fSel = $('#filter-a');
@@ -1257,12 +1343,8 @@
       state.page = 1;
       renderTable();
     });
-    $('#filter-multi').addEventListener('change', function (e) {
-      state.filters.multiOnly = e.target.checked;
-      if (state.filters.multiOnly) {
-        state.sortBy = 'id';
-        state.sortDir = 'asc';
-      }
+    $('#filter-role').addEventListener('change', function (e) {
+      state.filters.role = e.target.value;
       state.page = 1;
       renderTable();
     });
@@ -1277,14 +1359,14 @@
         a: '',
         status: '',
         pairType: '',
-        multiOnly: false,
+        role: '',
         q: '',
         categoryId: state.filters.categoryId || 'all'
       };
       $('#filter-a').value = '';
       $('#filter-pair-type').value = '';
       $('#filter-status').value = '';
-      $('#filter-multi').checked = false;
+      $('#filter-role').value = '';
       $('#filter-q').value = '';
       updateFilterAVisibility();
       state.page = 1;
@@ -1299,6 +1381,13 @@
       openCategoryEditor(null);
     });
     $('#category-list').addEventListener('click', function (e) {
+      var toggleBtn = e.target.closest('[data-category-toggle]');
+      if (toggleBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleCategoryExpand(toggleBtn.getAttribute('data-category-toggle'));
+        return;
+      }
       var opBtn = e.target.closest('[data-category-op]');
       if (opBtn) {
         e.preventDefault();
@@ -1311,7 +1400,11 @@
       }
       var item = e.target.closest('[data-category-id]');
       if (!item || !item.classList.contains('category-list__item')) return;
-      state.filters.categoryId = item.getAttribute('data-category-id') || 'all';
+      var selectedId = item.getAttribute('data-category-id') || 'all';
+      if (selectedId !== 'all' && selectedId !== 'uncategorized') {
+        ensureAncestorsExpanded(selectedId);
+      }
+      state.filters.categoryId = selectedId;
       state.page = 1;
       renderAll();
     });
@@ -1330,21 +1423,6 @@
 
     $('#btn-trial-toggle').addEventListener('click', function () {
       openTrialModal(true);
-    });
-
-    $('#tab-list').addEventListener('click', function () {
-      state.view = 'list';
-      state.page = 1;
-      $('#tab-list').classList.add('is-active');
-      $('#tab-multi').classList.remove('is-active');
-      renderTable();
-    });
-    $('#tab-multi').addEventListener('click', function () {
-      state.view = 'multi';
-      state.page = 1;
-      $('#tab-multi').classList.add('is-active');
-      $('#tab-list').classList.remove('is-active');
-      renderTable();
     });
 
     $('#btn-prev').addEventListener('click', function () {
@@ -1394,15 +1472,6 @@
         });
       }
       if (action === 'delete') deleteIndices([idx]);
-      if (action === 'filter-q') {
-        state.view = 'list';
-        $('#tab-list').classList.add('is-active');
-        $('#tab-multi').classList.remove('is-active');
-        state.filters.q = btn.getAttribute('data-q');
-        $('#filter-q').value = state.filters.q;
-        state.page = 1;
-        renderTable();
-      }
     });
 
     $('#qa-table-body').addEventListener('change', function (e) {

@@ -19,11 +19,11 @@
   var ROLE_OPTIONS = [ROLE_ALL, '销售', '销售主管', '管理员'];
 
   var DEFAULT_CATEGORIES = [
-    { id: 1, code: '001', name: '跟进与客户' },
-    { id: 2, code: '002', name: '方案与报价' },
-    { id: 3, code: '003', name: '订单与交期' },
-    { id: 4, code: '004', name: '经营分析' },
-    { id: 5, code: '005', name: '通用知识' }
+    { id: 1, code: '001', name: '跟进与客户', parentId: '' },
+    { id: 2, code: '002', name: '方案与报价', parentId: '' },
+    { id: 3, code: '003', name: '订单与交期', parentId: '' },
+    { id: 4, code: '004', name: '经营分析', parentId: '' },
+    { id: 5, code: '005', name: '通用知识', parentId: '' }
   ];
 
   function defaultCategories() {
@@ -32,17 +32,31 @@
     });
   }
 
+  function normalizeParentId(value) {
+    if (value == null || value === '' || value === '0' || value === 'root') return '';
+    return String(value);
+  }
+
   function enrichCategory(cat) {
     var c = Object.assign({}, cat || {});
     c.id = c.id == null || c.id === '' ? null : c.id;
     c.code = String(c.code == null ? '' : c.code).trim();
     c.name = String(c.name == null ? '' : c.name).trim();
+    c.parentId = normalizeParentId(c.parentId);
     return c;
   }
 
   function enrichCategories(categories) {
     var source = categories == null ? defaultCategories() : categories;
     var list = (source || []).map(enrichCategory);
+    var idSet = {};
+    list.forEach(function (c) {
+      if (c.id != null) idSet[String(c.id)] = true;
+    });
+    list.forEach(function (c) {
+      if (c.parentId && !idSet[c.parentId]) c.parentId = '';
+      if (c.parentId && String(c.parentId) === String(c.id)) c.parentId = '';
+    });
     return list
       .filter(function (c) {
         return c.id != null && c.name;
@@ -80,16 +94,85 @@
     }) || null;
   }
 
+  function getChildCategories(categories, parentId) {
+    var pid = normalizeParentId(parentId);
+    return (categories || []).filter(function (c) {
+      return normalizeParentId(c.parentId) === pid;
+    });
+  }
+
+  /** 含自身的子孙 id 列表 */
+  function getDescendantCategoryIds(categories, id) {
+    var sid = String(id);
+    var result = [sid];
+    var queue = [sid];
+    while (queue.length) {
+      var cur = queue.shift();
+      getChildCategories(categories, cur).forEach(function (c) {
+        var cid = String(c.id);
+        if (result.indexOf(cid) < 0) {
+          result.push(cid);
+          queue.push(cid);
+        }
+      });
+    }
+    return result;
+  }
+
+  /** 深度优先扁平树：[{cat, depth}] */
+  function flattenCategoryTree(categories) {
+    var list = enrichCategories(categories);
+    var out = [];
+    function walk(parentId, depth) {
+      getChildCategories(list, parentId)
+        .slice()
+        .sort(function (a, b) {
+          return String(a.code || '').localeCompare(String(b.code || ''), 'zh-CN');
+        })
+        .forEach(function (c) {
+          out.push({ cat: c, depth: depth });
+          walk(c.id, depth + 1);
+        });
+    }
+    walk('', 0);
+    return out;
+  }
+
+  function categoryLabel(cat, depth) {
+    var prefix = '';
+    var d = depth || 0;
+    for (var i = 0; i < d; i++) prefix += '　';
+    return prefix + '[' + cat.code + '] ' + cat.name;
+  }
+
   function validateCategory(cat, categories, skipId) {
     var errors = [];
     var code = String(cat.code || '').trim();
     var name = String(cat.name || '').trim();
+    var parentId = normalizeParentId(cat.parentId);
     if (!code) errors.push('分类编码不能为空');
     if (!name) errors.push('分类名称不能为空');
+    if (skipId != null && parentId && String(parentId) === String(skipId)) {
+      errors.push('上级分类不能是自己');
+    }
+    if (parentId) {
+      var parent = findCategory(categories, parentId);
+      if (!parent) errors.push('上级分类不存在');
+      else if (skipId != null) {
+        var banned = getDescendantCategoryIds(categories, skipId);
+        if (banned.indexOf(parentId) >= 0) errors.push('上级分类不能是自己的子分类');
+      }
+    }
     (categories || []).forEach(function (c) {
       if (skipId != null && String(c.id) === String(skipId)) return;
       if (code && String(c.code) === code) errors.push('分类编码已存在：' + code);
-      if (name && String(c.name) === name) errors.push('分类名称已存在：' + name);
+      if (
+        name &&
+        String(c.name) === name &&
+        normalizeParentId(c.parentId) === parentId
+      ) {
+        errors.push('同级下已存在同名分类：' + name);
+      }
     });
     return errors;
   }
@@ -554,11 +637,16 @@
     ROLE_ALL: ROLE_ALL,
     ROLE_OPTIONS: ROLE_OPTIONS,
     defaultCategories: defaultCategories,
+    normalizeParentId: normalizeParentId,
     enrichCategory: enrichCategory,
     enrichCategories: enrichCategories,
     nextCategoryId: nextCategoryId,
     nextCategoryCode: nextCategoryCode,
     findCategory: findCategory,
+    getChildCategories: getChildCategories,
+    getDescendantCategoryIds: getDescendantCategoryIds,
+    flattenCategoryTree: flattenCategoryTree,
+    categoryLabel: categoryLabel,
     validateCategory: validateCategory,
     statusLabel: statusLabel,
     pairTypeLabel: pairTypeLabel,

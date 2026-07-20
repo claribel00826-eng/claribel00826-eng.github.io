@@ -70,6 +70,10 @@
                   <select id="filter-a" class="input input--sm"></select>
                 </label>
                 <label class="filter-field">
+                  <span class="filter-field__label">角色</span>
+                  <select id="filter-role" class="input input--sm"></select>
+                </label>
+                <label class="filter-field">
                   <span class="filter-field__label">状态</span>
                   <select id="filter-status" class="input input--sm">
                     <option value="">全部</option>
@@ -78,29 +82,13 @@
                     <option value="offline">已下线</option>
                   </select>
                 </label>
-                <label class="filter-field filter-field--check">
-                  <input type="checkbox" id="filter-multi" />
-                  <span>仅歧义 Q</span>
-                </label>
               </div>
               <button type="button" class="btn btn--ghost btn--sm" id="btn-reset-filters">重置筛选</button>
             </section>
 
-            <section class="stats-bar card">
-              <div class="stats stats--horizontal">
-                <div class="stats__item"><span class="stats__n" id="stat-function">0</span><span class="stats__l">功能 QA</span></div>
-                <div class="stats__item"><span class="stats__n" id="stat-knowledge">0</span><span class="stats__l">知识</span></div>
-                <div class="stats__item"><span class="stats__n" id="stat-unique-q">0</span><span class="stats__l">唯一 Q</span></div>
-                <div class="stats__item"><span class="stats__n" id="stat-multi">0</span><span class="stats__l">歧义 Q</span></div>
-              </div>
-            </section>
-
             <section class="content-card card">
               <div class="content-card__toolbar">
-                <div class="tabs">
-                  <button type="button" class="tabs__item is-active" id="tab-list">QA 对列表</button>
-                  <button type="button" class="tabs__item" id="tab-multi">歧义 Q 索引</button>
-                </div>
+                <div class="content-card__toolbar-title">QA 对列表</div>
                 <div class="content-card__toolbar-actions">
                   <button type="button" class="btn btn--ghost btn--sm" id="btn-trial-toggle">试跑验证</button>
                   <button type="button" class="btn btn--ghost btn--sm" id="btn-import-xlsx">导入 Excel</button>
@@ -250,6 +238,10 @@
       </div>
       <div class="modal__body">
         <p id="category-editor-error" class="form-error"></p>
+        <label class="field">
+          <span class="field__label">上级分类</span>
+          <select id="field-category-parent" class="input"></select>
+        </label>
         <label class="field">
           <span class="field__label">编码 <em>*</em></span>
           <input type="text" id="field-category-code" class="input" placeholder="如 001" />
