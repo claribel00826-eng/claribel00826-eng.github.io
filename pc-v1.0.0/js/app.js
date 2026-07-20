@@ -10,10 +10,13 @@
     view: 'list',
     sortBy: 'id',
     sortDir: 'asc',
-    filters: { a: '', status: '', pairType: '', multiOnly: false, q: '' },
+    filters: { a: '', status: '', pairType: '', multiOnly: false, q: '', categoryId: 'all' },
+    categoryKeyword: '',
+    categoryEditorId: null,
     page: 1,
     selected: new Set(),
-    editorIndex: null
+    editorIndex: null,
+    editorFeatures: []
   };
 
   function $(sel) {
@@ -52,21 +55,80 @@
 
   function pairTypeHtml(pairType) {
     var pt = QaCore.normalizePairType(pairType);
-    var cls = pt === QaCore.PAIR_TYPE.KNOWLEDGE ? 'type-tag type-tag--knowledge' : 'type-tag type-tag--function';
+    var cls = 'type-tag type-tag--function';
+    if (pt === QaCore.PAIR_TYPE.KNOWLEDGE) cls = 'type-tag type-tag--knowledge';
+    else if (pt === QaCore.PAIR_TYPE.MIXED) cls = 'type-tag type-tag--mixed';
     return '<span class="' + cls + '">' + escapeHtml(QaCore.pairTypeLabel(pt)) + '</span>';
   }
 
   function aCellHtml(p) {
-    if (QaCore.isKnowledgePair(p)) {
-      return (
-        '<td class="col-a-text" title="' +
-        escapeHtml(p.a) +
-        '">' +
-        escapeHtml(p.a) +
-        '</td>'
+    var reply = p.reply || '';
+    var features = QaCore.normalizeFeatures(p.features != null ? p.features : p.feature);
+    var parts = [];
+    if (reply) {
+      parts.push(
+        '<div class="col-a-text" title="' + escapeHtml(reply) + '">' + escapeHtml(reply) + '</div>'
       );
     }
-    return '<td>' + tagHtml(p.a) + '</td>';
+    if (features.length) {
+      parts.push(
+        '<div class="col-a-feature">' + features.map(tagHtml).join(' ') + '</div>'
+      );
+    }
+    if (!parts.length) parts.push('<span class="muted">—</span>');
+    return '<td class="col-a-cell">' + parts.join('') + '</td>';
+  }
+
+  function renderEditorFeatures() {
+    var box = $('#feature-selected');
+    var addSel = $('#field-feature-add');
+    if (!box || !addSel) return;
+    var selected = state.editorFeatures.slice();
+    box.innerHTML = selected
+      .map(function (name, i) {
+        return (
+          '<div class="feature-picker__item" data-idx="' +
+          i +
+          '">' +
+          tagHtml(name) +
+          '<div class="feature-picker__ops">' +
+          '<button type="button" class="icon-btn" data-feature-op="up" data-idx="' +
+          i +
+          '" title="上移"' +
+          (i === 0 ? ' disabled' : '') +
+          '>↑</button>' +
+          '<button type="button" class="icon-btn" data-feature-op="down" data-idx="' +
+          i +
+          '" title="下移"' +
+          (i >= selected.length - 1 ? ' disabled' : '') +
+          '>↓</button>' +
+          '<button type="button" class="icon-btn" data-feature-op="remove" data-idx="' +
+          i +
+          '" title="移除">×</button>' +
+          '</div></div>'
+        );
+      })
+      .join('');
+    var remain = QaFeatureIds.FEATURE_NAMES.filter(function (n) {
+      return selected.indexOf(n) < 0;
+    });
+    addSel.innerHTML =
+      '<option value="">添加关联功能…</option>' +
+      remain
+        .map(function (n) {
+          return '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>';
+        })
+        .join('');
+    addSel.disabled = remain.length === 0;
+  }
+
+  function moveEditorFeature(from, to) {
+    if (to < 0 || to >= state.editorFeatures.length) return;
+    var list = state.editorFeatures.slice();
+    var item = list.splice(from, 1)[0];
+    list.splice(to, 0, item);
+    state.editorFeatures = list;
+    renderEditorFeatures();
   }
 
   function updateFilterAVisibility() {
@@ -80,19 +142,224 @@
     }
   }
 
-  function syncEditorPairTypeUI() {
-    var pt = QaCore.normalizePairType($('#field-pair-type').value);
-    var isKnowledge = pt === QaCore.PAIR_TYPE.KNOWLEDGE;
-    $('#field-wrap-a-function').hidden = isKnowledge;
-    $('#field-wrap-a-knowledge').hidden = !isKnowledge;
-  }
-
   function persistWorkspace() {
     if (state.workspace) QaCore.saveLocal(state.workspace);
   }
 
   function rebuildWorkspace() {
-    state.workspace = QaCore.buildWorkspace(state.workspace.pairs, state.workspace.version);
+    state.workspace = QaCore.buildWorkspace(
+      state.workspace.pairs,
+      state.workspace.version,
+      state.workspace.categories
+    );
+  }
+
+  function countPairsByCategory() {
+    var map = { '': 0 };
+    (state.workspace.categories || []).forEach(function (c) {
+      map[String(c.id)] = 0;
+    });
+    (state.workspace.pairs || []).forEach(function (p) {
+      var key = p.categoryId == null || p.categoryId === '' ? '' : String(p.categoryId);
+      if (map[key] == null) map[key] = 0;
+      map[key] += 1;
+    });
+    return map;
+  }
+
+  function renderCategoryList() {
+    var box = $('#category-list');
+    if (!box || !state.workspace) return;
+    var kw = (state.categoryKeyword || '').trim().toLowerCase();
+    var counts = countPairsByCategory();
+    var total = state.workspace.pairs.length;
+    var html = '';
+
+    function matchKw(code, name) {
+      if (!kw) return true;
+      return (
+        String(code || '').toLowerCase().indexOf(kw) >= 0 ||
+        String(name || '').toLowerCase().indexOf(kw) >= 0
+      );
+    }
+
+    if (matchKw('', '全部')) {
+      html +=
+        '<li class="category-list__row">' +
+        '<button type="button" class="category-list__item' +
+        (state.filters.categoryId === 'all' ? ' is-active' : '') +
+        '" data-category-id="all">' +
+        '<span class="category-list__main"><span class="category-list__name">全部</span></span>' +
+        '<span class="category-list__count">' +
+        total +
+        '</span></button></li>';
+    }
+    if (matchKw('', '未分类')) {
+      html +=
+        '<li class="category-list__row">' +
+        '<button type="button" class="category-list__item' +
+        (state.filters.categoryId === 'uncategorized' ? ' is-active' : '') +
+        '" data-category-id="uncategorized">' +
+        '<span class="category-list__main"><span class="category-list__name">未分类</span></span>' +
+        '<span class="category-list__count">' +
+        (counts[''] || 0) +
+        '</span></button></li>';
+    }
+
+    var cats = (state.workspace.categories || []).filter(function (c) {
+      return matchKw(c.code, c.name);
+    });
+    cats.forEach(function (c) {
+      var id = String(c.id);
+      var active = state.filters.categoryId === id;
+      html +=
+        '<li class="category-list__row' +
+        (active ? ' is-active-row' : '') +
+        '">' +
+        '<button type="button" class="category-list__item' +
+        (active ? ' is-active' : '') +
+        '" data-category-id="' +
+        escapeHtml(id) +
+        '">' +
+        '<span class="category-list__main">' +
+        '<span class="category-list__code">[' +
+        escapeHtml(c.code) +
+        ']</span>' +
+        '<span class="category-list__name">' +
+        escapeHtml(c.name) +
+        '</span></span>' +
+        '<span class="category-list__count">' +
+        (counts[id] || 0) +
+        '</span></button>' +
+        '<div class="category-list__ops">' +
+        '<button type="button" class="link-action link-action--muted" data-category-op="edit" data-category-id="' +
+        escapeHtml(id) +
+        '">修改</button>' +
+        '<button type="button" class="link-action" data-category-op="delete" data-category-id="' +
+        escapeHtml(id) +
+        '">删除</button>' +
+        '</div></li>';
+    });
+
+    if (!html) {
+      html = '<li class="category-list__empty">无匹配分类</li>';
+    }
+    box.innerHTML = html;
+  }
+
+  function fillCategorySelect(selectedId) {
+    var sel = $('#field-category');
+    if (!sel) return;
+    var opts =
+      '<option value="">未分类</option>' +
+      (state.workspace.categories || [])
+        .map(function (c) {
+          return (
+            '<option value="' +
+            escapeHtml(String(c.id)) +
+            '">[' +
+            escapeHtml(c.code) +
+            '] ' +
+            escapeHtml(c.name) +
+            '</option>'
+          );
+        })
+        .join('');
+    sel.innerHTML = opts;
+    sel.value = selectedId == null || selectedId === '' ? '' : String(selectedId);
+  }
+
+  function openCategoryEditor(id) {
+    state.categoryEditorId = id == null ? null : String(id);
+    var isNew = state.categoryEditorId == null;
+    var cat = isNew
+      ? {
+          code: QaCore.nextCategoryCode(state.workspace.categories),
+          name: ''
+        }
+      : QaCore.findCategory(state.workspace.categories, state.categoryEditorId) || {
+          code: '',
+          name: ''
+        };
+    $('#category-editor-title').textContent = isNew ? '新增分类' : '修改分类';
+    $('#field-category-code').value = cat.code || '';
+    $('#field-category-name').value = cat.name || '';
+    $('#category-editor-error').textContent = '';
+    $('#modal-category').classList.add('is-open');
+    $('#field-category-name').focus();
+  }
+
+  function closeCategoryEditor() {
+    state.categoryEditorId = null;
+    $('#modal-category').classList.remove('is-open');
+  }
+
+  function saveCategoryEditor() {
+    var code = $('#field-category-code').value.trim();
+    var name = $('#field-category-name').value.trim();
+    var draft = { code: code, name: name };
+    var errors = QaCore.validateCategory(
+      draft,
+      state.workspace.categories,
+      state.categoryEditorId
+    );
+    if (errors.length) {
+      $('#category-editor-error').textContent = errors.join('；');
+      return;
+    }
+    if (state.categoryEditorId == null) {
+      state.workspace.categories.push(
+        QaCore.enrichCategory({
+          id: QaCore.nextCategoryId(state.workspace.categories),
+          code: code,
+          name: name
+        })
+      );
+    } else {
+      var target = QaCore.findCategory(state.workspace.categories, state.categoryEditorId);
+      if (!target) {
+        $('#category-editor-error').textContent = '分类不存在';
+        return;
+      }
+      target.code = code;
+      target.name = name;
+    }
+    rebuildWorkspace();
+    persistWorkspace();
+    closeCategoryEditor();
+    renderAll();
+  }
+
+  function deleteCategory(id) {
+    var cat = QaCore.findCategory(state.workspace.categories, id);
+    if (!cat) return;
+    var count = state.workspace.pairs.filter(function (p) {
+      return String(p.categoryId || '') === String(id);
+    }).length;
+    var msg =
+      '确定删除分类「[' +
+      cat.code +
+      '] ' +
+      cat.name +
+      '」？' +
+      (count ? '\n其下 ' + count + ' 条 QA 对将变为未分类。' : '');
+    QaDialog.confirm(msg, {
+      title: '删除分类',
+      confirmText: '删除',
+      danger: true
+    }).then(function (ok) {
+      if (!ok) return;
+      state.workspace.categories = state.workspace.categories.filter(function (c) {
+        return String(c.id) !== String(id);
+      });
+      state.workspace.pairs.forEach(function (p) {
+        if (String(p.categoryId || '') === String(id)) p.categoryId = '';
+      });
+      if (state.filters.categoryId === String(id)) state.filters.categoryId = 'all';
+      rebuildWorkspace();
+      persistWorkspace();
+      renderAll();
+    });
   }
 
   function comparePairIds(a, b) {
@@ -109,14 +376,22 @@
       var cmp = 0;
       if (state.sortBy === 'id') cmp = comparePairIds(a, b);
       else if (state.sortBy === 'q') cmp = a.q.localeCompare(b.q, 'zh-CN');
-      else if (state.sortBy === 'a') cmp = a.a.localeCompare(b.a, 'zh-CN');
+      else if (state.sortBy === 'a') {
+        cmp = QaCore.featuresKey(a.features || a.feature || a.reply || a.a || '').localeCompare(
+          QaCore.featuresKey(b.features || b.feature || b.reply || b.a || ''),
+          'zh-CN'
+        );
+      }
       if (cmp !== 0) return cmp * dir;
       if (state.sortBy !== 'q') {
         cmp = a.q.localeCompare(b.q, 'zh-CN');
         if (cmp !== 0) return cmp;
       }
       if (state.sortBy !== 'a') {
-        cmp = a.a.localeCompare(b.a, 'zh-CN');
+        cmp = QaCore.featuresKey(a.features || a.feature || a.reply || a.a || '').localeCompare(
+          QaCore.featuresKey(b.features || b.feature || b.reply || b.a || ''),
+          'zh-CN'
+        );
         if (cmp !== 0) return cmp;
       }
       return comparePairIds(a, b);
@@ -127,9 +402,23 @@
     var multi = QaCore.multiQSet(state.workspace.pairs);
     var f = state.filters;
     var filtered = state.workspace.pairs.filter(function (p) {
-      if (f.pairType && QaCore.normalizePairType(p.pairType) !== f.pairType) return false;
+      if (f.categoryId === 'uncategorized') {
+        if (p.categoryId != null && p.categoryId !== '') return false;
+      } else if (f.categoryId && f.categoryId !== 'all') {
+        if (String(p.categoryId || '') !== String(f.categoryId)) return false;
+      }
+      if (f.pairType) {
+        var want = QaCore.normalizePairType(f.pairType);
+        var pt = QaCore.normalizePairType(p.pairType);
+        if (want === QaCore.PAIR_TYPE.FUNCTION) {
+          if (pt !== QaCore.PAIR_TYPE.FUNCTION && pt !== QaCore.PAIR_TYPE.MIXED) return false;
+        } else if (want === QaCore.PAIR_TYPE.KNOWLEDGE) {
+          if (pt !== QaCore.PAIR_TYPE.KNOWLEDGE && pt !== QaCore.PAIR_TYPE.MIXED) return false;
+        } else if (pt !== want) return false;
+      }
       if (f.a) {
-        if (!QaCore.isFunctionPair(p) || p.a !== f.a) return false;
+        var feats = QaCore.normalizeFeatures(p.features != null ? p.features : p.feature);
+        if (feats.indexOf(f.a) < 0) return false;
       }
       if (f.status && p.status !== f.status) return false;
       if (f.multiOnly && !multi.has(p.q)) return false;
@@ -272,9 +561,16 @@
   function downloadImportTemplate() {
     var version = state.workspace ? state.workspace.version : 'v1.5.0';
     writeQaWorkbook('QA对-主功能口语映射-模板-' + version + '.xlsx', [
-      ['序号', 'Q', 'A', '类型', '备注'],
-      [1, '今天有哪些待跟进', '今日待跟', '功能', ''],
-      [2, '你们交期怎么算', '交期按产能与物料综合评审，具体以系统评审结果为准。', '知识', '']
+      ['序号', '问题', '回复', '关联功能', '角色', '备注'],
+      [1, '今天有哪些待跟进', '为您打开今日待跟进列表。', '今日待跟', '全部角色', ''],
+      [
+        2,
+        '查一下订单',
+        '订单可在进度中查看，也可确认下单。',
+        '确认下单、订单进度',
+        '全部角色',
+        '多功能用顿号分隔，顺序即展示顺序'
+      ]
     ]);
   }
 
@@ -289,6 +585,7 @@
 
   function renderAll() {
     if (!state.workspace) return;
+    renderCategoryList();
     renderStats();
     renderTable();
   }
@@ -299,8 +596,9 @@
     var fn = 0;
     var kn = 0;
     pairs.forEach(function (p) {
-      if (QaCore.isKnowledgePair(p)) kn += 1;
-      else fn += 1;
+      var feats = QaCore.normalizeFeatures(p.features != null ? p.features : p.feature);
+      if (feats.length) fn += 1;
+      if (p.reply) kn += 1;
     });
     $('#stat-function').textContent = String(fn);
     $('#stat-knowledge').textContent = String(kn);
@@ -335,9 +633,10 @@
       '<tr>' +
       '<th class="col-check"><input type="checkbox" id="check-all" /></th>' +
       sortTh('序号', 'id', 'col-no') +
-      sortTh('用户说法 Q', 'q', 'col-q') +
+      sortTh('问题', 'q', 'col-q') +
       '<th>类型</th>' +
-      sortTh('A / 知识文案', 'a') +
+      sortTh('回复 / 关联功能', 'a') +
+      '<th>角色</th>' +
       '<th>备注</th>' +
       '<th>状态</th>' +
       '<th class="col-actions">操作</th>' +
@@ -413,6 +712,9 @@
           pairTypeHtml(p.pairType) +
           '</td>' +
           aCellHtml(p) +
+          '<td class="col-role">' +
+          escapeHtml(p.role || QaCore.ROLE_ALL) +
+          '</td>' +
           '<td class="col-note" title="' +
           escapeHtml(p.note || '') +
           '">' +
@@ -440,7 +742,7 @@
       .join('');
 
     if (!pageItems.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">无匹配数据</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">无匹配数据</td></tr>';
     }
 
     $('#page-info').textContent =
@@ -514,8 +816,10 @@
     var copy = QaCore.enrichPair({
       id: QaCore.nextId(state.workspace.pairs),
       q: src.q + '（副本）',
-      a: src.a,
-      pairType: src.pairType,
+      reply: src.reply || '',
+      features: QaCore.normalizeFeatures(src.features != null ? src.features : src.feature),
+      categoryId: src.categoryId || '',
+      role: src.role || QaCore.ROLE_ALL,
       note: src.note || '',
       status: QaCore.STATUS.DRAFT
     });
@@ -548,19 +852,16 @@
         : state.editorIndex != null
           ? state.workspace.pairs[state.editorIndex].status
           : QaCore.STATUS.DRAFT;
-    var pairType = QaCore.normalizePairType($('#field-pair-type').value);
-    var a =
-      pairType === QaCore.PAIR_TYPE.KNOWLEDGE
-        ? $('#field-a-knowledge').value.trim()
-        : $('#field-a').value;
     return {
       id:
         state.editorIndex != null
           ? state.workspace.pairs[state.editorIndex].id
           : QaCore.nextId(state.workspace.pairs),
-      pairType: pairType,
       q: $('#field-q').value.trim(),
-      a: a,
+      reply: $('#field-reply').value.trim(),
+      features: state.editorFeatures.slice(),
+      categoryId: ($('#field-category').value || '').trim(),
+      role: QaCore.normalizeRole($('#field-role').value),
       note: $('#field-note').value.trim(),
       status: status
     };
@@ -569,28 +870,37 @@
   function openEditor(index) {
     state.editorIndex = index;
     var isNew = index == null;
+    var defaultCategoryId = '';
+    if (
+      isNew &&
+      state.filters.categoryId &&
+      state.filters.categoryId !== 'all' &&
+      state.filters.categoryId !== 'uncategorized'
+    ) {
+      defaultCategoryId = String(state.filters.categoryId);
+    }
     var p = isNew
       ? {
           id: QaCore.nextId(state.workspace.pairs),
-          pairType: QaCore.PAIR_TYPE.FUNCTION,
           q: '',
-          a: QaFeatureIds.FEATURE_NAMES[0],
+          reply: '',
+          features: [],
+          categoryId: defaultCategoryId,
+          role: QaCore.ROLE_ALL,
           note: '',
           status: QaCore.STATUS.DRAFT
         }
-      : state.workspace.pairs[index];
+      : QaCore.enrichPair(state.workspace.pairs[index]);
+    state.editorFeatures = QaCore.normalizeFeatures(
+      p.features != null ? p.features : p.feature
+    );
     $('#editor-title').textContent = isNew ? '新增 QA 对' : '编辑 QA 对';
-    $('#field-pair-type').value = QaCore.normalizePairType(p.pairType);
+    fillCategorySelect(p.categoryId);
+    $('#field-role').value = QaCore.normalizeRole(p.role);
     $('#field-q').value = p.q || '';
-    if (QaCore.isKnowledgePair(p)) {
-      $('#field-a-knowledge').value = p.a || '';
-      $('#field-a').value = QaFeatureIds.FEATURE_NAMES[0];
-    } else {
-      $('#field-a').value = p.a || QaFeatureIds.FEATURE_NAMES[0];
-      $('#field-a-knowledge').value = '';
-    }
+    $('#field-reply').value = p.reply || '';
     $('#field-note').value = p.note || '';
-    syncEditorPairTypeUI();
+    renderEditorFeatures();
     $('#editor-error').textContent = '';
     updateEditorFooter(isNew, p.status);
     $('#drawer').classList.add('is-open');
@@ -599,12 +909,15 @@
 
   function closeEditor() {
     state.editorIndex = null;
+    state.editorFeatures = [];
     $('#drawer').classList.remove('is-open');
     $('#drawer-backdrop').classList.remove('is-open');
   }
 
   function commitEditorPair(pair, closeAfter) {
-    var errors = QaCore.validatePair(pair, state.workspace.pairs, state.editorIndex);
+    var errors = QaCore.validatePair(pair, state.workspace.pairs, state.editorIndex, {
+      form: true
+    });
     if (errors.length) {
       $('#editor-error').textContent = errors.join('；');
       return false;
@@ -732,9 +1045,17 @@
       });
       return;
     }
-    var rows = [['序号', 'Q', 'A', '类型', '备注']];
+    var rows = [['序号', '问题', '回复', '关联功能', '角色', '备注']];
     QaCore.sortPairsById(state.workspace.pairs).forEach(function (p, i) {
-      rows.push([p.id || i + 1, p.q, p.a, QaCore.pairTypeLabel(p.pairType), p.note || '']);
+      var feats = QaCore.normalizeFeatures(p.features != null ? p.features : p.feature);
+      rows.push([
+        p.id || i + 1,
+        p.q,
+        p.reply || '',
+        feats.join('、'),
+        p.role || QaCore.ROLE_ALL,
+        p.note || ''
+      ]);
     });
     writeQaWorkbook('QA对-主功能口语映射-' + state.workspace.version + '.xlsx', rows);
   }
@@ -859,7 +1180,11 @@
   }
 
   function applyWorkspaceData(data) {
-    state.workspace = QaCore.buildWorkspace(data.pairs || [], data.version);
+    state.workspace = QaCore.buildWorkspace(
+      data.pairs || [],
+      data.version,
+      data.categories
+    );
     persistWorkspace();
     renderAll();
   }
@@ -895,10 +1220,12 @@
   }
 
   function initEditorOptions() {
-    var aSel = $('#field-a');
-    aSel.innerHTML = QaFeatureIds.FEATURE_NAMES.map(function (n) {
+    var roleSel = $('#field-role');
+    roleSel.innerHTML = QaCore.ROLE_OPTIONS.map(function (n) {
       return '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>';
     }).join('');
+    state.editorFeatures = [];
+    renderEditorFeatures();
     var fSel = $('#filter-a');
     fSel.innerHTML =
       '<option value="">全部主功能</option>' +
@@ -946,7 +1273,14 @@
     });
 
     $('#btn-reset-filters').addEventListener('click', function () {
-      state.filters = { a: '', status: '', pairType: '', multiOnly: false, q: '' };
+      state.filters = {
+        a: '',
+        status: '',
+        pairType: '',
+        multiOnly: false,
+        q: '',
+        categoryId: state.filters.categoryId || 'all'
+      };
       $('#filter-a').value = '';
       $('#filter-pair-type').value = '';
       $('#filter-status').value = '';
@@ -955,6 +1289,43 @@
       updateFilterAVisibility();
       state.page = 1;
       renderTable();
+    });
+
+    $('#category-filter').addEventListener('input', function (e) {
+      state.categoryKeyword = e.target.value;
+      renderCategoryList();
+    });
+    $('#btn-category-add').addEventListener('click', function () {
+      openCategoryEditor(null);
+    });
+    $('#category-list').addEventListener('click', function (e) {
+      var opBtn = e.target.closest('[data-category-op]');
+      if (opBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        var op = opBtn.getAttribute('data-category-op');
+        var cid = opBtn.getAttribute('data-category-id');
+        if (op === 'edit') openCategoryEditor(cid);
+        if (op === 'delete') deleteCategory(cid);
+        return;
+      }
+      var item = e.target.closest('[data-category-id]');
+      if (!item || !item.classList.contains('category-list__item')) return;
+      state.filters.categoryId = item.getAttribute('data-category-id') || 'all';
+      state.page = 1;
+      renderAll();
+    });
+    $('#modal-category-close').addEventListener('click', closeCategoryEditor);
+    $('#category-editor-cancel').addEventListener('click', closeCategoryEditor);
+    $('#category-editor-save').addEventListener('click', saveCategoryEditor);
+    $('#modal-category').addEventListener('click', function (e) {
+      if (e.target === $('#modal-category')) closeCategoryEditor();
+    });
+    $('#field-category-name').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveCategoryEditor();
+      }
     });
 
     $('#btn-trial-toggle').addEventListener('click', function () {
@@ -1058,7 +1429,33 @@
     $('#drawer-backdrop').addEventListener('click', closeEditor);
     $('#editor-cancel').addEventListener('click', closeEditor);
     $('#editor-save').addEventListener('click', saveEditor);
-    $('#field-pair-type').addEventListener('change', syncEditorPairTypeUI);
+
+    $('#field-feature-add').addEventListener('change', function (e) {
+      var name = (e.target.value || '').trim();
+      if (!name) return;
+      if (state.editorFeatures.indexOf(name) < 0) {
+        state.editorFeatures.push(name);
+        renderEditorFeatures();
+      } else {
+        e.target.value = '';
+      }
+    });
+
+    $('#feature-selected').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-feature-op]');
+      if (!btn || btn.disabled) return;
+      var op = btn.getAttribute('data-feature-op');
+      var idx = parseInt(btn.getAttribute('data-idx'), 10);
+      if (isNaN(idx)) return;
+      if (op === 'remove') {
+        state.editorFeatures.splice(idx, 1);
+        renderEditorFeatures();
+      } else if (op === 'up') {
+        moveEditorFeature(idx, idx - 1);
+      } else if (op === 'down') {
+        moveEditorFeature(idx, idx + 1);
+      }
+    });
   }
 
   function boot() {
@@ -1067,7 +1464,7 @@
     updateFilterAVisibility();
     var local = QaCore.loadLocal();
     if (local && local.pairs && local.pairs.length) {
-      state.workspace = QaCore.buildWorkspace(local.pairs, local.version);
+      state.workspace = QaCore.buildWorkspace(local.pairs, local.version, local.categories);
       renderAll();
       return;
     }

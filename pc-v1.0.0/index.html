@@ -32,89 +32,112 @@
           </div>
         </div>
 
-        <section class="filter-bar card">
-          <div class="filter-bar__fields">
-            <label class="filter-field filter-field--grow">
-              <span class="filter-field__label">搜索 Q</span>
-              <input type="search" id="filter-q" class="input input--sm" placeholder="模糊搜索用户说法" />
-            </label>
-            <label class="filter-field">
-              <span class="filter-field__label">类型</span>
-              <select id="filter-pair-type" class="input input--sm">
-                <option value="">全部</option>
-                <option value="function">功能</option>
-                <option value="knowledge">知识</option>
-              </select>
-            </label>
-            <label class="filter-field" id="filter-field-a">
-              <span class="filter-field__label">主功能 A</span>
-              <select id="filter-a" class="input input--sm"></select>
-            </label>
-            <label class="filter-field">
-              <span class="filter-field__label">状态</span>
-              <select id="filter-status" class="input input--sm">
-                <option value="">全部</option>
-                <option value="draft">草稿</option>
-                <option value="published">已上线</option>
-                <option value="offline">已下线</option>
-              </select>
-            </label>
-            <label class="filter-field filter-field--check">
-              <input type="checkbox" id="filter-multi" />
-              <span>仅歧义 Q</span>
-            </label>
-          </div>
-          <button type="button" class="btn btn--ghost btn--sm" id="btn-reset-filters">重置筛选</button>
-        </section>
-
-        <section class="stats-bar card">
-          <div class="stats stats--horizontal">
-            <div class="stats__item"><span class="stats__n" id="stat-function">0</span><span class="stats__l">功能 QA</span></div>
-            <div class="stats__item"><span class="stats__n" id="stat-knowledge">0</span><span class="stats__l">知识</span></div>
-            <div class="stats__item"><span class="stats__n" id="stat-unique-q">0</span><span class="stats__l">唯一 Q</span></div>
-            <div class="stats__item"><span class="stats__n" id="stat-multi">0</span><span class="stats__l">歧义 Q</span></div>
-          </div>
-        </section>
-
-        <section class="content-card card">
-          <div class="content-card__toolbar">
-            <div class="tabs">
-              <button type="button" class="tabs__item is-active" id="tab-list">QA 对列表</button>
-              <button type="button" class="tabs__item" id="tab-multi">歧义 Q 索引</button>
+        <div class="workspace-split">
+          <aside class="category-panel card">
+            <div class="category-panel__search">
+              <input
+                type="search"
+                id="category-filter"
+                class="input input--sm"
+                placeholder="请输入关键字进行过滤"
+              />
             </div>
-            <div class="content-card__toolbar-actions">
-              <button type="button" class="btn btn--ghost btn--sm" id="btn-trial-toggle">试跑验证</button>
-              <button type="button" class="btn btn--ghost btn--sm" id="btn-import-xlsx">导入 Excel</button>
-              <button type="button" class="btn btn--ghost btn--sm" id="btn-export-xlsx">导出 Excel</button>
-              <button type="button" class="btn btn--primary btn--sm" id="btn-add">新增</button>
-              <span class="toolbar-actions__sep" id="toolbar-actions-sep" aria-hidden="true"></span>
-              <button type="button" class="btn btn--ghost btn--sm" id="btn-batch-delete">批量删除</button>
+            <div class="category-panel__head">
+              <h3 class="category-panel__title">QA 分类</h3>
+              <button type="button" class="link-action" id="btn-category-add">新增</button>
             </div>
-          </div>
+            <ul id="category-list" class="category-list"></ul>
+          </aside>
 
-          <div class="table-wrap">
-            <table class="qa-table">
-              <thead id="qa-table-head">
-                <tr>
-                  <th class="col-check"><input type="checkbox" id="check-all" /></th>
-                  <th class="col-no">序号</th>
-                  <th>用户说法 Q</th>
-                  <th class="col-sortable" data-sort="a">目标主功能 A</th>
-                  <th>备注</th>
-                  <th>状态</th>
-                  <th class="col-actions">操作</th>
-                </tr>
-              </thead>
-              <tbody id="qa-table-body"></tbody>
-            </table>
-          </div>
+          <div class="workspace-main">
+            <section class="filter-bar card">
+              <div class="filter-bar__fields">
+                <label class="filter-field filter-field--grow">
+                  <span class="filter-field__label">搜索 Q</span>
+                  <input type="search" id="filter-q" class="input input--sm" placeholder="模糊搜索用户说法" />
+                </label>
+                <label class="filter-field">
+                  <span class="filter-field__label">类型</span>
+                  <select id="filter-pair-type" class="input input--sm">
+                    <option value="">全部</option>
+                    <option value="function">功能</option>
+                    <option value="knowledge">知识</option>
+                    <option value="mixed">混合</option>
+                  </select>
+                </label>
+                <label class="filter-field" id="filter-field-a">
+                  <span class="filter-field__label">主功能 A</span>
+                  <select id="filter-a" class="input input--sm"></select>
+                </label>
+                <label class="filter-field">
+                  <span class="filter-field__label">状态</span>
+                  <select id="filter-status" class="input input--sm">
+                    <option value="">全部</option>
+                    <option value="draft">草稿</option>
+                    <option value="published">已上线</option>
+                    <option value="offline">已下线</option>
+                  </select>
+                </label>
+                <label class="filter-field filter-field--check">
+                  <input type="checkbox" id="filter-multi" />
+                  <span>仅歧义 Q</span>
+                </label>
+              </div>
+              <button type="button" class="btn btn--ghost btn--sm" id="btn-reset-filters">重置筛选</button>
+            </section>
 
-          <div class="pager">
-            <button type="button" class="btn btn--ghost btn--sm" id="btn-prev">上一页</button>
-            <span id="page-info" class="pager__info">—</span>
-            <button type="button" class="btn btn--ghost btn--sm" id="btn-next">下一页</button>
+            <section class="stats-bar card">
+              <div class="stats stats--horizontal">
+                <div class="stats__item"><span class="stats__n" id="stat-function">0</span><span class="stats__l">功能 QA</span></div>
+                <div class="stats__item"><span class="stats__n" id="stat-knowledge">0</span><span class="stats__l">知识</span></div>
+                <div class="stats__item"><span class="stats__n" id="stat-unique-q">0</span><span class="stats__l">唯一 Q</span></div>
+                <div class="stats__item"><span class="stats__n" id="stat-multi">0</span><span class="stats__l">歧义 Q</span></div>
+              </div>
+            </section>
+
+            <section class="content-card card">
+              <div class="content-card__toolbar">
+                <div class="tabs">
+                  <button type="button" class="tabs__item is-active" id="tab-list">QA 对列表</button>
+                  <button type="button" class="tabs__item" id="tab-multi">歧义 Q 索引</button>
+                </div>
+                <div class="content-card__toolbar-actions">
+                  <button type="button" class="btn btn--ghost btn--sm" id="btn-trial-toggle">试跑验证</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="btn-import-xlsx">导入 Excel</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="btn-export-xlsx">导出 Excel</button>
+                  <button type="button" class="btn btn--primary btn--sm" id="btn-add">新增</button>
+                  <span class="toolbar-actions__sep" id="toolbar-actions-sep" aria-hidden="true"></span>
+                  <button type="button" class="btn btn--ghost btn--sm" id="btn-batch-delete">批量删除</button>
+                </div>
+              </div>
+
+              <div class="table-wrap">
+                <table class="qa-table">
+                  <thead id="qa-table-head">
+                    <tr>
+                      <th class="col-check"><input type="checkbox" id="check-all" /></th>
+                      <th class="col-no">序号</th>
+                      <th>问题</th>
+                      <th>类型</th>
+                      <th class="col-sortable" data-sort="a">回复 / 关联功能</th>
+                      <th>角色</th>
+                      <th>备注</th>
+                      <th>状态</th>
+                      <th class="col-actions">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="qa-table-body"></tbody>
+                </table>
+              </div>
+
+              <div class="pager">
+                <button type="button" class="btn btn--ghost btn--sm" id="btn-prev">上一页</button>
+                <span id="page-info" class="pager__info">—</span>
+                <button type="button" class="btn btn--ghost btn--sm" id="btn-next">下一页</button>
+              </div>
+            </section>
           </div>
-        </section>
+        </div>
       </main>
     </div>
   </div>
@@ -128,24 +151,30 @@
     <div class="drawer__body">
       <p id="editor-error" class="form-error"></p>
       <label class="field">
-        <span class="field__label">类型 <em>*</em></span>
-        <select id="field-pair-type" class="input">
-          <option value="function">功能（L0 主功能）</option>
-          <option value="knowledge">知识（固定话术/回复文案）</option>
-        </select>
+        <span class="field__label">分类</span>
+        <select id="field-category" class="input"></select>
       </label>
       <label class="field">
-        <span class="field__label">用户说法 Q <em>*</em></span>
+        <span class="field__label">角色</span>
+        <select id="field-role" class="input"></select>
+      </label>
+      <label class="field">
+        <span class="field__label">问题 <em>*</em></span>
         <textarea id="field-q" class="input input--area" rows="3"></textarea>
       </label>
-      <label class="field" id="field-wrap-a-function">
-        <span class="field__label">目标主功能 A <em>*</em></span>
-        <select id="field-a" class="input"></select>
+      <label class="field">
+        <span class="field__label">回复 <em>*</em></span>
+        <textarea id="field-reply" class="input input--area" rows="5"></textarea>
       </label>
-      <label class="field" id="field-wrap-a-knowledge" hidden>
-        <span class="field__label">知识回复文案 A <em>*</em></span>
-        <textarea id="field-a-knowledge" class="input input--area" rows="5"></textarea>
-      </label>
+      <div class="field">
+        <span class="field__label">关联功能</span>
+        <div id="feature-selected" class="feature-picker__list" aria-live="polite"></div>
+        <div class="feature-picker__add">
+          <select id="field-feature-add" class="input">
+            <option value="">添加关联功能…</option>
+          </select>
+        </div>
+      </div>
       <label class="field">
         <span class="field__label">备注</span>
         <textarea id="field-note" class="input input--area" rows="2"></textarea>
@@ -207,6 +236,32 @@
           <button type="button" class="btn btn--primary" id="btn-trial">试跑</button>
         </div>
         <div id="trial-result" class="trial-panel__result"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-category" class="modal">
+    <div class="modal__panel modal__panel--category">
+      <div class="modal__head">
+        <div>
+          <h2 id="category-editor-title">新增分类</h2>
+        </div>
+        <button type="button" class="icon-btn" id="modal-category-close" aria-label="关闭">×</button>
+      </div>
+      <div class="modal__body">
+        <p id="category-editor-error" class="form-error"></p>
+        <label class="field">
+          <span class="field__label">编码 <em>*</em></span>
+          <input type="text" id="field-category-code" class="input" placeholder="如 001" />
+        </label>
+        <label class="field">
+          <span class="field__label">名称 <em>*</em></span>
+          <input type="text" id="field-category-name" class="input" placeholder="分类名称" />
+        </label>
+      </div>
+      <div class="modal__foot">
+        <button type="button" class="btn btn--ghost" id="category-editor-cancel">取消</button>
+        <button type="button" class="btn btn--primary" id="category-editor-save">保存</button>
       </div>
     </div>
   </div>
