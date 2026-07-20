@@ -532,8 +532,8 @@
 
     if (hint) {
       if (isNew) {
-        hint.textContent = '新建默认为草稿';
-        hint.hidden = false;
+        hint.textContent = '';
+        hint.hidden = true;
       } else {
         hint.textContent = '当前状态：' + QaCore.statusLabel(s);
         hint.hidden = false;

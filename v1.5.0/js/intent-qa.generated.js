@@ -5,7 +5,7 @@
   "source": "QA对-主功能口语映射-v1.5.0.xlsx",
   "generatedAt": "2026-07-11T02:42:49Z",
   "algorithm": "C",
-  "pairCount": 155,
+  "pairCount": 156,
   "uniqueQCount": 139,
   "pairs": [
     {
@@ -1092,6 +1092,12 @@
       "aId": "order",
       "group": "复合-订单泛化",
       "note": "高歧义，召回用"
+    },
+    {
+      "q": "查一下订单",
+      "a": "订单可在进度中查看，也可从报价单确认下单；具体以系统展示为准。",
+      "pairType": "knowledge",
+      "note": "演示：与订单功能同Q，触发混合卡"
     }
   ],
   "multiQ": [

@@ -224,6 +224,10 @@ em {
   min-width: 120px;
 }
 
+.filter-field[hidden] {
+  display: none !important;
+}
+
 .filter-field--grow {
   flex: 1;
   min-width: 160px;
@@ -416,6 +420,10 @@ em {
   flex-direction: column;
   gap: 6px;
   margin-bottom: 12px;
+}
+
+.field[hidden] {
+  display: none !important;
 }
 
 .field__label {

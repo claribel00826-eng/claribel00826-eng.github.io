@@ -1,5 +1,6 @@
 /**
- * 意图选择卡 · 多主功能命中时点击选择（不支持序号/语音二次识别）
+ * 意图选择卡 · 多主功能 / 功能+知识 混命中时点击选择（不支持序号/语音二次识别）
+ * 知识至多取 1 条；与功能同时命中时：卡内上文案、下「若您要办理，可点选」+ 功能列表
  */
 (function () {
   let deps = null;
@@ -50,7 +51,16 @@
     return t.slice(0, maxLen) + '…';
   }
 
-  function buildLeadHtml(utterance, count) {
+  /** 知识至多 1 条 */
+  function firstKnowledge(text) {
+    if (!window.IntentMatch || !IntentMatch.matchKnowledge) return null;
+    const kHits = IntentMatch.matchKnowledge(text);
+    if (!kHits.length) return null;
+    return kHits[0];
+  }
+
+  function buildLeadHtml(utterance, count, hasKnowledge) {
+    if (hasKnowledge) return '';
     const snippet = truncateUtterance(utterance, 18);
     if (snippet) {
       if (count === 2) {
@@ -72,9 +82,8 @@
     return '<p class="sc-reply-lead">好像包含好几件事，<strong>先点最想办的那件</strong>：</p>';
   }
 
-  function renderCard(utterance, candidates) {
-    const sorted = sortCandidates(candidates);
-    const rows = sorted
+  function renderFunctionRows(candidates) {
+    return sortCandidates(candidates)
       .map(function (c) {
         return (
           '<button type="button" class="sc-list-item sc-list-item--clarify" data-action="intent-clarify-pick" data-skill-id="' +
@@ -85,18 +94,49 @@
         );
       })
       .join('');
+  }
+
+  /**
+   * @param {string} utterance
+   * @param {Array<{id:string,name:string}>} candidates
+   * @param {{text?:string}|null} knowledge
+   */
+  function renderCard(utterance, candidates, knowledge) {
+    const sorted = sortCandidates(candidates);
+    const hasKnowledge = !!(knowledge && knowledge.text);
+    const rows = renderFunctionRows(sorted);
+    let body = '';
+    if (hasKnowledge) {
+      body +=
+        '<div class="sc-intent-clarify__knowledge">' +
+        deps.escapeHtml(knowledge.text) +
+        '</div>' +
+        '<p class="sc-intent-clarify__action-hint">若您要办理，可点选：</p>';
+    }
+    body += '<div class="sc-follow-list sc-follow-list--clarify">' + rows + '</div>';
     return (
-      buildLeadHtml(utterance, sorted.length) +
-      '<div class="sc-card sc-card--intent-clarify" data-spec-id="card-intent-clarify">' +
-      '<div class="sc-follow-list sc-follow-list--clarify">' +
-      rows +
-      '</div></div>'
+      buildLeadHtml(utterance, sorted.length, hasKnowledge) +
+      '<div class="sc-card sc-card--intent-clarify' +
+      (hasKnowledge ? ' sc-card--intent-clarify-mixed' : '') +
+      '" data-spec-id="card-intent-clarify">' +
+      body +
+      '</div>'
     );
   }
 
-  function showPickCard(utterance, candidates) {
+  function showPickCard(utterance, candidates, knowledge) {
     deps.advanceFlowPage();
-    deps.pushAiHtml(renderCard(utterance, candidates));
+    deps.pushAiHtml(renderCard(utterance, candidates, knowledge || null));
+    deps.scrollMessages();
+    deps.persistChatHistory();
+    if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
+  }
+
+  function pushKnowledgeReply(text) {
+    deps.advanceFlowPage();
+    deps.pushAiHtml(
+      '<p class="sc-reply-lead sc-reply-lead--knowledge">' + deps.escapeHtml(text || '') + '</p>'
+    );
     deps.scrollMessages();
     deps.persistChatHistory();
     if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
@@ -135,6 +175,7 @@
     const hits = window.IntentMatch.matchMainFunctions(text);
     if (!hits.length) return false;
     if (hits.length >= 2) return true;
+    if (firstKnowledge(text)) return true;
     const pending = normalizePendingSkillId(pendingSkillRun);
     if (pending === 'switch-customer') return true;
     return hits[0].id !== pending;
@@ -150,26 +191,26 @@
   function tryQaIntentRoute(text) {
     if (!isQaIntentEnabled() || !window.IntentMatch) return false;
     const hits = window.IntentMatch.matchMainFunctions(text);
+    const knowledge = firstKnowledge(text);
+
+    if (hits.length && knowledge) {
+      showPickCard(text, hits, knowledge);
+      return true;
+    }
     if (hits.length) {
       if (hits.length === 1) {
         deps.advanceFlowPage();
         dispatchSkill(hits[0].id, {});
         return true;
       }
-      showPickCard(text, hits);
+      showPickCard(text, hits, null);
       return true;
     }
-    const kHits = window.IntentMatch.matchKnowledge(text);
-    if (!kHits.length) return false;
-    deps.advanceFlowPage();
-    const reply = kHits[0].text || '';
-    deps.pushAiHtml(
-      '<p class="sc-reply-lead sc-reply-lead--knowledge">' + deps.escapeHtml(reply) + '</p>'
-    );
-    deps.scrollMessages();
-    deps.persistChatHistory();
-    if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
-    return true;
+    if (knowledge) {
+      pushKnowledgeReply(knowledge.text || '');
+      return true;
+    }
+    return false;
   }
 
   function handleAction(action, btn) {

@@ -2803,6 +2803,27 @@ body.sc-region-modal-open .sc-app {
   margin-bottom: 8px;
 }
 
+.sc-intent-clarify__knowledge {
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #18181b;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sc-intent-clarify__action-hint {
+  margin: 0 0 4px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #71717a;
+}
+
+.sc-card--intent-clarify-mixed .sc-follow-list--clarify {
+  margin-top: 0;
+}
+
 .sc-list-item {
   display: flex;
   align-items: center;
