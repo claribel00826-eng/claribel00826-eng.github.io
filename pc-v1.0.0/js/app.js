@@ -10,7 +10,7 @@
     view: 'list',
     sortBy: 'id',
     sortDir: 'asc',
-    filters: { a: '', status: '', multiOnly: false, q: '' },
+    filters: { a: '', status: '', pairType: '', multiOnly: false, q: '' },
     page: 1,
     selected: new Set(),
     editorIndex: null
@@ -48,6 +48,43 @@
     else if (s === QaCore.STATUS.OFFLINE) cls += ' status-tag--offline';
     else cls += ' status-tag--live';
     return '<span class="' + cls + '">' + escapeHtml(QaCore.statusLabel(s)) + '</span>';
+  }
+
+  function pairTypeHtml(pairType) {
+    var pt = QaCore.normalizePairType(pairType);
+    var cls = pt === QaCore.PAIR_TYPE.KNOWLEDGE ? 'type-tag type-tag--knowledge' : 'type-tag type-tag--function';
+    return '<span class="' + cls + '">' + escapeHtml(QaCore.pairTypeLabel(pt)) + '</span>';
+  }
+
+  function aCellHtml(p) {
+    if (QaCore.isKnowledgePair(p)) {
+      return (
+        '<td class="col-a-text" title="' +
+        escapeHtml(p.a) +
+        '">' +
+        escapeHtml(p.a) +
+        '</td>'
+      );
+    }
+    return '<td>' + tagHtml(p.a) + '</td>';
+  }
+
+  function updateFilterAVisibility() {
+    var wrap = $('#filter-field-a');
+    var isKnowledge = state.filters.pairType === QaCore.PAIR_TYPE.KNOWLEDGE;
+    if (wrap) wrap.hidden = isKnowledge;
+    if (isKnowledge) {
+      state.filters.a = '';
+      var sel = $('#filter-a');
+      if (sel) sel.value = '';
+    }
+  }
+
+  function syncEditorPairTypeUI() {
+    var pt = QaCore.normalizePairType($('#field-pair-type').value);
+    var isKnowledge = pt === QaCore.PAIR_TYPE.KNOWLEDGE;
+    $('#field-wrap-a-function').hidden = isKnowledge;
+    $('#field-wrap-a-knowledge').hidden = !isKnowledge;
   }
 
   function persistWorkspace() {
@@ -90,7 +127,10 @@
     var multi = QaCore.multiQSet(state.workspace.pairs);
     var f = state.filters;
     var filtered = state.workspace.pairs.filter(function (p) {
-      if (f.a && p.a !== f.a) return false;
+      if (f.pairType && QaCore.normalizePairType(p.pairType) !== f.pairType) return false;
+      if (f.a) {
+        if (!QaCore.isFunctionPair(p) || p.a !== f.a) return false;
+      }
       if (f.status && p.status !== f.status) return false;
       if (f.multiOnly && !multi.has(p.q)) return false;
       if (f.q) {
@@ -232,8 +272,9 @@
   function downloadImportTemplate() {
     var version = state.workspace ? state.workspace.version : 'v1.5.0';
     writeQaWorkbook('QA对-主功能口语映射-模板-' + version + '.xlsx', [
-      ['序号', 'Q', 'A', '备注'],
-      [1, '今天有哪些待跟进', '今日待跟', '']
+      ['序号', 'Q', 'A', '类型', '备注'],
+      [1, '今天有哪些待跟进', '今日待跟', '功能', ''],
+      [2, '你们交期怎么算', '交期按产能与物料综合评审，具体以系统评审结果为准。', '知识', '']
     ]);
   }
 
@@ -255,7 +296,14 @@
   function renderStats() {
     var pairs = state.workspace.pairs;
     var multi = state.workspace.multiQ || [];
-    $('#stat-pairs').textContent = String(pairs.length);
+    var fn = 0;
+    var kn = 0;
+    pairs.forEach(function (p) {
+      if (QaCore.isKnowledgePair(p)) kn += 1;
+      else fn += 1;
+    });
+    $('#stat-function').textContent = String(fn);
+    $('#stat-knowledge').textContent = String(kn);
     $('#stat-unique-q').textContent = String(
       new Set(
         pairs.map(function (p) {
@@ -279,6 +327,8 @@
         '<th class="col-actions">操作</th>' +
         '</tr>';
       if (batchBtn) batchBtn.hidden = true;
+      var sep = $('#toolbar-actions-sep');
+      if (sep) sep.hidden = true;
       return;
     }
     head.innerHTML =
@@ -286,12 +336,15 @@
       '<th class="col-check"><input type="checkbox" id="check-all" /></th>' +
       sortTh('序号', 'id', 'col-no') +
       sortTh('用户说法 Q', 'q', 'col-q') +
-      sortTh('目标主功能 A', 'a') +
+      '<th>类型</th>' +
+      sortTh('A / 知识文案', 'a') +
       '<th>备注</th>' +
       '<th>状态</th>' +
       '<th class="col-actions">操作</th>' +
       '</tr>';
     if (batchBtn) batchBtn.hidden = false;
+    var sep = $('#toolbar-actions-sep');
+    if (sep) sep.hidden = false;
   }
 
   function onCheckAllChange(e) {
@@ -357,8 +410,9 @@
           escapeHtml(p.q) +
           '</button></td>' +
           '<td>' +
-          tagHtml(p.a) +
+          pairTypeHtml(p.pairType) +
           '</td>' +
+          aCellHtml(p) +
           '<td class="col-note" title="' +
           escapeHtml(p.note || '') +
           '">' +
@@ -386,7 +440,7 @@
       .join('');
 
     if (!pageItems.length) {
-      tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">无匹配数据</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">无匹配数据</td></tr>';
     }
 
     $('#page-info').textContent =
@@ -461,6 +515,7 @@
       id: QaCore.nextId(state.workspace.pairs),
       q: src.q + '（副本）',
       a: src.a,
+      pairType: src.pairType,
       note: src.note || '',
       status: QaCore.STATUS.DRAFT
     });
@@ -493,13 +548,19 @@
         : state.editorIndex != null
           ? state.workspace.pairs[state.editorIndex].status
           : QaCore.STATUS.DRAFT;
+    var pairType = QaCore.normalizePairType($('#field-pair-type').value);
+    var a =
+      pairType === QaCore.PAIR_TYPE.KNOWLEDGE
+        ? $('#field-a-knowledge').value.trim()
+        : $('#field-a').value;
     return {
       id:
         state.editorIndex != null
           ? state.workspace.pairs[state.editorIndex].id
           : QaCore.nextId(state.workspace.pairs),
+      pairType: pairType,
       q: $('#field-q').value.trim(),
-      a: $('#field-a').value,
+      a: a,
       note: $('#field-note').value.trim(),
       status: status
     };
@@ -511,6 +572,7 @@
     var p = isNew
       ? {
           id: QaCore.nextId(state.workspace.pairs),
+          pairType: QaCore.PAIR_TYPE.FUNCTION,
           q: '',
           a: QaFeatureIds.FEATURE_NAMES[0],
           note: '',
@@ -518,9 +580,17 @@
         }
       : state.workspace.pairs[index];
     $('#editor-title').textContent = isNew ? '新增 QA 对' : '编辑 QA 对';
+    $('#field-pair-type').value = QaCore.normalizePairType(p.pairType);
     $('#field-q').value = p.q || '';
-    $('#field-a').value = p.a || '';
+    if (QaCore.isKnowledgePair(p)) {
+      $('#field-a-knowledge').value = p.a || '';
+      $('#field-a').value = QaFeatureIds.FEATURE_NAMES[0];
+    } else {
+      $('#field-a').value = p.a || QaFeatureIds.FEATURE_NAMES[0];
+      $('#field-a-knowledge').value = '';
+    }
     $('#field-note').value = p.note || '';
+    syncEditorPairTypeUI();
     $('#editor-error').textContent = '';
     updateEditorFooter(isNew, p.status);
     $('#drawer').classList.add('is-open');
@@ -586,7 +656,10 @@
   function runTrial(text) {
     text = text || $('#trial-input').value;
     var norm = IntentMatchPc.normalizeUtterance(text);
-    var hits = IntentMatchPc.matchMainFunctions(text, QaCore.pairsForMatch(state.workspace.pairs));
+    var fnPairs = QaCore.pairsForMatch(state.workspace.pairs);
+    var knPairs = QaCore.pairsForKnowledgeMatch(state.workspace.pairs);
+    var hits = IntentMatchPc.matchMainFunctions(text, fnPairs);
+    var kHits = IntentMatchPc.matchKnowledge(text, knPairs);
     var box = $('#trial-result');
     if (!norm) {
       box.innerHTML = '<span class="muted">请输入话术</span>';
@@ -596,24 +669,53 @@
       '<div class="trial-line"><span class="muted">归一化：</span>' +
       escapeHtml(norm) +
       '</div>';
+    html += '<div class="trial-section"><div class="trial-section__title">L0 主功能</div>';
     if (!hits.length) {
-      html += '<div class="trial-line trial-line--warn">未命中任何主功能（L0）</div>';
-    } else if (hits.length > 1) {
-      html += '<div class="trial-line trial-line--warn">命中 ' + hits.length + ' 个主功能（方案 C 并集；不含子卡片）</div>';
+      html += '<div class="trial-line trial-line--warn">未命中任何主功能</div>';
+    } else {
+      if (hits.length > 1) {
+        html += '<div class="trial-line trial-line--warn">命中 ' + hits.length + ' 个主功能（方案 C 并集）</div>';
+      }
+      html += hits
+        .map(function (h) {
+          return (
+            '<div class="trial-hit">' +
+            tagHtml(h.name) +
+            ' <code>' +
+            escapeHtml(h.id) +
+            '</code>' +
+            (h.note ? ' <span class="muted">· ' + escapeHtml(h.note) + '</span>' : '') +
+            '</div>'
+          );
+        })
+        .join('');
     }
-    html += hits
-      .map(function (h) {
-        return (
-          '<div class="trial-hit">' +
-          tagHtml(h.name) +
-          ' <code>' +
-          escapeHtml(h.id) +
-          '</code>' +
-          (h.note ? ' <span class="muted">· ' + escapeHtml(h.note) + '</span>' : '') +
-          '</div>'
-        );
-      })
-      .join('');
+    html += '</div>';
+    html += '<div class="trial-section"><div class="trial-section__title">知识话术</div>';
+    if (!kHits.length) {
+      html += '<div class="trial-line muted">未命中知识</div>';
+    } else {
+      html += kHits
+        .map(function (k) {
+          return (
+            '<div class="trial-knowledge">' +
+            '<div class="trial-knowledge__q muted">Q：' +
+            escapeHtml(k.q) +
+            '</div>' +
+            '<div class="trial-knowledge__a">' +
+            escapeHtml(k.text) +
+            '</div></div>'
+          );
+        })
+        .join('');
+    }
+    html += '</div>';
+    if (hits.length && kHits.length) {
+      html +=
+        '<div class="trial-line trial-line--warn">同时命中功能与知识时，实际对话路由以功能为准。</div>';
+    } else if (!hits.length && kHits.length) {
+      html += '<div class="trial-line muted">无功能命中时可返回知识文案。</div>';
+    }
     box.innerHTML = html;
   }
 
@@ -630,9 +732,9 @@
       });
       return;
     }
-    var rows = [['序号', 'Q', 'A', '备注']];
-    QaCore.sortPairs(state.workspace.pairs).forEach(function (p, i) {
-      rows.push([p.id || i + 1, p.q, p.a, p.note || '']);
+    var rows = [['序号', 'Q', 'A', '类型', '备注']];
+    QaCore.sortPairsById(state.workspace.pairs).forEach(function (p, i) {
+      rows.push([p.id || i + 1, p.q, p.a, QaCore.pairTypeLabel(p.pairType), p.note || '']);
     });
     writeQaWorkbook('QA对-主功能口语映射-' + state.workspace.version + '.xlsx', rows);
   }
@@ -752,16 +854,43 @@
     });
   }
 
+  function resolveDataUrl() {
+    return new URL(DATA_URL, window.location.href).href;
+  }
+
+  function applyWorkspaceData(data) {
+    state.workspace = QaCore.buildWorkspace(data.pairs || [], data.version);
+    persistWorkspace();
+    renderAll();
+  }
+
+  function loadFromSeed() {
+    var seed = window.__QA_WORKSPACE_SEED__;
+    if (!seed || !seed.pairs || !seed.pairs.length) return false;
+    applyWorkspaceData(seed);
+    return true;
+  }
+
   function loadFromServer() {
-    return fetch(DATA_URL)
+    if (location.protocol === 'file:') {
+      if (loadFromSeed()) return Promise.resolve();
+      return Promise.reject(
+        new Error(
+          '不能用双击 HTML 的方式打开。请在仓库根目录执行 npx serve -l 3456 -c serve.json，再访问 http://localhost:3456/pc-v1.0.0/index.html'
+        )
+      );
+    }
+    return fetch(resolveDataUrl(), { cache: 'no-cache' })
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
       .then(function (data) {
-        state.workspace = QaCore.buildWorkspace(data.pairs || [], data.version);
-        persistWorkspace();
-        renderAll();
+        applyWorkspaceData(data);
+      })
+      .catch(function (err) {
+        if (loadFromSeed()) return;
+        throw err;
       });
   }
 
@@ -790,6 +919,12 @@
       state.page = 1;
       renderTable();
     });
+    $('#filter-pair-type').addEventListener('change', function (e) {
+      state.filters.pairType = e.target.value;
+      updateFilterAVisibility();
+      state.page = 1;
+      renderTable();
+    });
     $('#filter-status').addEventListener('change', function (e) {
       state.filters.status = e.target.value;
       state.page = 1;
@@ -811,11 +946,13 @@
     });
 
     $('#btn-reset-filters').addEventListener('click', function () {
-      state.filters = { a: '', status: '', multiOnly: false, q: '' };
+      state.filters = { a: '', status: '', pairType: '', multiOnly: false, q: '' };
       $('#filter-a').value = '';
+      $('#filter-pair-type').value = '';
       $('#filter-status').value = '';
       $('#filter-multi').checked = false;
       $('#filter-q').value = '';
+      updateFilterAVisibility();
       state.page = 1;
       renderTable();
     });
@@ -921,11 +1058,13 @@
     $('#drawer-backdrop').addEventListener('click', closeEditor);
     $('#editor-cancel').addEventListener('click', closeEditor);
     $('#editor-save').addEventListener('click', saveEditor);
+    $('#field-pair-type').addEventListener('change', syncEditorPairTypeUI);
   }
 
   function boot() {
     initEditorOptions();
     bindEvents();
+    updateFilterAVisibility();
     var local = QaCore.loadLocal();
     if (local && local.pairs && local.pairs.length) {
       state.workspace = QaCore.buildWorkspace(local.pairs, local.version);

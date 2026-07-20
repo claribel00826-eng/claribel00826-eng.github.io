@@ -129,7 +129,7 @@ em {
 }
 
 .stats--horizontal {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
 
@@ -191,19 +191,6 @@ em {
   font-size: 12px;
   color: #71717a;
   white-space: nowrap;
-}
-
-.page-header__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.page-header__actions .btn {
-  height: 32px;
-  padding: 0 12px;
-  font-size: 13px;
 }
 
 .sidenav-nav__item.is-active {
@@ -276,7 +263,22 @@ em {
 
 .content-card__toolbar-actions {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+}
+
+.toolbar-actions__sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: #e4e4e7;
+  flex-shrink: 0;
+}
+
+.toolbar-actions__sep[hidden] {
+  display: none;
 }
 
 /* Trial (modal) */
@@ -296,6 +298,39 @@ em {
   border-top: 1px solid #e4e4e7;
   font-size: 13px;
   min-height: 48px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.trial-section {
+  margin-top: 12px;
+}
+
+.trial-section__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #71717a;
+  margin-bottom: 6px;
+}
+
+.trial-knowledge {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: #fafafa;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+}
+
+.trial-knowledge__q {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.trial-knowledge__a {
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .trial-line {
@@ -701,6 +736,34 @@ em {
 .status-tag--offline {
   color: #b45309;
   background: #fef3c7;
+}
+
+.type-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.type-tag--function {
+  color: #0d5c59;
+  background: #e0f2f1;
+}
+
+.type-tag--knowledge {
+  color: #4338ca;
+  background: #eef2ff;
+}
+
+.col-a-text {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #3f3f46;
+  font-size: 13px;
 }
 
 .empty-cell {

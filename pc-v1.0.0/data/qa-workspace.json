@@ -1,7 +1,7 @@
 {
   "version": "v1.5.0",
   "algorithm": "C",
-  "updatedAt": "2026-07-17T02:23:45.919Z",
+  "updatedAt": "2026-07-20T02:32:40.455Z",
   "pairs": [
     {
       "id": 1,
@@ -9,7 +9,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 2,
@@ -17,7 +18,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 3,
@@ -25,7 +27,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 4,
@@ -33,7 +36,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 5,
@@ -41,7 +45,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 6,
@@ -49,7 +54,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 7,
@@ -57,7 +63,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "写跟进归入今日待跟",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 8,
@@ -65,7 +72,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 9,
@@ -73,7 +81,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 10,
@@ -81,7 +90,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 11,
@@ -89,7 +99,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 12,
@@ -97,7 +108,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 13,
@@ -105,7 +117,8 @@
       "a": "新增客户",
       "aId": "customer-create",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 14,
@@ -113,7 +126,8 @@
       "a": "新增客户",
       "aId": "customer-create",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 15,
@@ -121,7 +135,8 @@
       "a": "新增客户",
       "aId": "customer-create",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 16,
@@ -129,7 +144,8 @@
       "a": "新增客户",
       "aId": "customer-create",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 17,
@@ -137,7 +153,8 @@
       "a": "新增客户",
       "aId": "customer-create",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 18,
@@ -145,7 +162,8 @@
       "a": "新增客户",
       "aId": "customer-create",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 19,
@@ -153,7 +171,8 @@
       "a": "新增客户",
       "aId": "customer-create",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 20,
@@ -161,7 +180,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 21,
@@ -169,7 +189,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 22,
@@ -177,7 +198,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 23,
@@ -185,7 +207,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 24,
@@ -193,7 +216,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 25,
@@ -201,7 +225,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 26,
@@ -209,7 +234,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 27,
@@ -217,7 +243,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 28,
@@ -225,7 +252,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 29,
@@ -233,7 +261,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 30,
@@ -241,7 +270,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 31,
@@ -249,7 +279,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 32,
@@ -257,7 +288,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 33,
@@ -265,7 +297,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 34,
@@ -273,7 +306,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 35,
@@ -281,7 +315,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 36,
@@ -289,7 +324,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 37,
@@ -297,7 +333,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 38,
@@ -305,7 +342,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 39,
@@ -313,7 +351,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 40,
@@ -321,7 +360,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 41,
@@ -329,7 +369,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 42,
@@ -337,7 +378,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 43,
@@ -345,7 +387,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 44,
@@ -353,7 +396,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 45,
@@ -361,7 +405,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 46,
@@ -369,7 +414,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 47,
@@ -377,7 +423,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 48,
@@ -385,7 +432,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 49,
@@ -393,7 +441,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 50,
@@ -401,7 +450,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 51,
@@ -409,7 +459,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 52,
@@ -417,7 +468,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 53,
@@ -425,7 +477,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 54,
@@ -433,7 +486,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 55,
@@ -441,7 +495,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 56,
@@ -449,7 +504,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 57,
@@ -457,7 +513,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 58,
@@ -465,7 +522,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 59,
@@ -473,7 +531,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 60,
@@ -481,7 +540,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 61,
@@ -489,7 +549,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 62,
@@ -497,7 +558,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 63,
@@ -505,7 +567,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 64,
@@ -513,7 +576,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 65,
@@ -521,7 +585,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 66,
@@ -529,7 +594,8 @@
       "a": "复制订单",
       "aId": "copy",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 67,
@@ -537,7 +603,8 @@
       "a": "复制订单",
       "aId": "copy",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 68,
@@ -545,7 +612,8 @@
       "a": "复制订单",
       "aId": "copy",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 69,
@@ -553,7 +621,8 @@
       "a": "复制订单",
       "aId": "copy",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 70,
@@ -561,7 +630,8 @@
       "a": "复制订单",
       "aId": "copy",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 71,
@@ -569,7 +639,8 @@
       "a": "复制订单",
       "aId": "copy",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 72,
@@ -577,7 +648,8 @@
       "a": "复制订单",
       "aId": "copy",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 73,
@@ -585,7 +657,8 @@
       "a": "订单变更",
       "aId": "change",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 74,
@@ -593,7 +666,8 @@
       "a": "订单变更",
       "aId": "change",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 75,
@@ -601,7 +675,8 @@
       "a": "订单变更",
       "aId": "change",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 76,
@@ -609,7 +684,8 @@
       "a": "订单变更",
       "aId": "change",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 77,
@@ -617,7 +693,8 @@
       "a": "订单变更",
       "aId": "change",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 78,
@@ -625,7 +702,8 @@
       "a": "订单变更",
       "aId": "change",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 79,
@@ -633,7 +711,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 80,
@@ -641,7 +720,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 81,
@@ -649,7 +729,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 82,
@@ -657,7 +738,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 83,
@@ -665,7 +747,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 84,
@@ -673,7 +756,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 85,
@@ -681,7 +765,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 86,
@@ -689,7 +774,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 87,
@@ -697,7 +783,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 88,
@@ -705,7 +792,8 @@
       "a": "产能分析",
       "aId": "capacity",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 89,
@@ -713,7 +801,8 @@
       "a": "产能分析",
       "aId": "capacity",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 90,
@@ -721,7 +810,8 @@
       "a": "产能分析",
       "aId": "capacity",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 91,
@@ -729,7 +819,8 @@
       "a": "产能分析",
       "aId": "capacity",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 92,
@@ -737,7 +828,8 @@
       "a": "产能分析",
       "aId": "capacity",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 93,
@@ -745,7 +837,8 @@
       "a": "产能分析",
       "aId": "capacity",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 94,
@@ -753,7 +846,8 @@
       "a": "产能分析",
       "aId": "capacity",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 95,
@@ -761,7 +855,8 @@
       "a": "产能分析",
       "aId": "capacity",
       "note": "问整体产能",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 96,
@@ -769,7 +864,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "问单笔交期",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 97,
@@ -777,7 +873,8 @@
       "a": "库存查询",
       "aId": "inventory",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 98,
@@ -785,7 +882,8 @@
       "a": "库存查询",
       "aId": "inventory",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 99,
@@ -793,7 +891,8 @@
       "a": "库存查询",
       "aId": "inventory",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 100,
@@ -801,7 +900,8 @@
       "a": "库存查询",
       "aId": "inventory",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 101,
@@ -809,7 +909,8 @@
       "a": "库存查询",
       "aId": "inventory",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 102,
@@ -817,7 +918,8 @@
       "a": "库存查询",
       "aId": "inventory",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 103,
@@ -825,7 +927,8 @@
       "a": "库存查询",
       "aId": "inventory",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 104,
@@ -833,7 +936,8 @@
       "a": "业务分析",
       "aId": "biz-analysis",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 105,
@@ -841,7 +945,8 @@
       "a": "业务分析",
       "aId": "biz-analysis",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 106,
@@ -849,7 +954,8 @@
       "a": "业务分析",
       "aId": "biz-analysis",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 107,
@@ -857,7 +963,8 @@
       "a": "业务分析",
       "aId": "biz-analysis",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 108,
@@ -865,7 +972,8 @@
       "a": "业务分析",
       "aId": "biz-analysis",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 109,
@@ -873,7 +981,8 @@
       "a": "业务分析",
       "aId": "biz-analysis",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 110,
@@ -881,7 +990,8 @@
       "a": "业务分析",
       "aId": "biz-analysis",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 111,
@@ -889,7 +999,8 @@
       "a": "业务分析",
       "aId": "biz-analysis",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 112,
@@ -897,7 +1008,8 @@
       "a": "回款分析",
       "aId": "payment",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 113,
@@ -905,7 +1017,8 @@
       "a": "回款分析",
       "aId": "payment",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 114,
@@ -913,7 +1026,8 @@
       "a": "回款分析",
       "aId": "payment",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 115,
@@ -921,7 +1035,8 @@
       "a": "回款分析",
       "aId": "payment",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 116,
@@ -929,7 +1044,8 @@
       "a": "回款分析",
       "aId": "payment",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 117,
@@ -937,7 +1053,8 @@
       "a": "回款分析",
       "aId": "payment",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 118,
@@ -945,7 +1062,8 @@
       "a": "回款分析",
       "aId": "payment",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 119,
@@ -953,7 +1071,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 120,
@@ -961,7 +1080,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 121,
@@ -969,7 +1089,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 122,
@@ -977,7 +1098,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 123,
@@ -985,7 +1107,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 124,
@@ -993,7 +1116,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 125,
@@ -1001,7 +1125,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 126,
@@ -1009,7 +1134,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 127,
@@ -1017,7 +1143,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 128,
@@ -1025,7 +1152,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 129,
@@ -1033,7 +1161,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 130,
@@ -1041,7 +1170,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 131,
@@ -1049,7 +1179,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 132,
@@ -1057,7 +1188,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 133,
@@ -1065,7 +1197,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 134,
@@ -1073,7 +1206,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 135,
@@ -1081,7 +1215,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 136,
@@ -1089,7 +1224,8 @@
       "a": "今日待跟",
       "aId": "followup",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 137,
@@ -1097,7 +1233,8 @@
       "a": "切换客户",
       "aId": "switch-customer",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 138,
@@ -1105,7 +1242,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 139,
@@ -1113,7 +1251,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 140,
@@ -1121,7 +1260,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 141,
@@ -1129,7 +1269,8 @@
       "a": "方案速配",
       "aId": "plan",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 142,
@@ -1137,7 +1278,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 143,
@@ -1145,7 +1287,8 @@
       "a": "产品报价",
       "aId": "quote",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 144,
@@ -1153,7 +1296,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 145,
@@ -1161,7 +1305,8 @@
       "a": "交期评审",
       "aId": "delivery",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 146,
@@ -1169,7 +1314,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 147,
@@ -1177,7 +1323,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 148,
@@ -1185,7 +1332,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 149,
@@ -1193,7 +1341,8 @@
       "a": "复制订单",
       "aId": "copy",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 150,
@@ -1201,7 +1350,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 151,
@@ -1209,7 +1359,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 152,
@@ -1217,7 +1368,8 @@
       "a": "订单进度",
       "aId": "progress",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 153,
@@ -1225,7 +1377,8 @@
       "a": "订单变更",
       "aId": "change",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 154,
@@ -1233,7 +1386,8 @@
       "a": "复制订单",
       "aId": "copy",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     },
     {
       "id": 155,
@@ -1241,7 +1395,8 @@
       "a": "确认下单",
       "aId": "order",
       "note": "",
-      "status": "published"
+      "status": "published",
+      "pairType": "function"
     }
   ]
 }

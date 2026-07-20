@@ -150,13 +150,25 @@
   function tryQaIntentRoute(text) {
     if (!isQaIntentEnabled() || !window.IntentMatch) return false;
     const hits = window.IntentMatch.matchMainFunctions(text);
-    if (!hits.length) return false;
-    if (hits.length === 1) {
-      deps.advanceFlowPage();
-      dispatchSkill(hits[0].id, {});
+    if (hits.length) {
+      if (hits.length === 1) {
+        deps.advanceFlowPage();
+        dispatchSkill(hits[0].id, {});
+        return true;
+      }
+      showPickCard(text, hits);
       return true;
     }
-    showPickCard(text, hits);
+    const kHits = window.IntentMatch.matchKnowledge(text);
+    if (!kHits.length) return false;
+    deps.advanceFlowPage();
+    const reply = kHits[0].text || '';
+    deps.pushAiHtml(
+      '<p class="sc-reply-lead sc-reply-lead--knowledge">' + deps.escapeHtml(reply) + '</p>'
+    );
+    deps.scrollMessages();
+    deps.persistChatHistory();
+    if (window.Annotation && Annotation.scanHosts) Annotation.scanHosts();
     return true;
   }
 

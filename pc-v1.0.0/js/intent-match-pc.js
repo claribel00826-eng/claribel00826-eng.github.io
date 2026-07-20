@@ -30,15 +30,35 @@
     return false;
   }
 
-  function matchMainFunctions(text, pairs) {
+  function isFunctionRow(row) {
+    if (!row) return true;
+    var pt = row.pairType;
+    return !pt || pt === 'function' || pt === '功能';
+  }
+
+  function isKnowledgeRow(row) {
+    return row && (row.pairType === 'knowledge' || row.pairType === '知识');
+  }
+
+  function matchRows(text, pairs, rowFilter) {
     if (!pairs || !pairs.length) return [];
     var u = normalizeUtterance(text);
     if (!u) return [];
-    var byA = new Map();
+    var hits = [];
     pairs.forEach(function (row) {
-      if (row.status !== 'published') return;
+      if (row.status && row.status !== 'published') return;
+      if (!rowFilter(row)) return;
       var nq = normalizeUtterance(row.q);
       if (!isContainedMatch(u, nq, { flowOnlyExact: true })) return;
+      hits.push(row);
+    });
+    return hits;
+  }
+
+  function matchMainFunctions(text, pairs) {
+    var rows = matchRows(text, pairs, isFunctionRow);
+    var byA = new Map();
+    rows.forEach(function (row) {
       var id = row.aId || global.QaFeatureIds.nameToId(row.a) || row.a;
       if (!byA.has(row.a)) {
         byA.set(row.a, {
@@ -52,10 +72,21 @@
     return Array.from(byA.values());
   }
 
+  function matchKnowledge(text, pairs) {
+    return matchRows(text, pairs, isKnowledgeRow).map(function (row) {
+      return {
+        q: row.q,
+        text: row.a,
+        note: row.note || ''
+      };
+    });
+  }
+
   global.IntentMatchPc = {
     normalizeUtterance: normalizeUtterance,
     isContainedMatch: isContainedMatch,
     matchMainFunctions: matchMainFunctions,
+    matchKnowledge: matchKnowledge,
     MIN_CONTAIN_LEN: MIN_CONTAIN_LEN
   };
 })(typeof window !== 'undefined' ? window : globalThis);

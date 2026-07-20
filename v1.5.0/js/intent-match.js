@@ -19,13 +19,6 @@
       .replace(/[，,。.；;！!？?、]/g, '');
   }
 
-  /**
-   * 方案 C（收紧）：
-   * 1. 完全一致
-   * 2. 用户句更长且包含 Q（用户说了更多，Q 是子串）
-   * 3. Q 更长且包含用户句：仅非复合 Q，且长度差 ≤4（如「帮我配个方案」⊃「配个方案」）
-   * 禁止：短句「配个方案」反向命中「配个方案并报价」「切换到…配个方案」
-   */
   function isContainedMatch(u, nq, opts) {
     opts = opts || {};
     if (!u || !nq) return false;
@@ -45,24 +38,42 @@
     return false;
   }
 
+  function isFunctionRow(row) {
+    if (!row) return true;
+    const pt = row.pairType;
+    return !pt || pt === 'function' || pt === '功能';
+  }
+
+  function isKnowledgeRow(row) {
+    return row && (row.pairType === 'knowledge' || row.pairType === '知识');
+  }
+
+  function matchRows(text, data, rowFilter) {
+    if (!data || !data.pairs || !data.pairs.length) return [];
+    const u = normalizeUtterance(text);
+    if (!u) return [];
+    const hits = [];
+    data.pairs.forEach(function (row) {
+      if (!rowFilter(row)) return;
+      const nq = normalizeUtterance(row.q);
+      if (!isContainedMatch(u, nq, { flowOnlyExact: true })) return;
+      hits.push(row);
+    });
+    return hits;
+  }
+
   /**
    * 匹配主功能（仅入口层；流程内话术由 tryIntent 处理）
    * @param {string} text
-   * @param {{ pairs?: Array<{q:string,a:string,aId?:string}> }} [opts]
+   * @param {{ pairs?: Array<{q:string,a:string,aId?:string,pairType?:string}> }} [opts]
    * @returns {Array<{name:string,id:string,group?:string,note?:string}>}
    */
   function matchMainFunctions(text, opts) {
     opts = opts || {};
     const data = opts.pairs ? { pairs: opts.pairs } : window.IntentQa;
-    if (!data || !data.pairs || !data.pairs.length) return [];
-
-    const u = normalizeUtterance(text);
-    if (!u) return [];
-
+    const rows = matchRows(text, data, isFunctionRow);
     const byA = new Map();
-    data.pairs.forEach(function (row) {
-      const nq = normalizeUtterance(row.q);
-      if (!isContainedMatch(u, nq, { flowOnlyExact: true })) return;
+    rows.forEach(function (row) {
       const id = row.aId || row.a;
       if (!byA.has(row.a)) {
         byA.set(row.a, {
@@ -73,8 +84,23 @@
         });
       }
     });
-
     return Array.from(byA.values());
+  }
+
+  /**
+   * 知识/固定话术命中（与功能相同包含规则）
+   * @param {string} text
+   * @returns {Array<{q:string,text:string,note:string}>}
+   */
+  function matchKnowledge(text) {
+    const data = window.IntentQa;
+    return matchRows(text, data, isKnowledgeRow).map(function (row) {
+      return {
+        q: row.q,
+        text: row.a,
+        note: row.note || ''
+      };
+    });
   }
 
   /**
@@ -92,6 +118,7 @@
     normalizeUtterance: normalizeUtterance,
     isContainedMatch: isContainedMatch,
     matchMainFunctions: matchMainFunctions,
+    matchKnowledge: matchKnowledge,
     matchMainFunctionIds: matchMainFunctionIds,
     MIN_CONTAIN_LEN: MIN_CONTAIN_LEN
   };

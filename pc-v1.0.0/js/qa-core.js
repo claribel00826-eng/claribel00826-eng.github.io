@@ -8,10 +8,33 @@
     OFFLINE: 'offline'
   };
 
+  var PAIR_TYPE = {
+    FUNCTION: 'function',
+    KNOWLEDGE: 'knowledge'
+  };
+
   function statusLabel(status) {
     if (status === STATUS.DRAFT) return '草稿';
     if (status === STATUS.OFFLINE) return '已下线';
     return '已上线';
+  }
+
+  function pairTypeLabel(pairType) {
+    return normalizePairType(pairType) === PAIR_TYPE.KNOWLEDGE ? '知识' : '功能';
+  }
+
+  function normalizePairType(value) {
+    var s = String(value == null ? '' : value).trim();
+    if (s === PAIR_TYPE.KNOWLEDGE || s === '知识') return PAIR_TYPE.KNOWLEDGE;
+    return PAIR_TYPE.FUNCTION;
+  }
+
+  function isFunctionPair(pair) {
+    return normalizePairType(pair && pair.pairType) === PAIR_TYPE.FUNCTION;
+  }
+
+  function isKnowledgePair(pair) {
+    return normalizePairType(pair && pair.pairType) === PAIR_TYPE.KNOWLEDGE;
   }
 
   function canDeletePair(pair) {
@@ -32,7 +55,12 @@
   function enrichPair(pair) {
     var p = Object.assign({}, pair);
     delete p.group;
-    p.aId = global.QaFeatureIds.nameToId(p.a) || p.aId || '';
+    p.pairType = normalizePairType(p.pairType);
+    if (p.pairType === PAIR_TYPE.FUNCTION) {
+      p.aId = global.QaFeatureIds.nameToId(p.a) || p.aId || '';
+    } else {
+      p.aId = '';
+    }
     if (!p.status) p.status = 'published';
     return p;
   }
@@ -43,8 +71,8 @@
 
   function buildMultiQ(pairs) {
     var byQ = {};
-    pairs.forEach(function (p) {
-      if (!p.q) return;
+    enrichPairs(pairs).forEach(function (p) {
+      if (!isFunctionPair(p) || !p.q) return;
       if (!byQ[p.q]) byQ[p.q] = [];
       if (byQ[p.q].indexOf(p.a) < 0) byQ[p.q].push(p.a);
     });
@@ -74,7 +102,6 @@
     return max + 1;
   }
 
-  /** 默认：按数据序号（id） */
   function sortPairsById(pairs) {
     return pairs.slice().sort(function (a, b) {
       var ia = parseInt(a.id, 10);
@@ -91,7 +118,6 @@
     });
   }
 
-  /** 勾选「仅歧义 Q」时：先按 Q 再按 A，便于同一 Q 的多条记录相邻展示 */
   function sortPairsMultiFilter(pairs) {
     return pairs.slice().sort(function (a, b) {
       if (a.q !== b.q) return a.q.localeCompare(b.q, 'zh-CN');
@@ -99,14 +125,25 @@
     });
   }
 
+  function samePairKey(a, b) {
+    return (
+      a.q === b.q &&
+      a.a === b.a &&
+      normalizePairType(a.pairType) === normalizePairType(b.pairType)
+    );
+  }
+
   function validatePair(pair, pairs, skipIndex) {
     var errors = [];
+    var pt = normalizePairType(pair.pairType);
     if (!pair.q || !String(pair.q).trim()) errors.push('Q 不能为空');
     if (!pair.a || !String(pair.a).trim()) errors.push('A 不能为空');
-    else if (!global.QaFeatureIds.isValidName(pair.a)) errors.push('未知功能 A：' + pair.a);
+    else if (pt === PAIR_TYPE.FUNCTION && !global.QaFeatureIds.isValidName(pair.a)) {
+      errors.push('未知功能 A：' + pair.a);
+    }
     (pairs || []).forEach(function (p, i) {
       if (skipIndex != null && i === skipIndex) return;
-      if (p.q === pair.q && p.a === pair.a) {
+      if (samePairKey(p, pair)) {
         errors.push('与第 ' + (p.id || i + 1) + ' 行重复');
       }
     });
@@ -137,35 +174,62 @@
   function pairsForMatch(pairs) {
     return enrichPairs(pairs)
       .filter(function (p) {
-        return isLiveStatus(p.status);
+        return isLiveStatus(p.status) && isFunctionPair(p);
       })
       .map(function (p) {
-        return { q: p.q, a: p.a, aId: p.aId, note: p.note, status: p.status };
+        return {
+          q: p.q,
+          a: p.a,
+          aId: p.aId,
+          note: p.note,
+          status: p.status,
+          pairType: PAIR_TYPE.FUNCTION
+        };
+      });
+  }
+
+  function pairsForKnowledgeMatch(pairs) {
+    return enrichPairs(pairs)
+      .filter(function (p) {
+        return isLiveStatus(p.status) && isKnowledgePair(p);
+      })
+      .map(function (p) {
+        return {
+          q: p.q,
+          a: p.a,
+          note: p.note,
+          status: p.status,
+          pairType: PAIR_TYPE.KNOWLEDGE
+        };
       });
   }
 
   function emitIntentQaJs(workspace) {
+    var live = workspace.pairs.filter(function (p) {
+      return isLiveStatus(p.status);
+    });
     var payload = {
       version: workspace.version,
       source: 'QA对-主功能口语映射-' + workspace.version + '.xlsx',
       generatedAt: new Date().toISOString(),
       algorithm: workspace.algorithm || 'C',
-      pairCount: workspace.pairs.length,
-      uniqueQCount: new Set(workspace.pairs.map(function (p) {
-        return p.q;
-      })).size,
-      pairs: workspace.pairs
-        .filter(function (p) {
-          return isLiveStatus(p.status);
+      pairCount: live.length,
+      uniqueQCount: new Set(
+        live.map(function (p) {
+          return p.q;
         })
-        .map(function (p) {
-          return {
-            q: p.q,
-            a: p.a,
-            aId: p.aId,
-            note: p.note || ''
-          };
-        }),
+      ).size,
+      pairs: live.map(function (p) {
+        var pt = normalizePairType(p.pairType);
+        var item = {
+          q: p.q,
+          a: p.a,
+          pairType: pt,
+          note: p.note || ''
+        };
+        if (pt === PAIR_TYPE.FUNCTION) item.aId = p.aId || global.QaFeatureIds.nameToId(p.a) || '';
+        return item;
+      }),
       multiQ: workspace.multiQ,
       featureIds: global.QaFeatureIds.FEATURE_IDS
     };
@@ -205,27 +269,45 @@
     localStorage.removeItem(STORAGE_KEY);
   }
 
+  function parseExcelHeader(header) {
+    var typeIdx = header.indexOf('类型');
+    var noteIdx = header.indexOf('备注');
+    if (typeIdx >= 0) {
+      return { idIdx: 0, qIdx: 1, aIdx: 2, typeIdx: typeIdx, noteIdx: noteIdx >= 0 ? noteIdx : 4 };
+    }
+    var hasGroupCol = header.indexOf('分组') >= 0;
+    return {
+      idIdx: 0,
+      qIdx: 1,
+      aIdx: 2,
+      typeIdx: -1,
+      noteIdx: hasGroupCol ? 4 : 3
+    };
+  }
+
   function parseExcelRows(rows) {
     var header = (rows[0] || []).map(function (c) {
       return String(c || '').trim();
     });
-    var hasGroupCol = header.indexOf('分组') >= 0;
-    var noteIdx = hasGroupCol ? 4 : 3;
+    var col = parseExcelHeader(header);
     var pairs = [];
     var errors = [];
 
     rows.slice(1).forEach(function (row, i) {
       if (!row || !row.some(Boolean)) return;
-      var id = row[0];
-      var q = String(row[1] || '').trim();
-      var a = String(row[2] || '').trim();
-      var note = String(row[noteIdx] || '').trim();
+      var id = row[col.idIdx];
+      var q = String(row[col.qIdx] || '').trim();
+      var a = String(row[col.aIdx] || '').trim();
+      var typeRaw = col.typeIdx >= 0 ? row[col.typeIdx] : '';
+      var note = String(row[col.noteIdx] || '').trim();
+      var pairType = normalizePairType(typeRaw);
+
       if (!q || !a) {
         errors.push('第 ' + (i + 2) + ' 行 Q/A 为空');
         return;
       }
-      if (!global.QaFeatureIds.isValidName(a)) {
-        errors.push('第 ' + (i + 2) + ' 行未知 A=' + a);
+      if (pairType === PAIR_TYPE.FUNCTION && !global.QaFeatureIds.isValidName(a)) {
+        errors.push('第 ' + (i + 2) + ' 行未知功能 A=' + a);
         return;
       }
       pairs.push(
@@ -233,6 +315,7 @@
           id: id || i + 1,
           q: q,
           a: a,
+          pairType: pairType,
           note: note,
           status: 'published'
         })
@@ -245,7 +328,12 @@
   global.QaCore = {
     STORAGE_KEY: STORAGE_KEY,
     STATUS: STATUS,
+    PAIR_TYPE: PAIR_TYPE,
     statusLabel: statusLabel,
+    pairTypeLabel: pairTypeLabel,
+    normalizePairType: normalizePairType,
+    isFunctionPair: isFunctionPair,
+    isKnowledgePair: isKnowledgePair,
     canDeletePair: canDeletePair,
     isLiveStatus: isLiveStatus,
     normalizeQ: normalizeQ,
@@ -261,6 +349,7 @@
     validateAll: validateAll,
     buildWorkspace: buildWorkspace,
     pairsForMatch: pairsForMatch,
+    pairsForKnowledgeMatch: pairsForKnowledgeMatch,
     emitIntentQaJs: emitIntentQaJs,
     parseExcelRows: parseExcelRows,
     saveLocal: saveLocal,
