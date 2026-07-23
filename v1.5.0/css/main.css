@@ -1688,6 +1688,24 @@ button.is-flow-stale,
   margin-top: 20px;
 }
 
+.sc-dialog--free-attr {
+  max-width: 340px;
+}
+
+.sc-dialog__prompt--compact {
+  margin-top: 12px;
+  margin-bottom: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.sc-dialog__field {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  box-sizing: border-box;
+}
+
 .sc-dialog__actions .sc-btn {
   flex: 1;
   min-width: 0;
@@ -2361,6 +2379,10 @@ button.is-flow-stale,
 }
 
 body.sc-region-modal-open .sc-app {
+  overflow: hidden;
+}
+
+body.sc-free-attr-modal-open .sc-app {
   overflow: hidden;
 }
 

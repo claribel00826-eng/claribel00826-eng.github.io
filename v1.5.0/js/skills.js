@@ -13010,11 +13010,76 @@ function openChangeSheet(oid, opts) {
     else if (ctx().freeAttrAddDraft) delete ctx().freeAttrAddDraft;
   }
 
-  function isFreeAttrAddOpen(scope, pid, key, idx) {
-    const d = getFreeAttrAddDraft();
-    if (!d) return false;
-    const idxStr = idx !== '' && idx != null ? String(idx) : '';
-    return d.scope === scope && d.pid === pid && d.key === key && String(d.idx || '') === idxStr;
+  let freeAttrAddModalBound = false;
+
+  function bindFreeAttrAddModal() {
+    if (freeAttrAddModalBound) return;
+    const overlay = document.getElementById('overlay-free-attr-add');
+    if (!overlay) return;
+    freeAttrAddModalBound = true;
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) cancelFreeAttrAdd(null);
+    });
+    const dialog = overlay.querySelector('[data-spec-id="sheet-free-attr-add"]');
+    if (dialog) {
+      dialog.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.getAttribute('data-action');
+        if (action === 'free-attr-add-confirm') confirmFreeAttrAdd(btn);
+        else if (action === 'free-attr-add-cancel') cancelFreeAttrAdd(btn);
+      });
+      const inp = dialog.querySelector('[data-field="free-attr-add-input"]');
+      if (inp) {
+        inp.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            confirmFreeAttrAdd(null);
+          }
+        });
+      }
+    }
+  }
+
+  function openFreeAttrAddModal(draft) {
+    bindFreeAttrAddModal();
+    const overlay = document.getElementById('overlay-free-attr-add');
+    if (!overlay || !draft) return;
+    const pr = productById(draft.pid);
+    const defs = pr ? DemoData.productCustomAttrDefs(pr) : [];
+    const def = defs.find(function (d) { return d.key === draft.key; });
+    const label = (def && def.label) || draft.label || '自由项';
+    const titleEl = document.getElementById('free-attr-add-title');
+    const hintEl = document.getElementById('free-attr-add-hint');
+    const inp = overlay.querySelector('[data-field="free-attr-add-input"]');
+    if (titleEl) titleEl.textContent = '自定义' + label;
+    if (hintEl) {
+      hintEl.textContent =
+        '请输入' + label + '，如：玫瑰金（最多 ' + DemoData.FREE_ATTR_ADD_MAX_LEN + ' 字）';
+    }
+    if (inp) {
+      inp.value = '';
+      inp.placeholder = '请输入' + label;
+      inp.setAttribute('maxlength', String(DemoData.FREE_ATTR_ADD_MAX_LEN));
+    }
+    overlay.classList.remove('sc-hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('sc-free-attr-modal-open');
+    if (inp) {
+      setTimeout(function () {
+        inp.focus();
+      }, 50);
+    }
+    if (window.Annotation && window.Annotation.scanHosts) window.Annotation.scanHosts();
+  }
+
+  function closeFreeAttrAddModal() {
+    const overlay = document.getElementById('overlay-free-attr-add');
+    if (overlay) {
+      overlay.classList.add('sc-hidden');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+    document.body.classList.remove('sc-free-attr-modal-open');
   }
 
   function freeAttrMapFromAttrs(attrs) {
@@ -13052,34 +13117,9 @@ function openChangeSheet(oid, opts) {
     }
   }
 
-  function renderFreeAttrAddInline(scope, pid, key, idx, label) {
-    const idxAttr = idx !== '' && idx != null ? ' data-idx="' + idx + '"' : '';
-    return (
-      '<div class="sc-free-attr-add sc-free-attr-add--inline" data-free-attr-add data-scope="' +
-      scope +
-      '" data-pid="' +
-      pid +
-      '" data-attr-key="' +
-      App.escapeHtml(key) +
-      '"' +
-      idxAttr +
-      '><input type="text" class="sc-input sc-input--field sc-free-attr-add__input sc-pick-free-attr__control" data-field="free-attr-add-input" placeholder="请输入' +
-      App.escapeHtml(label) +
-      '，如：玫瑰金" maxlength="' +
-      DemoData.FREE_ATTR_ADD_MAX_LEN +
-      '" autofocus />' +
-      '<div class="sc-free-attr-add__actions">' +
-      '<button type="button" class="sc-btn sc-btn--ghost sc-btn--sm" data-action="free-attr-add-cancel">取消</button>' +
-      '<button type="button" class="sc-btn sc-btn--primary sc-btn--sm" data-action="free-attr-add-confirm">确定</button>' +
-      '</div></div>'
-    );
-  }
-
   function renderPickFreeAttrSelect(scope, pid, attr, product, idx, stopProp) {
     const pickOpts = DemoData.freeAttrOptionsForPick(product, attr.key, ctx());
     const cur = attr.value || '';
-    const isOtherSelected =
-      isFreeAttrAddOpen(scope, pid, attr.key, idx) || cur === DemoData.FREE_ATTR_OTHER_VALUE;
     const optionHtml = pickOpts
       .map(function (o) {
         const label = o.custom ? o.value + '（自定义）' : o.value;
@@ -13087,16 +13127,15 @@ function openChangeSheet(oid, opts) {
           '<option value="' +
           App.escapeHtml(o.value) +
           '"' +
-          (o.value === cur && !isOtherSelected ? ' selected' : '') +
+          (o.value === cur ? ' selected' : '') +
           '>' +
           App.escapeHtml(label) +
           '</option>'
         );
       })
       .join('');
-    const otherSelected = isOtherSelected ? ' selected' : '';
     const orphanSelected =
-      !isOtherSelected && cur && !pickOpts.some(function (o) { return o.value === cur; })
+      cur && !pickOpts.some(function (o) { return o.value === cur; })
         ? '<option value="' + App.escapeHtml(cur) + '" selected>' + App.escapeHtml(cur) + '（自定义）</option>'
         : '';
     return (
@@ -13115,9 +13154,7 @@ function openChangeSheet(oid, opts) {
       '<option disabled>────────</option>' +
       '<option value="' +
       DemoData.FREE_ATTR_OTHER_VALUE +
-      '"' +
-      otherSelected +
-      '>其他…</option></select>'
+      '">其他…</option></select>'
     );
   }
 
@@ -13140,13 +13177,8 @@ function openChangeSheet(oid, opts) {
           const def = defs.find(function (d) { return d.key === a.key; }) || a;
           const hasOpts = def.options && def.options.length;
           let controlHtml;
-          const adding = hasOpts && isFreeAttrAddOpen(scope, pid, a.key, idx);
           if (hasOpts) {
-            if (adding) {
-              controlHtml = renderFreeAttrAddInline(scope, pid, a.key, idx, a.label || def.label);
-            } else {
-              controlHtml = renderPickFreeAttrSelect(scope, pid, a, product, idx, stopProp);
-            }
+            controlHtml = renderPickFreeAttrSelect(scope, pid, a, product, idx, stopProp);
           } else {
             controlHtml =
               '<input type="text" class="sc-pick-free-attr__control sc-pick-free-attr__input" data-action="pick-free-attr" data-scope="' +
@@ -13163,12 +13195,8 @@ function openChangeSheet(oid, opts) {
               '"/>';
           }
           return (
-            '<div class="sc-pick-free-attr-wrap' +
-            (adding ? ' sc-pick-free-attr-wrap--adding' : '') +
-            '">' +
-            '<label class="sc-pick-free-attr' +
-            (adding ? ' sc-pick-free-attr--adding' : '') +
-            '">' +
+            '<div class="sc-pick-free-attr-wrap">' +
+            '<label class="sc-pick-free-attr">' +
             '<span class="sc-pick-free-attr__label">' +
             App.escapeHtml(a.label || def.label) +
             '</span>' +
@@ -13343,8 +13371,19 @@ function openChangeSheet(oid, opts) {
               const a = draft.customAttrs[pid].find(function (x) { return x.key === key; });
               return a ? a.value : '';
             })();
-      setFreeAttrAddDraft({ scope: scope, pid: pid, key: key, idx: idx, prevValue: prev });
-      refreshFreeAttrHost(scope);
+      const defs = DemoData.productCustomAttrDefs(pr);
+      const def = defs.find(function (d) { return d.key === key; });
+      setFreeAttrAddDraft({
+        scope: scope,
+        pid: pid,
+        key: key,
+        idx: idx,
+        prevValue: prev,
+        label: (def && def.label) || key
+      });
+      if (prev) el.value = prev;
+      else if (el.options.length) el.selectedIndex = 0;
+      openFreeAttrAddModal(getFreeAttrAddDraft());
       return;
     }
 
@@ -13362,19 +13401,19 @@ function openChangeSheet(oid, opts) {
   }
 
   function confirmFreeAttrAdd(btn) {
-    const panel = btn.closest('[data-free-attr-add]');
-    if (!panel) return;
-    const scope = panel.getAttribute('data-scope');
-    const pid = panel.getAttribute('data-pid');
-    const key = panel.getAttribute('data-attr-key');
-    const idxAttr = panel.getAttribute('data-idx');
-    const idx = idxAttr != null && idxAttr !== '' ? parseInt(idxAttr, 10) : '';
+    const draft = getFreeAttrAddDraft();
+    if (!draft) return;
+    const scope = draft.scope;
+    const pid = draft.pid;
+    const key = draft.key;
+    const idx = draft.idx;
     const pr = productById(pid);
     if (!pr || !key) return;
     const defs = DemoData.productCustomAttrDefs(pr);
     const def = defs.find(function (d) { return d.key === key; });
-    const label = (def && def.label) || '自由项';
-    const inp = panel.querySelector('[data-field="free-attr-add-input"]');
+    const label = (def && def.label) || draft.label || '自由项';
+    const overlay = document.getElementById('overlay-free-attr-add');
+    const inp = overlay ? overlay.querySelector('[data-field="free-attr-add-input"]') : null;
     const raw = inp ? inp.value : '';
     const result = DemoData.addSessionFreeAttrExtra(pr, key, raw, ctx(), label);
     if (!result.ok) {
@@ -13382,6 +13421,7 @@ function openChangeSheet(oid, opts) {
       return;
     }
     setFreeAttrAddDraft(null);
+    closeFreeAttrAddModal();
     if (scope === 'quote-line') {
       const pending = ctx().quotePending;
       const line = pending && pending.lines[idx];
@@ -13392,25 +13432,14 @@ function openChangeSheet(oid, opts) {
   }
 
   function cancelFreeAttrAdd(btn) {
-    const panel = btn.closest('[data-free-attr-add]');
-    if (!panel) return;
-    const scope = panel.getAttribute('data-scope');
-    const draft = getFreeAttrAddDraft();
-    setFreeAttrAddDraft(null);
-    if (draft && draft.prevValue) {
-      if (scope === 'quote-line') {
-        const pending = ctx().quotePending;
-        const line = pending && pending.lines[draft.idx];
-        applyFreeAttrValue(scope, draft.pid, draft.key, draft.prevValue, {
-          idx: draft.idx,
-          line: line
-        });
-        return;
-      }
-      applyFreeAttrValue(scope, draft.pid, draft.key, draft.prevValue);
+    if (!getFreeAttrAddDraft()) {
+      closeFreeAttrAddModal();
       return;
     }
-    refreshFreeAttrHost(scope);
+    const draft = getFreeAttrAddDraft();
+    setFreeAttrAddDraft(null);
+    closeFreeAttrAddModal();
+    if (draft && draft.scope) refreshFreeAttrHost(draft.scope);
   }
 
   function orderConfirmRoot() {

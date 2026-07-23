@@ -1173,47 +1173,16 @@ window.DemoData = {
       .replace(/\s+/g, ' ');
   },
 
-  ensureSessionFreeAttrStore(ctxRef) {
-    const ctx = ctxRef || {};
-    if (!ctx.freeAttrExtraOptions) ctx.freeAttrExtraOptions = {};
-    return ctx.freeAttrExtraOptions;
-  },
-
-  sessionFreeAttrExtras(productId, attrKey, ctxRef) {
-    const store = DemoData.ensureSessionFreeAttrStore(ctxRef);
-    const byProduct = store[productId] || {};
-    return (byProduct[attrKey] || []).slice();
-  },
-
-  isSessionFreeAttrExtra(productId, attrKey, value, ctxRef) {
-    const v = DemoData.normalizeFreeAttrInputValue(value);
-    if (!v) return false;
-    return DemoData.sessionFreeAttrExtras(productId, attrKey, ctxRef).some(function (x) {
-      return x === v;
-    });
-  },
-
-  /** 合并标准候选项 + 本会话自定义项（去重，保留顺序） */
+  /** 自由项下拉候选项（标准列表） */
   freeAttrOptionsForPick(product, attrKey, ctxRef) {
     const base = DemoData.freeAttrOptionsForProduct(product, attrKey);
-    const extras = product ? DemoData.sessionFreeAttrExtras(product.id, attrKey, ctxRef) : [];
-    const seen = new Set();
-    const out = [];
-    base.forEach(function (o) {
-      if (!o || seen.has(o)) return;
-      seen.add(o);
-      out.push({ value: o, custom: false });
+    return base.map(function (o) {
+      return { value: o, custom: false };
     });
-    extras.forEach(function (o) {
-      if (!o || seen.has(o)) return;
-      seen.add(o);
-      out.push({ value: o, custom: true });
-    });
-    return out;
   },
 
   /**
-   * 添加本会话自由项取值；若与已有项重复（忽略大小写）则返回已有 canonical 值
+   * 校验并规范化「其他…」录入的自定义取值；若与标准候选项重复（忽略大小写）则用已有项
    * @returns {{ ok: boolean, value?: string, existed?: boolean, message?: string }}
    */
   addSessionFreeAttrExtra(product, attrKey, rawValue, ctxRef, label) {
@@ -1226,16 +1195,10 @@ window.DemoData = {
     }
     if (!product || !attrKey) return { ok: false, message: '数据异常，请重试' };
     const base = DemoData.freeAttrOptionsForProduct(product, attrKey);
-    const extras = DemoData.sessionFreeAttrExtras(product.id, attrKey, ctxRef);
-    const all = base.concat(extras);
-    const dup = all.find(function (o) {
+    const dup = base.find(function (o) {
       return String(o).toLowerCase() === v.toLowerCase();
     });
     if (dup) return { ok: true, value: dup, existed: true };
-    const store = DemoData.ensureSessionFreeAttrStore(ctxRef);
-    if (!store[product.id]) store[product.id] = {};
-    if (!store[product.id][attrKey]) store[product.id][attrKey] = [];
-    store[product.id][attrKey].push(v);
     return { ok: true, value: v, existed: false };
   },
 

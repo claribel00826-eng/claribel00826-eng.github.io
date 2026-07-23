@@ -168,6 +168,17 @@
     </div>
   </div>
   <!-- 退出登录确认 -->
+  <div id="overlay-free-attr-add" class="sc-overlay sc-overlay--dialog sc-hidden" data-spec-id="overlay-free-attr-add" role="dialog" aria-modal="true" aria-labelledby="free-attr-add-title" aria-hidden="true">
+    <div class="sc-dialog sc-dialog--free-attr" data-spec-id="sheet-free-attr-add" onclick="event.stopPropagation()">
+      <div class="sc-dialog__head" id="free-attr-add-title">自定义取值</div>
+      <p class="sc-dialog__prompt sc-dialog__prompt--compact" id="free-attr-add-hint"></p>
+      <input type="text" class="sc-input sc-input--field sc-dialog__field" id="free-attr-add-input" data-field="free-attr-add-input" maxlength="20" autocomplete="off" />
+      <div class="sc-dialog__actions">
+        <button type="button" class="sc-btn sc-btn--ghost" data-action="free-attr-add-cancel">取消</button>
+        <button type="button" class="sc-btn sc-btn--primary" data-action="free-attr-add-confirm">确定</button>
+      </div>
+    </div>
+  </div>
   <div id="overlay-create-region" class="sc-overlay sc-hidden" data-spec-id="overlay-create-region" aria-hidden="true">
     <div class="sc-sheet sc-sheet--region-picker" data-spec-id="sheet-create-region" onclick="event.stopPropagation()">
       <div class="sc-sheet__head">
