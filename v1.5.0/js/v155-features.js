@@ -303,8 +303,7 @@
         if (customerId) {
           const c = deps.getCustomer(customerId);
           if (c) {
-            deps.pushAiHtml(deps.renderFollowUpDetailCard(c));
-            deps.pushAiHtml(deps.renderNextStepCard(customerId));
+            deps.pushAiHtml(deps.renderCustomerDetailWithNextStep(c));
           } else {
             deps.executeSkillAction('followup', { skipUserMsg: true });
           }

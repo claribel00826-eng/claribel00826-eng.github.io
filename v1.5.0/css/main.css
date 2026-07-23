@@ -1860,6 +1860,15 @@ button.is-flow-stale,
   padding: 12px 14px;
 }
 
+.sc-card--customer-detail-next .sc-card__foot-next {
+  padding: 12px 14px 14px;
+  border-top: 1px solid #f4f4f5;
+}
+
+.sc-card--customer-detail-next .sc-detail-grid {
+  padding-bottom: 4px;
+}
+
 .sc-next-steps__title {
   margin: 0 0 10px;
   font-size: 14px;

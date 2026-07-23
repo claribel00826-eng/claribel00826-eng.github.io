@@ -1154,8 +1154,7 @@
       resumePendingSkillRun();
     }
     if (opts.showDetail) {
-      pushAiHtml(renderFollowUpDetailCard(c));
-      pushAiHtml(renderNextStepCard(cid));
+      pushAiHtml(renderCustomerDetailWithNextStep(c));
     }
   }
 
@@ -1481,10 +1480,11 @@
     );
   }
 
-  function renderFollowUpDetailCard(c) {
+  function renderCustomerDetailWithNextStep(c) {
+    const cid = c.id;
     const contactLine = [c.contactName, c.contactPhone, c.contactAddress].filter(Boolean).join(' · ');
     return `
-      <div class="sc-card sc-card--detail" data-spec-id="card-customer-detail">
+      <div class="sc-card sc-card--detail sc-card--customer-detail-next" data-spec-id="card-customer-detail">
         <div class="sc-card__head sc-card__head--compact sc-card__head--detail">
           <span>企业详情</span>
           <span class="sc-badge ${customerTypeBadgeClass(c)}">${customerTypeLabel(c)}</span>
@@ -1497,6 +1497,14 @@
           ${renderDetailField('结算客户', c.settlementCustomer)}
           ${renderDetailField('客户等级', c.level ? c.level + ' 级' : '—')}
           ${renderDetailField('联系人地址', contactLine)}
+        </div>
+        <div class="sc-card__foot-next" data-spec-id="card-next-step">
+          <p class="sc-next-steps__title">接下来您想做什么？</p>
+          <div class="sc-next-steps__btns">
+            <button type="button" class="sc-btn sc-btn--ghost-primary" data-action="next-step" data-step="follow" data-cid="${cid}">写跟进</button>
+            <button type="button" class="sc-btn sc-btn--ghost" data-action="next-step" data-step="plan" data-cid="${cid}">做方案</button>
+            <button type="button" class="sc-btn sc-btn--ghost" data-action="next-step" data-step="later" data-cid="${cid}">稍后再说</button>
+          </div>
         </div>
       </div>`;
   }
@@ -1566,18 +1574,6 @@
       return;
     }
     runSkillEntry(skillId);
-  }
-
-  function renderNextStepCard(cid) {
-    return `
-      <div class="sc-card sc-card--next" data-spec-id="card-next-step">
-        <p class="sc-next-steps__title">接下来您想做什么？</p>
-        <div class="sc-next-steps__btns">
-          <button type="button" class="sc-btn sc-btn--ghost-primary" data-action="next-step" data-step="follow" data-cid="${cid}">写跟进</button>
-          <button type="button" class="sc-btn sc-btn--ghost" data-action="next-step" data-step="plan" data-cid="${cid}">做方案</button>
-          <button type="button" class="sc-btn sc-btn--ghost" data-action="next-step" data-step="later" data-cid="${cid}">稍后再说</button>
-        </div>
-      </div>`;
   }
 
   function selectFollowUpTarget(cid) {
@@ -2330,8 +2326,7 @@
         executeSkillAction: executeSkillAction,
         skillNeedsCustomer: skillNeedsCustomer,
         getSkillLabel: getSkillLabel,
-        renderFollowUpDetailCard: renderFollowUpDetailCard,
-        renderNextStepCard: renderNextStepCard,
+        renderCustomerDetailWithNextStep: renderCustomerDetailWithNextStep,
         scrollMessages: scrollMessages
       });
     }
