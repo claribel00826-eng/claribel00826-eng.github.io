@@ -204,6 +204,18 @@ async function run() {
   }));
   log('交期评审入口', delOk.card, delOk.errors.join('; '));
 
+  // 7. 产能分析 · 范围卡
+  await page.evaluate(() => {
+    window.__testErrors = [];
+    Skills.run('capacity');
+  });
+  await page.waitForTimeout(700);
+  const capOk = await page.evaluate(() => ({
+    scope: !!document.querySelector('[data-spec-id="card-capacity-scope"]'),
+    errors: window.__testErrors || []
+  }));
+  log('产能分析范围卡', capOk.scope, capOk.errors.join('; '));
+
   await browser.close();
   server.close();
 

@@ -7777,6 +7777,55 @@ function orderProgressSalesperson(o) {
     });
   }
 
+  /** 行生产状态 → 完成度权重（订单进度选单/详情共用） */
+  var ORDER_PRODUCTION_COMPLETE_RATE = {
+    待排程: 0,
+    已排程: 20,
+    待发料: 40,
+    已发料: 70,
+    已生产: 100
+  };
+
+  function orderProductionCompleteFromLines(lines) {
+    if (!lines || !lines.length) {
+      return { percent: null, totalQty: 0, lineCount: 0 };
+    }
+    var weighted = 0;
+    var totalQty = 0;
+    lines.forEach(function (line) {
+      var qty = line.qty || 1;
+      var status = line.productionStatus || '待排程';
+      var rate = ORDER_PRODUCTION_COMPLETE_RATE[status];
+      var r = rate != null ? rate : 0;
+      weighted += qty * r;
+      totalQty += qty;
+    });
+    if (!totalQty) {
+      return { percent: 0, totalQty: 0, lineCount: lines.length };
+    }
+    return {
+      percent: Math.round(weighted / totalQty),
+      totalQty: totalQty,
+      lineCount: lines.length
+    };
+  }
+
+  function orderProductionCompletePercent(o) {
+    return orderProductionCompleteFromLines(orderProgressDetailLines(o));
+  }
+
+  function renderProgressPickCompleteLabel(o) {
+    var info = orderProductionCompletePercent(o);
+    if (info.percent == null) {
+      return (
+        '<span class="sc-progress-pick__complete sc-progress-pick__complete--muted">完成 —</span>'
+      );
+    }
+    var cls = 'sc-progress-pick__complete';
+    if (info.percent >= 100) cls += ' sc-progress-pick__complete--done';
+    return '<span class="' + cls + '">完成 ' + info.percent + '%</span>';
+  }
+
   function generateWorkProcessesForLine(status, qty) {
     const processes = [
       { name: 'CNC工序', key: 'cnc' },
@@ -7885,6 +7934,16 @@ function orderProgressSalesperson(o) {
       }
     });
     const total = lines.length;
+    const complete = orderProductionCompleteFromLines(lines);
+    if (!total) {
+      return (
+        '<div class="sc-progress-detail__summary">' +
+        '<p class="sc-progress-detail__summary-title">生产进度概览</p>' +
+        '<p class="sc-card__meta sc-progress-detail__summary-empty">暂无货品，无法计算完成度</p>' +
+        '</div>'
+      );
+    }
+    const pct = complete.percent != null ? complete.percent : 0;
     const statusItems = ['待排程', '已排程', '待发料', '已发料', '已生产']
       .map(function (status) {
         const count = statusCounts[status];
@@ -7897,10 +7956,18 @@ function orderProgressSalesperson(o) {
         );
       })
       .join('');
+    const pctClass =
+      'sc-progress-detail__complete-pct' + (pct >= 100 ? ' sc-progress-detail__complete-pct--done' : '');
     return (
       '<div class="sc-progress-detail__summary">' +
       '<p class="sc-progress-detail__summary-title">生产进度概览</p>' +
-      '<p class="sc-progress-detail__summary-total">总货品数：' + total + ' 项</p>' +
+      '<div class="sc-progress-detail__complete-head">' +
+      '<span class="' + pctClass + '">' + pct + '%</span>' +
+      '<span class="sc-progress-detail__complete-meta">共 ' + total + ' 项货品</span>' +
+      '</div>' +
+      '<div class="sc-progress-detail__complete-bar" role="presentation">' +
+      '<div class="sc-progress-detail__complete-bar-fill" style="width:' + pct + '%"></div>' +
+      '</div>' +
       '<div class="sc-progress-detail__summary-stats">' +
       statusItems +
       '</div>' +
@@ -9281,19 +9348,37 @@ function orderProgressSalesperson(o) {
     const rows = visible
       .map(function (o, i) {
         const n = i + 1;
+        const nameRow =
+          mode === 'progress'
+            ? '<span class="sc-follow-row__top sc-follow-row__top--progress">' +
+              '<span class="sc-follow-row__name">' +
+              n +
+              '. ' +
+              App.escapeHtml(o.no) +
+              '</span>' +
+              renderProgressPickCompleteLabel(o) +
+              '</span>'
+            : '<span class="sc-follow-row__name">' +
+              n +
+              '. ' +
+              App.escapeHtml(o.no) +
+              '</span>';
+        const rowClass =
+          mode === 'progress'
+            ? 'sc-follow-row sc-follow-row--select sc-follow-row--progress-pick'
+            : 'sc-follow-row sc-follow-row--select';
         return (
-          '<button type="button" class="sc-follow-row sc-follow-row--select" data-action="' +
+          '<button type="button" class="' +
+          rowClass +
+          '" data-action="' +
           action +
           '" data-oid="' +
           App.escapeHtml(o.id) +
           '" data-pick-index="' +
           n +
           '"><span class="sc-follow-row__stack">' +
-          '<span class="sc-follow-row__name">' +
-          n +
-          '. ' +
-          App.escapeHtml(o.no) +
-          '</span><span class="sc-follow-row__meta">' +
+          nameRow +
+          '<span class="sc-follow-row__meta">' +
           App.escapeHtml(o.date || '—') +
           ' · ' +
           App.escapeHtml(o.amount || '—') +
@@ -10070,6 +10155,8 @@ function openChangeSheet(oid, opts) {
   var CAPACITY_HOUR_WIDTH = 18;
   var CAPACITY_ROW_HEIGHT = 34;
   var CAPACITY_WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  var CAPACITY_ALL_MAX_DAYS = 31;
+  var capacityLastScope = null;
 
   function parseCapacityTs(value) {
     if (!value) return NaN;
@@ -10097,6 +10184,471 @@ function openChangeSheet(oid, opts) {
     if (rate >= 90) return ' sc-capacity-summary__rate--high';
     if (rate < 60) return ' sc-capacity-summary__rate--low';
     return '';
+  }
+
+  function capacityDemoNowIso() {
+    var base = DemoData.capacitySchedule;
+    return (base && base.currentTime) || '2026-02-26T14:30:00';
+  }
+
+  function capacityDateOnlyFromIso(iso) {
+    return String(iso).slice(0, 10);
+  }
+
+  function capacityFormatMd(isoOrDate) {
+    var d =
+      typeof isoOrDate === 'string'
+        ? new Date(isoOrDate.replace(' ', 'T'))
+        : isoOrDate;
+    if (isNaN(d.getTime())) return '—';
+    return (
+      String(d.getMonth() + 1).padStart(2, '0') +
+      '/' +
+      String(d.getDate()).padStart(2, '0')
+    );
+  }
+
+  function capacityOccInProgress(occ) {
+    if (!occ) return false;
+    if (occ.status === 'pre') return false;
+    if (occ.status === 'maintenance') return false;
+    var d = occ.detail || {};
+    var pq = Number(d.productionQty) || 0;
+    var cq = Number(d.completedQty) || 0;
+    if (pq > 0 && cq >= pq) return false;
+    return occ.status === 'scheduled' || occ.status === 'delayed';
+  }
+
+  function capacityOccOverlapsWindow(occ, winStart, winEnd) {
+    var s = parseCapacityTs(occ.startAt);
+    var e = parseCapacityTs(occ.endAt);
+    var ws = parseCapacityTs(winStart);
+    var we = parseCapacityTs(winEnd);
+    return !isNaN(s) && !isNaN(e) && s <= we && e >= ws;
+  }
+
+  function countCapacityLines(categories) {
+    var n = 0;
+    (categories || []).forEach(function (cat) {
+      n += (cat.lines || []).length;
+    });
+    return n;
+  }
+
+  function computeCapacityLoadRate(occupancies, rangeStart, rangeEnd, lineCount) {
+    if (!lineCount) return null;
+    var rs = parseCapacityTs(rangeStart);
+    var re = parseCapacityTs(rangeEnd);
+    if (isNaN(rs) || isNaN(re) || re <= rs) return null;
+    var totalAvail = ((re - rs) / 3600000) * lineCount;
+    if (totalAvail <= 0) return null;
+    var occHours = 0;
+    (occupancies || []).forEach(function (occ) {
+      if (occ.status === 'maintenance') return;
+      var s = Math.max(parseCapacityTs(occ.startAt), rs);
+      var e = Math.min(parseCapacityTs(occ.endAt), re);
+      if (e > s) occHours += (e - s) / 3600000;
+    });
+    return Math.min(100, Math.round((occHours / totalAvail) * 100));
+  }
+
+  function capacityDefaultAllWindow(preset) {
+    var now = new Date(capacityDemoNowIso().replace(' ', 'T'));
+    var start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    var end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    preset = preset || '7d';
+    if (preset === '7d') {
+      end.setDate(end.getDate() + 6);
+    } else if (preset === '14d') {
+      end.setDate(end.getDate() + 13);
+    } else if (preset === 'week') {
+      var day = start.getDay();
+      var diffToMon = day === 0 ? -6 : 1 - day;
+      start.setDate(start.getDate() + diffToMon);
+      end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+    } else if (preset === 'month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+    return {
+      startDate: capacityDateOnlyFromIso(start.toISOString()),
+      endDate: capacityDateOnlyFromIso(end.toISOString()),
+      startIso: capacityDateOnlyFromIso(start.toISOString()) + 'T00:00:00',
+      endIso: capacityDateOnlyFromIso(end.toISOString()) + 'T23:59:59'
+    };
+  }
+
+  function capacityResolveAllWindow(scope) {
+    scope = scope || {};
+    if (scope.startDate && scope.endDate) {
+      return {
+        startDate: scope.startDate,
+        endDate: scope.endDate,
+        startIso: scope.startDate + 'T00:00:00',
+        endIso: scope.endDate + 'T23:59:59'
+      };
+    }
+    return capacityDefaultAllWindow(scope.preset || '7d');
+  }
+
+  function capacityDaysInclusive(startDate, endDate) {
+    var s = new Date(startDate + 'T00:00:00');
+    var e = new Date(endDate + 'T00:00:00');
+    return Math.round((e - s) / 86400000) + 1;
+  }
+
+  function capacityLatestOccMeta(occupancies) {
+    var best = null;
+    var bestEnd = -Infinity;
+    (occupancies || []).forEach(function (occ) {
+      if (occ.status === 'maintenance') return;
+      var t = parseCapacityTs(occ.endAt);
+      if (t > bestEnd) {
+        bestEnd = t;
+        best = occ;
+      } else if (t === bestEnd && best && occ.detail && best.detail) {
+        var ln = (occ.detail.lineName || '').localeCompare(best.detail.lineName || '');
+        if (ln < 0) best = occ;
+      }
+    });
+    if (!best) return { until: '', lineName: '' };
+    return {
+      until: capacityDateOnlyFromIso(new Date(bestEnd).toISOString()),
+      lineName: (best.detail && best.detail.lineName) || '—'
+    };
+  }
+
+  function buildCapacitySummaryLines(scope, filtered, lineCount, statStart, statEnd) {
+    scope = scope || { mode: 'ongoing' };
+    var rate = computeCapacityLoadRate(filtered, statStart, statEnd, lineCount);
+    var lines = [];
+    if (scope.mode === 'ongoing') {
+      if (!filtered.length) {
+        lines.push('当前暂无进行中的排产占用');
+      } else {
+        var meta = capacityLatestOccMeta(filtered);
+        lines.push(
+          lineCount +
+            ' 条线自今日起已排至 ' +
+            capacityFormatMd(meta.until) +
+            '（最晚产线：' +
+            meta.lineName +
+            '）'
+        );
+      }
+    } else {
+      var w = capacityResolveAllWindow(scope);
+      lines.push(
+        capacityFormatMd(w.startDate) +
+          '–' +
+          capacityFormatMd(w.endDate) +
+          ' 内共 ' +
+          filtered.length +
+          ' 条占用记录'
+      );
+    }
+    if (rate != null) {
+      lines.push('平均负荷率 ' + rate + '%');
+    }
+    return { summaryLines: lines, averageLoadRate: rate };
+  }
+
+  function buildCapacityViewData(base, scope) {
+    base = base || DemoData.capacitySchedule;
+    scope = scope || { mode: 'ongoing' };
+    if (!base) return null;
+    var clone = JSON.parse(JSON.stringify(base));
+    var occs = base.occupancies || [];
+    var filtered;
+    var displayStart;
+    var displayEnd;
+    var statStart;
+    var statEnd;
+    var todayStart = capacityDateOnlyFromIso(capacityDemoNowIso()) + 'T00:00:00';
+
+    if (scope.mode === 'all') {
+      var win = capacityResolveAllWindow(scope);
+      filtered = occs.filter(function (o) {
+        return capacityOccOverlapsWindow(o, win.startIso, win.endIso);
+      });
+      displayStart = win.startIso;
+      displayEnd = win.endIso;
+      statStart = win.startIso;
+      statEnd = win.endIso;
+    } else {
+      filtered = occs.filter(capacityOccInProgress);
+      displayStart = todayStart;
+      var maxEndTs = parseCapacityTs(todayStart);
+      filtered.forEach(function (o) {
+        var t = parseCapacityTs(o.endAt);
+        if (t > maxEndTs) maxEndTs = t;
+      });
+      var dispEndDate = new Date(maxEndTs);
+      if (dispEndDate.getTime() <= parseCapacityTs(todayStart)) {
+        dispEndDate = new Date(parseCapacityTs(todayStart));
+        dispEndDate.setDate(dispEndDate.getDate() + 1);
+      }
+      dispEndDate.setHours(23, 59, 59, 999);
+      displayEnd =
+        capacityDateOnlyFromIso(dispEndDate.toISOString()) + 'T23:59:59';
+      statStart = todayStart;
+      var meta = capacityLatestOccMeta(filtered);
+      statEnd = meta.until ? meta.until + 'T23:59:59' : displayEnd;
+    }
+
+    clone.occupancies = filtered;
+    clone.rangeStart = displayStart;
+    clone.rangeEnd = displayEnd;
+    clone.nonWorkingSlots = (base.nonWorkingSlots || []).filter(function (slot) {
+      return capacityOccOverlapsWindow(
+        { startAt: slot.startAt, endAt: slot.endAt },
+        displayStart,
+        displayEnd
+      );
+    });
+    var lineCount = countCapacityLines(clone.categories);
+    var sum = buildCapacitySummaryLines(scope, filtered, lineCount, statStart, statEnd);
+    clone.summaryLines = sum.summaryLines;
+    clone.averageLoadRate = sum.averageLoadRate;
+    var meta2 = capacityLatestOccMeta(filtered);
+    clone.scheduledUntil = meta2.until;
+    clone.scheduledUntilLineName = meta2.lineName;
+    clone._capacityScope = scope;
+    return clone;
+  }
+
+  function formatCapacityCardTitle(scope) {
+    scope = scope || { mode: 'ongoing' };
+    if (scope.mode === 'all') {
+      var w = capacityResolveAllWindow(scope);
+      return (
+        '产能分析 · 全部 · ' +
+        capacityFormatMd(w.startDate) +
+        '–' +
+        capacityFormatMd(w.endDate)
+      );
+    }
+    return '产能分析 · 进行中';
+  }
+
+  function parseCapacityScopeUtterance(text) {
+    var t = String(text || '').trim();
+    if (!t) return null;
+    if (/进行中|在制|未完工|还没完/.test(t) && !/全部/.test(t)) {
+      return { skipScope: true, scope: { mode: 'ongoing' } };
+    }
+    if (/全部|所有占用|含预排/.test(t)) {
+      var scope = { mode: 'all', preset: '7d' };
+      if (/14\s*天|近\s*14/.test(t)) scope.preset = '14d';
+      else if (/本周/.test(t)) scope.preset = 'week';
+      else if (/本月/.test(t)) scope.preset = 'month';
+      var m = t.match(/(\d{4}-\d{2}-\d{2})\s*[至到\-~]\s*(\d{4}-\d{2}-\d{2})/);
+      if (m) {
+        scope.startDate = m[1];
+        scope.endDate = m[2];
+        delete scope.preset;
+      }
+      return { skipScope: true, scope: scope };
+    }
+    return null;
+  }
+
+  function renderCapacityScopeCard(prefill) {
+    prefill = prefill || {};
+    var expanded = prefill.mode === 'all';
+    var preset = prefill.preset || '7d';
+    var win = capacityDefaultAllWindow(preset);
+    var startVal = prefill.startDate || win.startDate;
+    var endVal = prefill.endDate || win.endDate;
+    var sheetCls = 'sc-payment-scope__sheet' + (expanded ? ' is-expanded' : '');
+    function presetChip(id, label) {
+      var active = preset === id && !prefill.startDate ? ' is-active' : '';
+      return (
+        '<button type="button" class="sc-capacity-scope__chip' +
+        active +
+        '" data-action="capacity-scope-preset" data-preset="' +
+        App.escapeHtml(id) +
+        '">' +
+        App.escapeHtml(label) +
+        '</button>'
+      );
+    }
+    return (
+      '<div class="sc-card sc-card--compact sc-card--capacity-scope" data-spec-id="card-capacity-scope" data-capacity-scope-mode="' +
+      (expanded ? 'all' : '') +
+      '">' +
+      '<div class="sc-card__head sc-card__head--compact">产能分析 · 查看范围</div>' +
+      '<p class="sc-capacity-scope__lead">请选择要查看的排产范围：</p>' +
+      '<div class="sc-payment-scope__actions" role="group" aria-label="排产范围">' +
+      '<button type="button" class="sc-plan-entry__option sc-plan-entry__option--primary" data-action="capacity-scope-ongoing">' +
+      '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">进行中</span>' +
+      '<span class="sc-plan-entry__option-desc">未完工的已排/延误占用，不含预排</span></span>' +
+      '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>' +
+      '<button type="button" class="sc-plan-entry__option" data-action="capacity-scope-open-all">' +
+      '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">全部</span>' +
+      '<span class="sc-plan-entry__option-desc">选定时间范围内的全部占用（含预排）</span></span>' +
+      '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>' +
+      '</div>' +
+      '<div class="' +
+      sheetCls +
+      '" data-capacity-all-sheet>' +
+      '<div class="sc-payment-scope__sheet-divider"></div>' +
+      '<p class="sc-capacity-scope__sheet-title">时间范围（最多 ' +
+      CAPACITY_ALL_MAX_DAYS +
+      ' 天）</p>' +
+      '<div class="sc-capacity-scope__chips">' +
+      presetChip('7d', '近 7 天') +
+      presetChip('14d', '近 14 天') +
+      presetChip('week', '本周') +
+      presetChip('month', '本月') +
+      '</div>' +
+      '<div class="sc-date-range-picker sc-capacity-scope__dates">' +
+      '<div class="sc-date-range-picker__row">' +
+      '<label class="sc-date-range-picker__label">开始</label>' +
+      '<input type="date" class="sc-input sc-input--field" data-action="capacity-range-start" value="' +
+      App.escapeHtml(startVal) +
+      '">' +
+      '</div>' +
+      '<div class="sc-date-range-picker__row">' +
+      '<label class="sc-date-range-picker__label">结束</label>' +
+      '<input type="date" class="sc-input sc-input--field" data-action="capacity-range-end" value="' +
+      App.escapeHtml(endVal) +
+      '">' +
+      '</div></div>' +
+      '<div class="sc-card__actions sc-card__actions--tight">' +
+      '<button type="button" class="sc-btn sc-btn--primary sc-btn--block" data-action="capacity-scope-all-confirm">确认查看</button>' +
+      '</div></div>' +
+      '<p class="sc-capacity-scope__hint">点「进行中」立即查看；选「全部」后需确认时间范围</p>' +
+      '</div>'
+    );
+  }
+
+  function pushCapacityScopeStep(prefill) {
+    var cardPrefill = prefill !== undefined ? prefill : capacityLastScope;
+    App.pushAiHtml(
+      '<p class="sc-reply-lead">为您查询 <strong>全厂产线</strong> 产能，请先选择查看范围：</p>' +
+        renderCapacityScopeCard(cardPrefill || {})
+    );
+    rescanAnnotationPins();
+  }
+
+  function pushCapacityResult(scope) {
+    var base = DemoData.capacitySchedule;
+    if (!base) {
+      App.toast('暂无排程数据');
+      return;
+    }
+    scope = scope || { mode: 'ongoing' };
+    capacityLastScope = JSON.parse(JSON.stringify(scope));
+    var view = buildCapacityViewData(base, scope);
+    if (!view) {
+      App.toast('暂无排程数据');
+      return;
+    }
+    var title = formatCapacityCardTitle(scope);
+    var lead =
+      scope.mode === 'all'
+        ? '<p class="sc-reply-lead">为您展示 <strong>' +
+          App.escapeHtml(title.replace('产能分析 · ', '')) +
+          '</strong> 的产能排程：</p>'
+        : '<p class="sc-reply-lead">为您汇总 <strong>全厂产线</strong> · <strong>进行中</strong> 排产：</p>';
+    App.pushAiHtml(lead + renderCapacityCard(view, { title: title }));
+    if (App.recordRecentVisit) {
+      App.recordRecentVisit('capacity', { checkpointLabel: title });
+    }
+    rescanAnnotationPins();
+  }
+
+  function renderCapacityDetailFields(detail) {
+    detail = detail || {};
+    var rows = [
+      ['订单号', detail.orderNo],
+      ['客户名称', detail.customerName],
+      ['下单时间', detail.orderTime],
+      ['交货时间', detail.deliveryTime],
+      ['产品编码', detail.productCode],
+      ['产品名称', detail.productName],
+      ['工艺版本', detail.processVersion],
+      ['生产数量', detail.productionQty],
+      ['完工数量', detail.completedQty],
+      ['计划开始', detail.plannedStart],
+      ['计划结束', detail.plannedEnd],
+      ['产线', detail.lineName],
+      ['工序', detail.processStep],
+      ['模具', detail.mold || '—'],
+      ['生产时长(分钟)', detail.durationMinutes]
+    ];
+    return rows
+      .map(function (pair) {
+        return (
+          '<div class="sc-capacity-detail__row">' +
+          '<span class="sc-capacity-detail__label">' +
+          App.escapeHtml(pair[0]) +
+          '</span>' +
+          '<span class="sc-capacity-detail__value">' +
+          App.escapeHtml(pair[1] != null ? String(pair[1]) : '—') +
+          '</span></div>'
+        );
+      })
+      .join('');
+  }
+
+  function findCapacityOccById(data, occId) {
+    var found = null;
+    (data.occupancies || []).some(function (o) {
+      if (o.id === occId) {
+        found = o;
+        return true;
+      }
+      return false;
+    });
+    return found;
+  }
+
+  function switchCapacityTab(card, tab) {
+    if (!card) return;
+    card.setAttribute('data-capacity-tab', tab);
+    card.querySelectorAll('.sc-capacity-tabs__btn').forEach(function (btn) {
+      var t = btn.getAttribute('data-tab');
+      btn.classList.toggle('is-active', t === tab);
+    });
+    var ganttPane = card.querySelector('[data-capacity-pane="gantt"]');
+    var detailPane = card.querySelector('[data-capacity-pane="detail"]');
+    if (ganttPane) ganttPane.classList.toggle('sc-hidden', tab !== 'gantt');
+    if (detailPane) detailPane.classList.toggle('sc-hidden', tab !== 'detail');
+  }
+
+  function refreshCapacityDetailPane(card, occ) {
+    if (!card) return;
+    var body = card.querySelector('[data-capacity-detail-body]');
+    var ctx = card.querySelector('[data-capacity-detail-context]');
+    var badge = card.querySelector('[data-capacity-detail-badge]');
+    if (!body || !ctx) return;
+    if (!occ || !occ.detail) {
+      ctx.textContent = '请先点击甘特图中的占用块';
+      body.innerHTML = '<p class="sc-capacity-detail__empty">暂无选中占用</p>';
+      if (badge) {
+        badge.textContent = '';
+        badge.classList.add('sc-hidden');
+      }
+      return;
+    }
+    var d = occ.detail;
+    ctx.textContent =
+      '当前查看：' + (d.orderNo || '—') + ' · ' + (d.lineName || '—');
+    body.innerHTML = renderCapacityDetailFields(d);
+    if (badge) {
+      var tail = d.orderNo ? d.orderNo.slice(-6) : '';
+      badge.textContent = tail;
+      badge.classList.toggle('sc-hidden', !tail);
+    }
+    card.querySelectorAll('.sc-capacity-block').forEach(function (el) {
+      el.classList.toggle('is-selected', el.getAttribute('data-occ-id') === occ.id);
+    });
   }
 
   function renderCapacitySummary(data) {
@@ -10203,7 +10755,7 @@ function openChangeSheet(oid, opts) {
     );
   }
 
-  function renderCapacityBlock(occ, rangeStart) {
+  function renderCapacityBlock(occ, rangeStart, selectedOccId) {
     var left = capacityOffsetHours(rangeStart, occ.startAt) * CAPACITY_HOUR_WIDTH;
     var width = Math.max(capacityHoursBetween(occ.startAt, occ.endAt) * CAPACITY_HOUR_WIDTH, 4);
     var status = occ.status || 'scheduled';
@@ -10211,14 +10763,18 @@ function openChangeSheet(oid, opts) {
     var badges = '';
     if (occ.locked) badges += '<span class="sc-capacity-block__lock" aria-hidden="true">🔒</span>';
     if (status === 'pre') badges += '<span class="sc-capacity-block__pre">预</span>';
+    var sel = selectedOccId === occ.id ? ' is-selected' : '';
     return (
       '<div class="sc-capacity-block sc-capacity-block--' +
       App.escapeHtml(status) +
+      sel +
       '" style="left:' +
       left +
       'px;width:' +
       width +
-      'px" title="' +
+      'px" data-action="capacity-pick-block" data-occ-id="' +
+      App.escapeHtml(occ.id || '') +
+      '" role="button" tabindex="0" title="' +
       App.escapeHtml((occ.detail && occ.detail.orderNo) || '') +
       '">' +
       badges +
@@ -10227,7 +10783,7 @@ function openChangeSheet(oid, opts) {
     );
   }
 
-  function renderCapacityGantt(data) {
+  function renderCapacityGantt(data, selectedOccId) {
     var rangeStart = data.rangeStart;
     var rangeEnd = data.rangeEnd;
     var totalHours = capacityHoursBetween(rangeStart, rangeEnd);
@@ -10256,7 +10812,7 @@ function openChangeSheet(oid, opts) {
           '</div>';
         var blocks = (occByLine[line.id] || [])
           .map(function (occ) {
-            return renderCapacityBlock(occ, rangeStart);
+            return renderCapacityBlock(occ, rangeStart, selectedOccId);
           })
           .join('');
         gridRows +=
@@ -10295,13 +10851,44 @@ function openChangeSheet(oid, opts) {
     );
   }
 
-  function renderCapacityCard(data) {
+  function renderCapacityCard(data, opts) {
+    opts = opts || {};
+    var title = opts.title || '产能分析';
+    var selectedOccId = opts.selectedOccId || '';
+    var activeTab = opts.activeTab || 'gantt';
     return (
-      '<div class="sc-card sc-card--capacity" data-spec-id="card-capacity">' +
-      '<div class="sc-card__head sc-card__head--compact">产能分析</div>' +
+      '<div class="sc-card sc-card--capacity" data-spec-id="card-capacity" data-capacity-tab="' +
+      App.escapeHtml(activeTab) +
+      '" data-selected-occ="' +
+      App.escapeHtml(selectedOccId) +
+      '">' +
+      '<div class="sc-card__head sc-card__head--compact">' +
+      App.escapeHtml(title) +
+      '</div>' +
       renderCapacitySummary(data) +
-      renderCapacityGantt(data) +
-      '</div>'
+      '<div class="sc-capacity-tabs" role="tablist">' +
+      '<button type="button" class="sc-capacity-tabs__btn' +
+      (activeTab === 'gantt' ? ' is-active' : '') +
+      '" data-action="capacity-tab" data-tab="gantt" role="tab">甘特图</button>' +
+      '<button type="button" class="sc-capacity-tabs__btn' +
+      (activeTab === 'detail' ? ' is-active' : '') +
+      '" data-action="capacity-tab" data-tab="detail" role="tab">订单详情<span class="sc-capacity-tabs__badge sc-hidden" data-capacity-detail-badge></span></button>' +
+      '</div>' +
+      '<div class="sc-capacity-pane sc-capacity-pane--gantt' +
+      (activeTab === 'detail' ? ' sc-hidden' : '') +
+      '" data-capacity-pane="gantt" data-spec-id="card-capacity-gantt">' +
+      renderCapacityGantt(data, selectedOccId) +
+      '<p class="sc-capacity-gantt__hint">点击占用块查看订单详情；点「甘特图」继续浏览</p>' +
+      '</div>' +
+      '<div class="sc-capacity-pane sc-capacity-pane--detail' +
+      (activeTab === 'gantt' ? ' sc-hidden' : '') +
+      '" data-capacity-pane="detail" data-spec-id="card-capacity-block-detail">' +
+      '<p class="sc-capacity-detail__context" data-capacity-detail-context>请先点击甘特图中的占用块</p>' +
+      '<div class="sc-capacity-detail__body" data-capacity-detail-body></div>' +
+      '</div>' +
+      '<div class="sc-card__actions-inline">' +
+      '<button type="button" class="sc-btn sc-btn--ghost" data-action="capacity-change-scope">更换查看范围</button>' +
+      '</div></div>'
     );
   }
 
@@ -10561,20 +11148,29 @@ function openChangeSheet(oid, opts) {
 
   function runCapacity(opts) {
     opts = opts || {};
-    const utterance = opts.utterance || '';
+    enterSkill('capacity');
+    var utterance = opts.utterance || '';
     if (opts.simulateUserMsg && utterance) {
       simulateUserUtteranceUnlessDuplicate(utterance);
     }
-    const data = DemoData.capacitySchedule;
-    if (!data) {
+    if (!DemoData.capacitySchedule) {
       App.toast('暂无排程数据');
       return;
     }
-    App.pushAiHtml(
-      '<p class="sc-reply-lead">为您汇总 <strong>全厂产线</strong> 产能排程：</p>' +
-        renderCapacityCard(data)
-    );
-    rescanAnnotationPins();
+    if (opts.resume && opts.resume.scope) {
+      pushCapacityResult(opts.resume.scope);
+      return;
+    }
+    if (opts.directScope) {
+      pushCapacityResult(opts.directScope);
+      return;
+    }
+    var parsed = parseCapacityScopeUtterance(utterance);
+    if (parsed && parsed.skipScope) {
+      pushCapacityResult(parsed.scope);
+      return;
+    }
+    pushCapacityScopeStep(opts.prefillScope || capacityLastScope);
   }
 
   function runBizAnalysis(opts) {
@@ -12873,6 +13469,102 @@ function openChangeSheet(oid, opts) {
       pqScope.year = keepYear;
       pqScope.step = 'scope';
       pushPaymentScopeStep(pqScope);
+      return true;
+    }
+    if (action === 'capacity-scope-ongoing') {
+      simulateUserUtterance('查看进行中的产能');
+      pushCapacityResult({ mode: 'ongoing' });
+      return true;
+    }
+    if (action === 'capacity-scope-open-all') {
+      var scopeCard = btn.closest('[data-spec-id="card-capacity-scope"]');
+      if (scopeCard) {
+        scopeCard.setAttribute('data-capacity-scope-mode', 'all');
+        var sheet = scopeCard.querySelector('[data-capacity-all-sheet]');
+        if (sheet) sheet.classList.add('is-expanded');
+      }
+      return true;
+    }
+    if (action === 'capacity-scope-preset') {
+      var cardPreset = btn.closest('[data-spec-id="card-capacity-scope"]');
+      var presetId = btn.getAttribute('data-preset') || '7d';
+      if (cardPreset) {
+        cardPreset.querySelectorAll('[data-action="capacity-scope-preset"]').forEach(function (chip) {
+          chip.classList.toggle('is-active', chip === btn);
+        });
+        var w = capacityDefaultAllWindow(presetId);
+        var sIn = cardPreset.querySelector('[data-action="capacity-range-start"]');
+        var eIn = cardPreset.querySelector('[data-action="capacity-range-end"]');
+        if (sIn) sIn.value = w.startDate;
+        if (eIn) eIn.value = w.endDate;
+        cardPreset.setAttribute('data-capacity-preset', presetId);
+      }
+      return true;
+    }
+    if (action === 'capacity-scope-all-confirm') {
+      var scopeCard2 = btn.closest('[data-spec-id="card-capacity-scope"]');
+      var startInput = scopeCard2 && scopeCard2.querySelector('[data-action="capacity-range-start"]');
+      var endInput = scopeCard2 && scopeCard2.querySelector('[data-action="capacity-range-end"]');
+      if (!startInput || !endInput || !startInput.value || !endInput.value) {
+        App.toast('请选择起止日期');
+        return true;
+      }
+      if (startInput.value > endInput.value) {
+        App.toast('开始日期不能晚于结束日期');
+        return true;
+      }
+      var days = capacityDaysInclusive(startInput.value, endInput.value);
+      if (days > CAPACITY_ALL_MAX_DAYS) {
+        App.toast('时间范围最多 ' + CAPACITY_ALL_MAX_DAYS + ' 天');
+        return true;
+      }
+      simulateUserUtterance(
+        '查看全部产能 ' + startInput.value + ' 至 ' + endInput.value
+      );
+      var scopeAll = {
+        mode: 'all',
+        startDate: startInput.value,
+        endDate: endInput.value
+      };
+      var presetAttr = scopeCard2.getAttribute('data-capacity-preset');
+      if (presetAttr && !scopeCard2.querySelector('.sc-capacity-scope__chip.is-active')) {
+        scopeAll.preset = presetAttr;
+      }
+      pushCapacityResult(scopeAll);
+      return true;
+    }
+    if (action === 'capacity-change-scope') {
+      simulateUserUtterance('更换查看范围');
+      pushCapacityScopeStep(null);
+      return true;
+    }
+    if (action === 'capacity-tab') {
+      var capCard = btn.closest('[data-spec-id="card-capacity"]');
+      var tab = btn.getAttribute('data-tab') || 'gantt';
+      if (tab === 'detail') {
+        var sel = capCard && capCard.getAttribute('data-selected-occ');
+        if (!sel) {
+          App.toast('请先点击甘特图中的占用块');
+          return true;
+        }
+      }
+      switchCapacityTab(capCard, tab);
+      return true;
+    }
+    if (action === 'capacity-pick-block') {
+      var capCard2 = btn.closest('[data-spec-id="card-capacity"]');
+      var occId = btn.getAttribute('data-occ-id');
+      if (!capCard2 || !occId) return true;
+      capCard2.setAttribute('data-selected-occ', occId);
+      var scopeRaw = capacityLastScope || { mode: 'ongoing' };
+      var viewData = buildCapacityViewData(DemoData.capacitySchedule, scopeRaw);
+      var occ = findCapacityOccById(viewData, occId);
+      refreshCapacityDetailPane(capCard2, occ);
+      switchCapacityTab(capCard2, 'detail');
+      btn.classList.add('is-flash');
+      setTimeout(function () {
+        btn.classList.remove('is-flash');
+      }, 2000);
       return true;
     }
     if (action === 'biz-change-range') {

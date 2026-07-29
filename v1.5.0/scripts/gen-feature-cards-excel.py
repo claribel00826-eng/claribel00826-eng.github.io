@@ -150,8 +150,9 @@ def rows(ann):
     ])
 
     add("capacity", "产能分析", [
-        ("1", "card-capacity", n("card-capacity", "产能分析", A), "结果卡", "技能直达 / 话术"),
-        ("2", "card-capacity-block-detail", n("card-capacity-block-detail", "产能 · 订单详情 Tab", A), "子面板", "结果卡内点占用块"),
+        ("1", "card-capacity-scope", "产能分析 · 查看范围", "筛选卡", "技能进入 / 缺范围话术"),
+        ("2", "card-capacity", n("card-capacity", "产能分析", A), "结果卡", "确认范围或话术直达"),
+        ("3", "card-capacity-block-detail", n("card-capacity-block-detail", "产能 · 订单详情 Tab", A), "子面板", "结果卡内点占用块"),
     ])
 
     add("inventory", "库存查询", [
