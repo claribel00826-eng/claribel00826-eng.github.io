@@ -4336,6 +4336,46 @@ body.sc-free-attr-modal-open .sc-app {
   margin: 0 12px 12px;
 }
 
+.sc-capacity-scope__options {
+  gap: 10px;
+}
+
+.sc-capacity-scope__accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sc-capacity-scope__accordion > .sc-plan-entry__option {
+  margin-bottom: 0;
+}
+
+.sc-plan-entry__option--instant {
+  justify-content: flex-start;
+}
+
+.sc-capacity-scope__sheet {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.22s ease, opacity 0.18s ease;
+  padding: 0 0;
+}
+
+.sc-capacity-scope__sheet.is-expanded {
+  max-height: 380px;
+  opacity: 1;
+  padding: 4px 0 0;
+}
+
+.sc-capacity-scope__sheet-title {
+  margin-top: 8px;
+}
+
+.sc-capacity-scope__sheet-actions {
+  padding: 4px 12px 4px;
+}
+
 .sc-card--capacity-scope .sc-plan-entry__option.is-selected {
   border-color: var(--color-primary);
   background: var(--color-primary-soft);

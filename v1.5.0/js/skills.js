@@ -10457,11 +10457,19 @@ function openChangeSheet(oid, opts) {
     return null;
   }
 
+  function setCapacityAllSheetExpanded(scopeCard, expanded) {
+    if (!scopeCard) return;
+    var sheet = scopeCard.querySelector('[data-capacity-all-sheet]');
+    if (sheet) sheet.classList.toggle('is-expanded', !!expanded);
+    scopeCard.setAttribute('data-capacity-scope-mode', expanded ? 'all' : 'ongoing');
+    syncCapacityScopeOptionStyles(scopeCard, expanded ? 'all' : 'ongoing');
+  }
+
   function syncCapacityScopeOptionStyles(scopeCard, mode) {
     if (!scopeCard) return;
     mode = mode === 'all' ? 'all' : 'ongoing';
     var ongoingBtn = scopeCard.querySelector('[data-action="capacity-scope-ongoing"]');
-    var allBtn = scopeCard.querySelector('[data-action="capacity-scope-open-all"]');
+    var allBtn = scopeCard.querySelector('[data-action="capacity-scope-toggle-all"]');
     if (ongoingBtn) ongoingBtn.classList.toggle('is-selected', mode === 'ongoing');
     if (allBtn) {
       allBtn.classList.toggle('is-selected', mode === 'all');
@@ -10477,7 +10485,7 @@ function openChangeSheet(oid, opts) {
     var win = capacityDefaultAllWindow(preset);
     var startVal = prefill.startDate || win.startDate;
     var endVal = prefill.endDate || win.endDate;
-    var sheetCls = 'sc-payment-scope__sheet' + (expanded ? ' is-expanded' : '');
+    var sheetCls = 'sc-capacity-scope__sheet' + (expanded ? ' is-expanded' : '');
     function presetChip(id, label) {
       var active = preset === id && !prefill.startDate ? ' is-active' : '';
       return (
@@ -10491,32 +10499,33 @@ function openChangeSheet(oid, opts) {
       );
     }
     var ongoingCls =
-      'sc-plan-entry__option' + (selectedMode === 'ongoing' ? ' is-selected' : '');
+      'sc-plan-entry__option sc-plan-entry__option--instant' +
+      (selectedMode === 'ongoing' && !expanded ? ' is-selected' : '');
     var allCls =
       'sc-plan-entry__option' +
-      (selectedMode === 'all' ? ' is-selected is-expanded' : '');
+      (expanded ? ' is-selected is-expanded' : '');
     return (
       '<div class="sc-card sc-card--compact sc-card--capacity-scope" data-spec-id="card-capacity-scope" data-capacity-scope-mode="' +
       (expanded ? 'all' : 'ongoing') +
       '">' +
       '<div class="sc-card__head sc-card__head--compact">产能分析 · 查看范围</div>' +
-      '<p class="sc-capacity-scope__lead">请选择要查看的排产范围：</p>' +
-      '<div class="sc-payment-scope__actions" role="group" aria-label="排产范围">' +
+      '<div class="sc-payment-scope__actions sc-capacity-scope__options" role="group" aria-label="排产范围">' +
       '<button type="button" class="' +
       ongoingCls +
       '" data-action="capacity-scope-ongoing">' +
       '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">进行中</span></span>' +
-      '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>' +
+      '</button>' +
+      '<div class="sc-capacity-scope__accordion">' +
       '<button type="button" class="' +
       allCls +
-      '" data-action="capacity-scope-open-all">' +
+      '" data-action="capacity-scope-toggle-all" aria-expanded="' +
+      (expanded ? 'true' : 'false') +
+      '">' +
       '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">全部</span></span>' +
       '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>' +
-      '</div>' +
       '<div class="' +
       sheetCls +
       '" data-capacity-all-sheet>' +
-      '<div class="sc-payment-scope__sheet-divider"></div>' +
       '<p class="sc-capacity-scope__sheet-title">时间范围（最多 ' +
       CAPACITY_ALL_MAX_DAYS +
       ' 天）</p>' +
@@ -10539,10 +10548,9 @@ function openChangeSheet(oid, opts) {
       App.escapeHtml(endVal) +
       '">' +
       '</div></div>' +
-      '<div class="sc-card__actions sc-card__actions--tight">' +
-      '<button type="button" class="sc-btn sc-btn--primary sc-btn--block" data-action="capacity-scope-all-confirm">确认查看</button>' +
-      '</div></div>' +
-      '</div>'
+      '<div class="sc-capacity-scope__sheet-actions">' +
+      '<button type="button" class="sc-btn sc-btn--primary sc-btn--block" data-action="capacity-scope-all-confirm">确认查看全部</button>' +
+      '</div></div></div></div></div>'
     );
   }
 
@@ -13495,13 +13503,16 @@ function openChangeSheet(oid, opts) {
       pushCapacityResult({ mode: 'ongoing' });
       return true;
     }
-    if (action === 'capacity-scope-open-all') {
+    if (action === 'capacity-scope-toggle-all') {
       var scopeCard = btn.closest('[data-spec-id="card-capacity-scope"]');
-      if (scopeCard) {
-        scopeCard.setAttribute('data-capacity-scope-mode', 'all');
-        syncCapacityScopeOptionStyles(scopeCard, 'all');
-        var sheet = scopeCard.querySelector('[data-capacity-all-sheet]');
-        if (sheet) sheet.classList.add('is-expanded');
+      if (!scopeCard) return true;
+      var sheet = scopeCard.querySelector('[data-capacity-all-sheet]');
+      var isOpen = sheet && sheet.classList.contains('is-expanded');
+      setCapacityAllSheetExpanded(scopeCard, !isOpen);
+      if (scopeCard.querySelector('[data-action="capacity-scope-toggle-all"]')) {
+        scopeCard
+          .querySelector('[data-action="capacity-scope-toggle-all"]')
+          .setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
       }
       return true;
     }
