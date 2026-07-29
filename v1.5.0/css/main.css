@@ -4336,6 +4336,19 @@ body.sc-free-attr-modal-open .sc-app {
   margin: 0 12px 12px;
 }
 
+.sc-card--capacity-scope .sc-plan-entry__option.is-selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.sc-card--capacity-scope .sc-plan-entry__option.is-selected .sc-plan-entry__option-title {
+  color: var(--color-primary);
+}
+
+.sc-card--capacity-scope .sc-plan-entry__option.is-selected .sc-plan-entry__chevron {
+  color: var(--color-primary);
+}
+
 .sc-capacity-detail__empty {
   margin: 0;
   padding: 8px 4px;

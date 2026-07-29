@@ -10457,9 +10457,22 @@ function openChangeSheet(oid, opts) {
     return null;
   }
 
+  function syncCapacityScopeOptionStyles(scopeCard, mode) {
+    if (!scopeCard) return;
+    mode = mode === 'all' ? 'all' : 'ongoing';
+    var ongoingBtn = scopeCard.querySelector('[data-action="capacity-scope-ongoing"]');
+    var allBtn = scopeCard.querySelector('[data-action="capacity-scope-open-all"]');
+    if (ongoingBtn) ongoingBtn.classList.toggle('is-selected', mode === 'ongoing');
+    if (allBtn) {
+      allBtn.classList.toggle('is-selected', mode === 'all');
+      allBtn.classList.toggle('is-expanded', mode === 'all');
+    }
+  }
+
   function renderCapacityScopeCard(prefill) {
     prefill = prefill || {};
-    var expanded = prefill.mode === 'all';
+    var selectedMode = prefill.mode === 'all' ? 'all' : 'ongoing';
+    var expanded = selectedMode === 'all';
     var preset = prefill.preset || '7d';
     var win = capacityDefaultAllWindow(preset);
     var startVal = prefill.startDate || win.startDate;
@@ -10477,20 +10490,27 @@ function openChangeSheet(oid, opts) {
         '</button>'
       );
     }
+    var ongoingCls =
+      'sc-plan-entry__option' + (selectedMode === 'ongoing' ? ' is-selected' : '');
+    var allCls =
+      'sc-plan-entry__option' +
+      (selectedMode === 'all' ? ' is-selected is-expanded' : '');
     return (
       '<div class="sc-card sc-card--compact sc-card--capacity-scope" data-spec-id="card-capacity-scope" data-capacity-scope-mode="' +
-      (expanded ? 'all' : '') +
+      (expanded ? 'all' : 'ongoing') +
       '">' +
       '<div class="sc-card__head sc-card__head--compact">产能分析 · 查看范围</div>' +
       '<p class="sc-capacity-scope__lead">请选择要查看的排产范围：</p>' +
       '<div class="sc-payment-scope__actions" role="group" aria-label="排产范围">' +
-      '<button type="button" class="sc-plan-entry__option sc-plan-entry__option--primary" data-action="capacity-scope-ongoing">' +
-      '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">进行中</span>' +
-      '<span class="sc-plan-entry__option-desc">未完工的已排/延误占用，不含预排</span></span>' +
+      '<button type="button" class="' +
+      ongoingCls +
+      '" data-action="capacity-scope-ongoing">' +
+      '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">进行中</span></span>' +
       '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>' +
-      '<button type="button" class="sc-plan-entry__option" data-action="capacity-scope-open-all">' +
-      '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">全部</span>' +
-      '<span class="sc-plan-entry__option-desc">选定时间范围内的全部占用（含预排）</span></span>' +
+      '<button type="button" class="' +
+      allCls +
+      '" data-action="capacity-scope-open-all">' +
+      '<span class="sc-plan-entry__option-text"><span class="sc-plan-entry__option-title">全部</span></span>' +
       '<span class="sc-plan-entry__chevron" aria-hidden="true">›</span></button>' +
       '</div>' +
       '<div class="' +
@@ -10522,7 +10542,6 @@ function openChangeSheet(oid, opts) {
       '<div class="sc-card__actions sc-card__actions--tight">' +
       '<button type="button" class="sc-btn sc-btn--primary sc-btn--block" data-action="capacity-scope-all-confirm">确认查看</button>' +
       '</div></div>' +
-      '<p class="sc-capacity-scope__hint">点「进行中」立即查看；选「全部」后需确认时间范围</p>' +
       '</div>'
     );
   }
@@ -13480,6 +13499,7 @@ function openChangeSheet(oid, opts) {
       var scopeCard = btn.closest('[data-spec-id="card-capacity-scope"]');
       if (scopeCard) {
         scopeCard.setAttribute('data-capacity-scope-mode', 'all');
+        syncCapacityScopeOptionStyles(scopeCard, 'all');
         var sheet = scopeCard.querySelector('[data-capacity-all-sheet]');
         if (sheet) sheet.classList.add('is-expanded');
       }
